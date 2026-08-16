@@ -8,57 +8,57 @@ import (
 	"github.com/hideffrand/rsudtangsel/server/internal/repository"
 )
 
-// DashboardService menangani business logic untuk statistik dashboard admin.
+// DashboardService handles business logic for the admin dashboard statistics.
 type DashboardService struct {
 	appointmentRepo *repository.AppointmentRepository
 }
 
-// NewDashboardService membuat instance DashboardService baru.
+// NewDashboardService creates a new DashboardService instance.
 func NewDashboardService(appointmentRepo *repository.AppointmentRepository) *DashboardService {
 	return &DashboardService{appointmentRepo: appointmentRepo}
 }
 
-// GetStats mengembalikan statistik dashboard untuk hari ini.
+// GetStats returns aggregated dashboard statistics for the current day.
 func (s *DashboardService) GetStats() (*response.DashboardStatsResponse, error) {
 	today := time.Now().Format("2006-01-02")
 
-	// 1. Hitung jumlah pasien unik hari ini
-	pasienHariIni, err := s.appointmentRepo.CountPatientsByDate(today)
+	// 1. Count unique patients registered today
+	patientCount, err := s.appointmentRepo.CountPatientsByDate(today)
 	if err != nil {
-		return nil, fmt.Errorf("hitung pasien hari ini: %w", err)
+		return nil, fmt.Errorf("count patients today: %w", err)
 	}
 
-	// 2. Rata-rata waktu tunggu (menit) untuk appointment yang sudah selesai
-	rataWaktuTunggu, err := s.appointmentRepo.AvgWaitingTime(today)
+	// 2. Average waiting time (minutes) for completed appointments today
+	avgWaitingTime, err := s.appointmentRepo.AvgWaitingTime(today)
 	if err != nil {
-		return nil, fmt.Errorf("hitung rata waktu tunggu: %w", err)
+		return nil, fmt.Errorf("calculate avg waiting time: %w", err)
 	}
 
-	// 3. Total antrian yang masih menunggu hari ini
-	totalAntrian, err := s.appointmentRepo.CountWaitingToday(today)
+	// 3. Total appointments still in 'waiting' status today
+	totalWaiting, err := s.appointmentRepo.CountWaitingToday(today)
 	if err != nil {
-		return nil, fmt.Errorf("hitung total antrian: %w", err)
+		return nil, fmt.Errorf("count waiting appointments: %w", err)
 	}
 
-	// 4. BOR (Bed Occupancy Rate) — mock karena belum ada tabel beds
-	// TODO: Ganti dengan query nyata ketika tabel beds tersedia
+	// 4. BOR (Bed Occupancy Rate) — mocked until a beds table is available
+	// TODO: replace with a real query once the beds table is added
 	bor := 75.0
 
-	// 5. Keluhan baru — mock karena belum ada tabel keluhan
-	// TODO: Ganti dengan query nyata ketika tabel keluhan tersedia
-	keluhanBaru := 12
+	// 5. New complaints — mocked until a complaints table is available
+	// TODO: replace with a real query once the complaints table is added
+	newComplaints := 12
 
 	return &response.DashboardStatsResponse{
-		PasienHariIni:   pasienHariIni,
-		RataWaktuTunggu: roundFloat(rataWaktuTunggu, 1),
+		PasienHariIni:   patientCount,
+		RataWaktuTunggu: roundFloat(avgWaitingTime, 1),
 		BOR:             bor,
-		KeluhanBaru:     keluhanBaru,
-		TotalAntrian:    totalAntrian,
+		KeluhanBaru:     newComplaints,
+		TotalAntrian:    totalWaiting,
 		UpdateTime:      time.Now().UTC().Format("15:04:05"),
 	}, nil
 }
 
-// roundFloat membulatkan float64 ke n desimal.
+// roundFloat rounds a float64 to the given number of decimal places.
 func roundFloat(val float64, precision int) float64 {
 	if precision == 0 {
 		return float64(int(val + 0.5))

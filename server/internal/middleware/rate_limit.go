@@ -11,13 +11,13 @@ import (
 	"github.com/hideffrand/rsudtangsel/server/internal/utils"
 )
 
-// ipBucket menyimpan sliding window request timestamps per IP.
+// ipBucket holds sliding window request timestamps for a single IP address.
 type ipBucket struct {
 	mu         sync.Mutex
 	timestamps []time.Time
 }
 
-// rateLimiter menyimpan semua IP bucket.
+// rateLimiter stores per-IP buckets and rate limit configuration.
 type rateLimiter struct {
 	mu      sync.RWMutex
 	buckets map[string]*ipBucket
@@ -25,20 +25,19 @@ type rateLimiter struct {
 	window  time.Duration
 }
 
-// newRateLimiter membuat instance rateLimiter baru.
+// newRateLimiter creates a new rateLimiter with the given request limit per window duration.
 func newRateLimiter(limit int, window time.Duration) *rateLimiter {
 	rl := &rateLimiter{
 		buckets: make(map[string]*ipBucket),
 		limit:   limit,
 		window:  window,
 	}
-	// Goroutine pembersih bucket lama setiap 5 menit
+	// Background goroutine to clean up stale buckets every 5 minutes
 	go rl.cleanup()
 	return rl
 }
 
-// allow memeriksa apakah IP diizinkan untuk melakukan request.
-// Menggunakan sliding window counter.
+// allow checks whether the given IP is within the rate limit using a sliding window counter.
 func (rl *rateLimiter) allow(ip string) bool {
 	rl.mu.Lock()
 	bucket, exists := rl.buckets[ip]
@@ -54,7 +53,7 @@ func (rl *rateLimiter) allow(ip string) bool {
 	bucket.mu.Lock()
 	defer bucket.mu.Unlock()
 
-	// Hapus timestamp lama di luar window
+	// Remove timestamps outside the current window
 	valid := bucket.timestamps[:0]
 	for _, ts := range bucket.timestamps {
 		if ts.After(cutoff) {
@@ -71,7 +70,7 @@ func (rl *rateLimiter) allow(ip string) bool {
 	return true
 }
 
-// cleanup menghapus bucket IP yang sudah tidak aktif setiap 5 menit.
+// cleanup removes buckets for IPs that have been inactive for longer than one window.
 func (rl *rateLimiter) cleanup() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
@@ -96,8 +95,8 @@ func (rl *rateLimiter) cleanup() {
 	}
 }
 
-// RateLimitMiddleware membatasi jumlah request per IP per menit.
-// Limit dikonfigurasi via RATE_LIMIT_PER_MINUTE di .env (default: 100).
+// RateLimitMiddleware limits the number of requests per IP per minute.
+// The limit is configured via the RATE_LIMIT_PER_MINUTE environment variable (default: 100).
 func RateLimitMiddleware(next http.Handler) http.Handler {
 	limit := getRateLimit()
 	rl := newRateLimiter(limit, time.Minute)
@@ -107,14 +106,14 @@ func RateLimitMiddleware(next http.Handler) http.Handler {
 		if !rl.allow(ip) {
 			w.Header().Set("Retry-After", "60")
 			utils.ErrorResponse(w, http.StatusTooManyRequests,
-				"Terlalu banyak request. Coba lagi dalam 1 menit.")
+				"Too many requests. Please try again in 1 minute.")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-// getRateLimit membaca RATE_LIMIT_PER_MINUTE dari env, default 100.
+// getRateLimit reads RATE_LIMIT_PER_MINUTE from env, defaulting to 100.
 func getRateLimit() int {
 	raw := os.Getenv("RATE_LIMIT_PER_MINUTE")
 	if raw == "" {
@@ -127,10 +126,10 @@ func getRateLimit() int {
 	return limit
 }
 
-// getClientIP mengambil IP address client yang sebenarnya.
-// Mendukung X-Forwarded-For dan X-Real-IP untuk deployment di balik proxy/load balancer.
+// getClientIP extracts the real client IP address from the request.
+// Supports X-Forwarded-For and X-Real-IP headers for deployments behind a proxy or load balancer.
 func getClientIP(r *http.Request) string {
-	// X-Forwarded-For bisa berisi multiple IPs: "client, proxy1, proxy2"
+	// X-Forwarded-For may contain multiple IPs: "client, proxy1, proxy2"
 	forwarded := r.Header.Get("X-Forwarded-For")
 	if forwarded != "" {
 		parts := strings.Split(forwarded, ",")
@@ -138,12 +137,12 @@ func getClientIP(r *http.Request) string {
 			return strings.TrimSpace(parts[0])
 		}
 	}
-	// X-Real-IP dari nginx
+	// X-Real-IP set by nginx
 	realIP := r.Header.Get("X-Real-IP")
 	if realIP != "" {
 		return realIP
 	}
-	// Fallback ke RemoteAddr (format "IP:port")
+	// Fallback to RemoteAddr (format "IP:port")
 	ip := r.RemoteAddr
 	if idx := strings.LastIndex(ip, ":"); idx != -1 {
 		ip = ip[:idx]

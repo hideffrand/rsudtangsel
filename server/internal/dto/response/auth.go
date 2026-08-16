@@ -1,6 +1,6 @@
 package response
 
-// UserResponse adalah representasi publik dari data user (tanpa password).
+// UserResponse is the public representation of a user (without password).
 type UserResponse struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
@@ -8,26 +8,26 @@ type UserResponse struct {
 	Role     string `json:"role"`
 }
 
-// LoginResponse adalah response untuk POST /api/admin/login dan POST /api/admin/refresh.
+// LoginResponse is the response for POST /api/admin/login and POST /api/admin/refresh.
 type LoginResponse struct {
 	AccessToken  string       `json:"access_token"`
 	RefreshToken string       `json:"refresh_token"`
 	TokenType    string       `json:"token_type"`
-	ExpiresIn    int          `json:"expires_in"` // dalam detik
+	ExpiresIn    int          `json:"expires_in"` // in seconds
 	User         UserResponse `json:"user"`
 }
 
-// DashboardStatsResponse adalah response untuk GET /api/admin/dashboard/stats.
+// DashboardStatsResponse is the response for GET /api/admin/dashboard/stats.
 type DashboardStatsResponse struct {
 	PasienHariIni   int     `json:"pasien_hari_ini"`
-	RataWaktuTunggu float64 `json:"rata_waktu_tunggu"` // menit
-	BOR             float64 `json:"bor"`               // persen
+	RataWaktuTunggu float64 `json:"rata_waktu_tunggu"` // in minutes
+	BOR             float64 `json:"bor"`               // percentage
 	KeluhanBaru     int     `json:"keluhan_baru"`
 	TotalAntrian    int     `json:"total_antrian"`
 	UpdateTime      string  `json:"update_time"` // "HH:MM:SS"
 }
 
-// AdminAntrianItem adalah satu baris data antrian untuk admin dashboard.
+// AdminAntrianItem represents a single queue entry for the admin dashboard.
 type AdminAntrianItem struct {
 	ID        int    `json:"id"`
 	Nomor     string `json:"nomor"`
@@ -38,7 +38,7 @@ type AdminAntrianItem struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// CallAntrianResponse adalah response untuk PATCH /api/admin/antrian/:id/call.
+// CallAntrianResponse is the response for PATCH /api/admin/antrian/:id/call.
 type CallAntrianResponse struct {
 	ID       int    `json:"id"`
 	Nomor    string `json:"nomor"`

@@ -16,10 +16,10 @@ import (
 )
 
 func main() {
-	// Load .env (opsional — tidak error jika file tidak ada di production)
+	// Load .env file — optional, does not fail if the file is absent in production
 	_ = godotenv.Load()
 
-	// Koneksi database
+	// Connect to the database
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		log.Fatal("DATABASE_URL is not set")
@@ -34,10 +34,10 @@ func main() {
 	fmt.Println("✅ connected to database")
 
 	// =========================================================
-	// Inisialisasi layer: repository → service → handler
+	// Initialize layers: repository → service → handler
 	// =========================================================
 
-	// --- Public (antrian & doctor) — dari teman ---
+	// --- Public endpoints (from teammate) ---
 	patientRepo := repository.NewPatientRepository(db)
 	doctorRepo := repository.NewDoctorRepository(db)
 	appointmentRepo := repository.NewAppointmentRepository(db)
@@ -51,18 +51,18 @@ func main() {
 	doctorHandler := handler.NewDoctorHandler(doctorSvc)
 	scheduleHandler := handler.NewScheduleHandler(doctorSvc)
 
-	// --- Admin (auth, dashboard, antrian management) — milik kita ---
+	// --- Admin endpoints (auth, dashboard, queue management) ---
 	userRepo := repository.NewUserRepository(db)
 	authSvc := service.NewAuthService(userRepo)
 	dashboardSvc := service.NewDashboardService(appointmentRepo)
 	adminHandler := handler.NewAdminHandler(authSvc, dashboardSvc, appointmentRepo)
 
 	// =========================================================
-	// Router setup
+	// Route registration
 	// =========================================================
 	mux := http.NewServeMux()
 
-	// --- Public routes (dari teman) ---
+	// --- Public routes (from teammate) ---
 	mux.HandleFunc("/api/daftar-online", registrationHandler.Handle)
 	mux.HandleFunc("/api/antrian", antrianHandler.Handle)
 	mux.HandleFunc("/api/doctors", doctorHandler.Collection)
@@ -81,15 +81,15 @@ func main() {
 		http.HandlerFunc(adminHandler.RefreshToken),
 	)
 
-	// --- Admin protected routes (JWT + role + audit log) ---
+	// --- Admin protected routes (JWT auth + role check + audit logging) ---
 	adminProtected := buildAdminProtectedRouter(adminHandler, userRepo)
 	mux.Handle("/api/admin/", adminProtected)
 
-	// --- Wrap semua routes dengan CORS middleware ---
+	// --- Apply CORS middleware to all routes ---
 	rootHandler := middleware.CORSMiddleware(mux)
 
 	// =========================================================
-	// Jalankan server
+	// Start the server
 	// =========================================================
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
@@ -101,7 +101,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(serverAddr, rootHandler))
 }
 
-// buildAdminProtectedRouter membangun sub-router untuk endpoint admin yang dilindungi.
+// buildAdminProtectedRouter constructs a sub-router for protected admin endpoints.
 // Middleware chain: AuthMiddleware → RoleMiddleware → AuditMiddleware → handler
 func buildAdminProtectedRouter(
 	adminHandler *handler.AdminHandler,
@@ -113,7 +113,7 @@ func buildAdminProtectedRouter(
 	protectedMux.HandleFunc("/api/admin/dashboard/stats", adminHandler.DashboardStats)
 	protectedMux.HandleFunc("/api/admin/antrian", adminHandler.AdminAntrian)
 
-	// Dynamic sub-path: /api/admin/antrian/{id}/call atau /skip
+	// Dynamic sub-path handler: /api/admin/antrian/{id}/call or /skip
 	protectedMux.HandleFunc("/api/admin/antrian/", func(w http.ResponseWriter, r *http.Request) {
 		trimmed := strings.TrimPrefix(r.URL.Path, "/api/admin/antrian/")
 		if trimmed == "" {
@@ -123,7 +123,7 @@ func buildAdminProtectedRouter(
 		adminHandler.UpdateAntrianStatus(w, r)
 	})
 
-	// Terapkan middleware: Auth → Role(admin,staff) → Audit
+	// Apply middleware stack: Auth → Role(admin, staff) → Audit
 	return middleware.AuthMiddleware(
 		middleware.RoleMiddleware("admin", "staff")(
 			middleware.AuditMiddleware(userRepo)(protectedMux),

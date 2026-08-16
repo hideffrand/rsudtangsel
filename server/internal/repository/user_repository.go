@@ -8,17 +8,17 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// UserRepository mengelola operasi database untuk tabel users, refresh_tokens, dan audit_logs.
+// UserRepository handles all database operations for the users, refresh_tokens, and audit_logs tables.
 type UserRepository struct {
 	db *sqlx.DB
 }
 
-// NewUserRepository membuat instance UserRepository baru.
+// NewUserRepository creates a new UserRepository instance.
 func NewUserRepository(db *sqlx.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-// FindByUsername mengambil user berdasarkan username.
+// FindByUsername retrieves a user by their username.
 func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, username, email, password_hash, role, is_active, last_login,
@@ -27,14 +27,14 @@ func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 	err := r.db.Get(&user, query, username)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			return nil, nil // user tidak ditemukan
+			return nil, nil // user not found
 		}
 		return nil, fmt.Errorf("find user by username: %w", err)
 	}
 	return &user, nil
 }
 
-// FindByID mengambil user berdasarkan ID.
+// FindByID retrieves a user by their ID.
 func (r *UserRepository) FindByID(id int) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, username, email, password_hash, role, is_active, last_login,
@@ -50,7 +50,7 @@ func (r *UserRepository) FindByID(id int) (*model.User, error) {
 	return &user, nil
 }
 
-// UpdateLastLogin memperbarui waktu login terakhir untuk user.
+// UpdateLastLogin updates the last_login timestamp for a user.
 func (r *UserRepository) UpdateLastLogin(userID int) error {
 	query := `UPDATE users SET last_login = $1 WHERE id = $2`
 	_, err := r.db.Exec(query, time.Now().UTC(), userID)
@@ -60,7 +60,7 @@ func (r *UserRepository) UpdateLastLogin(userID int) error {
 	return nil
 }
 
-// SaveRefreshToken menyimpan refresh token baru ke database.
+// SaveRefreshToken saves a new refresh token to the database.
 func (r *UserRepository) SaveRefreshToken(userID int, token string, expiresAt time.Time) error {
 	query := `INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)`
 	_, err := r.db.Exec(query, userID, token, expiresAt)
@@ -70,7 +70,7 @@ func (r *UserRepository) SaveRefreshToken(userID int, token string, expiresAt ti
 	return nil
 }
 
-// FindRefreshToken mencari refresh token yang valid (belum kadaluarsa) berdasarkan token string.
+// FindRefreshToken looks up a valid (non-expired) refresh token.
 func (r *UserRepository) FindRefreshToken(token string) (*model.RefreshToken, error) {
 	var rt model.RefreshToken
 	query := `SELECT id, user_id, token, expires_at, created_at
@@ -78,14 +78,14 @@ func (r *UserRepository) FindRefreshToken(token string) (*model.RefreshToken, er
 	err := r.db.Get(&rt, query, token)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			return nil, nil // tidak ditemukan atau sudah kadaluarsa
+			return nil, nil // not found or already expired
 		}
 		return nil, fmt.Errorf("find refresh token: %w", err)
 	}
 	return &rt, nil
 }
 
-// DeleteRefreshToken menghapus refresh token dari database (logout / rotasi token).
+// DeleteRefreshToken removes a refresh token from the database (logout / rotation).
 func (r *UserRepository) DeleteRefreshToken(token string) error {
 	query := `DELETE FROM refresh_tokens WHERE token = $1`
 	_, err := r.db.Exec(query, token)
@@ -95,8 +95,8 @@ func (r *UserRepository) DeleteRefreshToken(token string) error {
 	return nil
 }
 
-// DeleteExpiredRefreshTokens menghapus semua refresh token yang sudah kadaluarsa.
-// Bisa dipanggil secara periodik untuk membersihkan database.
+// DeleteExpiredRefreshTokens removes all expired refresh tokens.
+// Can be called periodically to keep the table clean.
 func (r *UserRepository) DeleteExpiredRefreshTokens() error {
 	query := `DELETE FROM refresh_tokens WHERE expires_at < NOW()`
 	_, err := r.db.Exec(query)
@@ -106,7 +106,7 @@ func (r *UserRepository) DeleteExpiredRefreshTokens() error {
 	return nil
 }
 
-// CreateAuditLog menyimpan audit log ke database.
+// CreateAuditLog persists an audit log entry to the database.
 func (r *UserRepository) CreateAuditLog(log *model.AuditLog) error {
 	query := `INSERT INTO audit_logs (user_id, action, ip_address, user_agent, details)
 	           VALUES ($1, $2, $3, $4, $5::jsonb)`

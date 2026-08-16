@@ -9,17 +9,17 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// AppointmentRepository mengelola operasi database untuk tabel appointments.
+// AppointmentRepository handles all database operations for the appointments table.
 type AppointmentRepository struct {
 	db *sqlx.DB
 }
 
-// NewAppointmentRepository membuat instance AppointmentRepository baru.
+// NewAppointmentRepository creates a new AppointmentRepository instance.
 func NewAppointmentRepository(db *sqlx.DB) *AppointmentRepository {
 	return &AppointmentRepository{db: db}
 }
 
-// Create menyimpan pendaftaran baru ke database.
+// Create inserts a new appointment into the database.
 func (r *AppointmentRepository) Create(a *model.Appointment) error {
 	query := `INSERT INTO appointments
 	           (patient_id, doctor_id, schedule_date, time, payment_type, queue_number, qr_code, status)
@@ -34,14 +34,14 @@ func (r *AppointmentRepository) Create(a *model.Appointment) error {
 	return nil
 }
 
-// AntrianEntry adalah baris antrian yang di-join dengan nama pasien.
+// AntrianEntry is a joined row returned by the public queue endpoint.
 type AntrianEntry struct {
 	QueueNumber string `db:"queue_number"`
 	PatientName string `db:"patient_name"`
 	Status      string `db:"status"`
 }
 
-// FindByDepartmentAndDate mengambil daftar antrian berdasarkan spesialisasi dan tanggal.
+// FindByDepartmentAndDate retrieves the appointment queue filtered by specialty and date.
 func (r *AppointmentRepository) FindByDepartmentAndDate(specialty, scheduleDate string) ([]AntrianEntry, error) {
 	var list []AntrianEntry
 	query := `SELECT a.queue_number, p.name AS patient_name, a.status
@@ -57,7 +57,7 @@ func (r *AppointmentRepository) FindByDepartmentAndDate(specialty, scheduleDate 
 	return list, nil
 }
 
-// CountByDepartmentAndDate menghitung jumlah pendaftaran pada spesialisasi dan tanggal tertentu.
+// CountByDepartmentAndDate counts appointments for a given specialty and date.
 func (r *AppointmentRepository) CountByDepartmentAndDate(specialty, scheduleDate string) (int, error) {
 	var count int
 	query := `SELECT COUNT(*) FROM appointments a
@@ -70,7 +70,7 @@ func (r *AppointmentRepository) CountByDepartmentAndDate(specialty, scheduleDate
 	return count, nil
 }
 
-// CountPatientsByDate menghitung jumlah pasien unik yang terdaftar pada tanggal tertentu.
+// CountPatientsByDate counts unique patients registered on a given date.
 func (r *AppointmentRepository) CountPatientsByDate(date string) (int, error) {
 	var count int
 	query := `SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE schedule_date = $1`
@@ -81,7 +81,7 @@ func (r *AppointmentRepository) CountPatientsByDate(date string) (int, error) {
 	return count, nil
 }
 
-// AvgWaitingTime menghitung rata-rata waktu tunggu (menit) untuk appointment selesai pada tanggal tertentu.
+// AvgWaitingTime calculates the average waiting time in minutes for completed appointments on a given date.
 func (r *AppointmentRepository) AvgWaitingTime(date string) (float64, error) {
 	var avg float64
 	query := `SELECT COALESCE(
@@ -97,7 +97,7 @@ func (r *AppointmentRepository) AvgWaitingTime(date string) (float64, error) {
 	return avg, nil
 }
 
-// CountWaitingToday menghitung total appointment yang masih berstatus 'waiting' hari ini.
+// CountWaitingToday counts appointments still in 'waiting' status for a given date.
 func (r *AppointmentRepository) CountWaitingToday(date string) (int, error) {
 	var count int
 	query := `SELECT COUNT(*) FROM appointments WHERE status = 'waiting' AND schedule_date = $1`
@@ -108,18 +108,18 @@ func (r *AppointmentRepository) CountWaitingToday(date string) (int, error) {
 	return count, nil
 }
 
-// AdminAppointmentItem adalah baris antrian untuk admin dashboard (join dengan patient dan doctor).
+// AdminAppointmentItem is a joined row for the admin dashboard queue view.
 type AdminAppointmentItem struct {
-	ID           int    `db:"id"`
-	QueueNumber  string `db:"queue_number"`
-	PatientName  string `db:"patient_name"`
-	DoctorName   string `db:"doctor_name"`
-	Specialty    string `db:"specialty"`
-	Status       string `db:"status"`
-	CreatedAt    string `db:"created_at"`
+	ID          int    `db:"id"`
+	QueueNumber string `db:"queue_number"`
+	PatientName string `db:"patient_name"`
+	DoctorName  string `db:"doctor_name"`
+	Specialty   string `db:"specialty"`
+	Status      string `db:"status"`
+	CreatedAt   string `db:"created_at"`
 }
 
-// FindAllByDateWithPatient mengambil semua antrian hari ini beserta nama pasien dan dokter (untuk admin).
+// FindAllByDateWithPatient retrieves all appointments for a given date with patient and doctor details.
 func (r *AppointmentRepository) FindAllByDateWithPatient(date string) ([]response.AdminAntrianItem, error) {
 	var rows []AdminAppointmentItem
 	query := `SELECT a.id, a.queue_number, p.name AS patient_name, d.name AS doctor_name,
@@ -149,7 +149,7 @@ func (r *AppointmentRepository) FindAllByDateWithPatient(date string) ([]respons
 	return items, nil
 }
 
-// FindByDepartmentAndDateWithPatient mengambil antrian untuk spesialisasi tertentu beserta detail pasien.
+// FindByDepartmentAndDateWithPatient retrieves appointments for a specific specialty and date, with patient details.
 func (r *AppointmentRepository) FindByDepartmentAndDateWithPatient(specialty, date string) ([]response.AdminAntrianItem, error) {
 	var rows []AdminAppointmentItem
 	query := `SELECT a.id, a.queue_number, p.name AS patient_name, d.name AS doctor_name,
@@ -179,7 +179,7 @@ func (r *AppointmentRepository) FindByDepartmentAndDateWithPatient(specialty, da
 	return items, nil
 }
 
-// UpdateAppointmentStatus memperbarui status appointment dan mengembalikan detail antrian.
+// UpdateAppointmentStatus updates the status of an appointment and returns the updated record.
 func (r *AppointmentRepository) UpdateAppointmentStatus(id int, status string) (*response.CallAntrianResponse, error) {
 	var partial struct {
 		ID          int    `db:"id"`
@@ -192,11 +192,12 @@ func (r *AppointmentRepository) UpdateAppointmentStatus(id int, status string) (
 	err := r.db.QueryRowx(query, status, id).StructScan(&partial)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			return nil, fmt.Errorf("appointment dengan id %d tidak ditemukan", id)
+			return nil, fmt.Errorf("appointment with id %d not found", id)
 		}
 		return nil, fmt.Errorf("update appointment status: %w", err)
 	}
-	// Ambil nama pasien dan spesialisasi dari join
+
+	// Fetch patient name and specialty via join
 	var patientName, specialty, doctorName string
 	nameQuery := `SELECT p.name, d.specialty, d.name AS doctor_name
 	               FROM patients p
@@ -215,7 +216,7 @@ func (r *AppointmentRepository) UpdateAppointmentStatus(id int, status string) (
 	}, nil
 }
 
-// capitalizeFirst mengubah huruf pertama menjadi kapital (ASCII only).
+// capitalizeFirst uppercases the first character of a string (ASCII only).
 func capitalizeFirst(s string) string {
 	if len(s) == 0 || s[0] < 'a' || s[0] > 'z' {
 		return s

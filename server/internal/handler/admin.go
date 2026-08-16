@@ -14,14 +14,14 @@ import (
 	"github.com/hideffrand/rsudtangsel/server/internal/utils"
 )
 
-// AdminHandler menangani semua HTTP request untuk endpoint admin.
+// AdminHandler handles all HTTP requests for admin endpoints.
 type AdminHandler struct {
 	authSvc         *service.AuthService
 	dashboardSvc    *service.DashboardService
 	appointmentRepo *repository.AppointmentRepository
 }
 
-// NewAdminHandler membuat instance AdminHandler baru.
+// NewAdminHandler creates a new AdminHandler instance.
 func NewAdminHandler(
 	authSvc *service.AuthService,
 	dashboardSvc *service.DashboardService,
@@ -34,8 +34,8 @@ func NewAdminHandler(
 	}
 }
 
-// Login menangani POST /api/admin/login
-// Memvalidasi kredensial dan mengembalikan JWT token.
+// Login handles POST /api/admin/login
+// Validates credentials and returns JWT tokens.
 func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -44,7 +44,7 @@ func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var req request.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.ErrorResponse(w, http.StatusBadRequest, "Request body tidak valid")
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
@@ -59,18 +59,18 @@ func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 	loginResp, err := h.authSvc.Login(req.Username, req.Password, ip, userAgent)
 	if err != nil {
 		if err.Error() == "invalid credentials" {
-			utils.ErrorResponse(w, http.StatusUnauthorized, "Username atau password salah")
+			utils.ErrorResponse(w, http.StatusUnauthorized, "Invalid username or password")
 			return
 		}
 		utils.ErrorResponse(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	utils.SuccessResponse(w, http.StatusOK, loginResp, "Login berhasil")
+	utils.SuccessResponse(w, http.StatusOK, loginResp, "Login successful")
 }
 
-// RefreshToken menangani POST /api/admin/refresh
-// Merotasi refresh token dan mengembalikan access token baru.
+// RefreshToken handles POST /api/admin/refresh
+// Rotates the refresh token and returns a new access token.
 func (h *AdminHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -79,7 +79,7 @@ func (h *AdminHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	var req request.RefreshTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.ErrorResponse(w, http.StatusBadRequest, "Request body tidak valid")
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
@@ -94,11 +94,11 @@ func (h *AdminHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SuccessResponse(w, http.StatusOK, resp, "Token diperbarui")
+	utils.SuccessResponse(w, http.StatusOK, resp, "Token refreshed")
 }
 
-// Logout menangani POST /api/admin/logout
-// Menghapus refresh token dari database (idempotent).
+// Logout handles POST /api/admin/logout
+// Deletes the refresh token from the database. This operation is idempotent.
 func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -107,16 +107,16 @@ func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	var req request.RefreshTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.ErrorResponse(w, http.StatusBadRequest, "Request body tidak valid")
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	_ = h.authSvc.Logout(req.RefreshToken)
-	utils.SuccessResponse(w, http.StatusOK, nil, "Logout berhasil")
+	utils.SuccessResponse(w, http.StatusOK, nil, "Logged out successfully")
 }
 
-// DashboardStats menangani GET /api/admin/dashboard/stats
-// Mengembalikan statistik dashboard hari ini.
+// DashboardStats handles GET /api/admin/dashboard/stats
+// Returns aggregated statistics for the current day.
 func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -125,23 +125,22 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := h.dashboardSvc.GetStats()
 	if err != nil {
-		utils.ErrorResponse(w, http.StatusInternalServerError, "Gagal mengambil statistik: "+err.Error())
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve statistics: "+err.Error())
 		return
 	}
 
 	utils.SuccessResponse(w, http.StatusOK, stats)
 }
 
-// AdminAntrian menangani GET /api/admin/antrian
-// Mengembalikan daftar antrian lengkap dengan data pasien dan dokter.
-// Query params: poli (specialty), tanggal (date)
+// AdminAntrian handles GET /api/admin/antrian
+// Returns the appointment queue with patient and doctor details.
+// Query params: poli (specialty filter), tanggal (date, defaults to today)
 func (h *AdminHandler) AdminAntrian(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	// "poli" query param digunakan sebagai specialty filter
 	specialty := r.URL.Query().Get("poli")
 	date := r.URL.Query().Get("tanggal")
 	if date == "" {
@@ -160,15 +159,15 @@ func (h *AdminHandler) AdminAntrian(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		utils.ErrorResponse(w, http.StatusInternalServerError, "Gagal mengambil antrian: "+err.Error())
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve queue: "+err.Error())
 		return
 	}
 
 	utils.SuccessResponse(w, http.StatusOK, items)
 }
 
-// UpdateAntrianStatus menangani PATCH /api/admin/antrian/{id}/call atau /skip
-// URL format: /api/admin/antrian/123/call atau /api/admin/antrian/123/skip
+// UpdateAntrianStatus handles PATCH /api/admin/antrian/{id}/call or /skip
+// URL format: /api/admin/antrian/123/call or /api/admin/antrian/123/skip
 func (h *AdminHandler) UpdateAntrianStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -181,7 +180,7 @@ func (h *AdminHandler) UpdateAntrianStatus(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Tentukan status baru: "call" → processing, "skip" → cancelled
+	// Map action to the corresponding database status value
 	var newStatus string
 	switch action {
 	case "call":
@@ -189,7 +188,7 @@ func (h *AdminHandler) UpdateAntrianStatus(w http.ResponseWriter, r *http.Reques
 	case "skip":
 		newStatus = "cancelled"
 	default:
-		utils.ErrorResponse(w, http.StatusBadRequest, "Action tidak valid. Gunakan 'call' atau 'skip'")
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid action. Use 'call' or 'skip'")
 		return
 	}
 
@@ -204,13 +203,13 @@ func (h *AdminHandler) UpdateAntrianStatus(w http.ResponseWriter, r *http.Reques
 
 // --- Private helpers ---
 
-// parseAntrianPath mengurai ID dan action dari URL path /api/admin/antrian/{id}/{action}.
+// parseAntrianPath extracts the ID and action from a URL path: /api/admin/antrian/{id}/{action}.
 func parseAntrianPath(path string) (int, string, error) {
 	path = strings.TrimSuffix(path, "/")
 	parts := strings.Split(path, "/")
 	// Expected: ["", "api", "admin", "antrian", "{id}", "{action}"]
 	if len(parts) < 6 {
-		return 0, "", fmt.Errorf("URL tidak valid")
+		return 0, "", fmt.Errorf("invalid URL path")
 	}
 
 	idStr := parts[len(parts)-2]
@@ -218,16 +217,16 @@ func parseAntrianPath(path string) (int, string, error) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		return 0, "", fmt.Errorf("ID antrian tidak valid: %s", idStr)
+		return 0, "", fmt.Errorf("invalid appointment ID: %s", idStr)
 	}
 	if id <= 0 {
-		return 0, "", fmt.Errorf("ID antrian harus lebih dari 0")
+		return 0, "", fmt.Errorf("appointment ID must be greater than 0")
 	}
 
 	return id, action, nil
 }
 
-// extractClientIP mengambil IP address dari request headers.
+// extractClientIP retrieves the real client IP address from request headers.
 func extractClientIP(r *http.Request) string {
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 		parts := strings.Split(forwarded, ",")

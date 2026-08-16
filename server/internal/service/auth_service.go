@@ -16,30 +16,30 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthService menangani business logic autentikasi admin.
+// AuthService handles all authentication business logic.
 type AuthService struct {
 	userRepo *repository.UserRepository
 }
 
-// NewAuthService membuat instance AuthService baru.
+// NewAuthService creates a new AuthService instance.
 func NewAuthService(userRepo *repository.UserRepository) *AuthService {
 	return &AuthService{userRepo: userRepo}
 }
 
-// Login memvalidasi kredensial dan mengembalikan JWT token jika berhasil.
+// Login validates credentials and returns JWT tokens on success.
 func (s *AuthService) Login(username, password, ip, userAgent string) (*response.LoginResponse, error) {
-	// 1. Cari user berdasarkan username
+	// 1. Look up the user by username
 	user, err := s.userRepo.FindByUsername(username)
 	if err != nil {
-		return nil, fmt.Errorf("cari user: %w", err)
+		return nil, fmt.Errorf("find user: %w", err)
 	}
 	if user == nil {
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
-	// 2. Verifikasi password dengan bcrypt
+	// 2. Verify password with bcrypt
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		// Catat audit log kegagalan login
+		// Log failed login attempt asynchronously
 		s.logAuditAsync(&model.AuditLog{
 			Action:    "LOGIN_FAILED",
 			IPAddress: ip,
@@ -49,33 +49,33 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*response
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
-	// 3. Cek apakah user masih aktif
+	// 3. Check that the account is active
 	if !user.IsActive {
-		return nil, fmt.Errorf("akun tidak aktif, hubungi administrator")
+		return nil, fmt.Errorf("account is inactive, please contact an administrator")
 	}
 
-	// 4. Generate access token (JWT)
+	// 4. Generate JWT access token
 	accessToken, err := s.generateAccessToken(user)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
 
-	// 5. Generate refresh token (random hex string)
+	// 5. Generate a secure refresh token (random hex string)
 	refreshToken, err := generateSecureToken()
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
-	// 6. Simpan refresh token ke database
+	// 6. Persist the refresh token
 	refreshExpiry := time.Now().Add(getRefreshTokenExpiry())
 	if err := s.userRepo.SaveRefreshToken(user.ID, refreshToken, refreshExpiry); err != nil {
-		return nil, fmt.Errorf("simpan refresh token: %w", err)
+		return nil, fmt.Errorf("save refresh token: %w", err)
 	}
 
-	// 7. Update last_login
+	// 7. Update last_login timestamp (non-blocking)
 	go s.userRepo.UpdateLastLogin(user.ID)
 
-	// 8. Catat audit log sukses
+	// 8. Log successful login (non-blocking)
 	s.logAuditAsync(&model.AuditLog{
 		Action:    "LOGIN_SUCCESS",
 		IPAddress: ip,
@@ -98,53 +98,53 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*response
 	}, nil
 }
 
-// RefreshToken memvalidasi refresh token dan mengembalikan token baru (rotasi).
+// RefreshToken validates a refresh token and returns a new token pair (rotation).
 func (s *AuthService) RefreshToken(refreshToken string) (*response.LoginResponse, error) {
-	// 1. Cari dan validasi refresh token di database
+	// 1. Find and validate the refresh token in the database
 	rt, err := s.userRepo.FindRefreshToken(refreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("validasi refresh token: %w", err)
+		return nil, fmt.Errorf("validate refresh token: %w", err)
 	}
 	if rt == nil {
-		return nil, fmt.Errorf("refresh token tidak valid atau sudah kadaluarsa")
+		return nil, fmt.Errorf("refresh token is invalid or has expired")
 	}
 
-	// 2. Cek apakah token sudah expired
+	// 2. Double-check expiry
 	if time.Now().After(rt.ExpiresAt) {
 		_ = s.userRepo.DeleteRefreshToken(refreshToken)
-		return nil, fmt.Errorf("refresh token sudah kadaluarsa, silakan login ulang")
+		return nil, fmt.Errorf("refresh token has expired, please log in again")
 	}
 
-	// 3. Ambil data user
+	// 3. Load the user
 	user, err := s.userRepo.FindByID(rt.UserID)
 	if err != nil || user == nil {
-		return nil, fmt.Errorf("user tidak ditemukan")
+		return nil, fmt.Errorf("user not found")
 	}
 	if !user.IsActive {
-		return nil, fmt.Errorf("akun tidak aktif")
+		return nil, fmt.Errorf("account is inactive")
 	}
 
-	// 4. Rotasi: hapus refresh token lama
+	// 4. Rotation: delete the old refresh token
 	if err := s.userRepo.DeleteRefreshToken(refreshToken); err != nil {
-		return nil, fmt.Errorf("hapus refresh token lama: %w", err)
+		return nil, fmt.Errorf("delete old refresh token: %w", err)
 	}
 
-	// 5. Generate access token baru
+	// 5. Generate a new access token
 	accessToken, err := s.generateAccessToken(user)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
 
-	// 6. Generate refresh token baru
+	// 6. Generate a new refresh token
 	newRefreshToken, err := generateSecureToken()
 	if err != nil {
-		return nil, fmt.Errorf("generate refresh token baru: %w", err)
+		return nil, fmt.Errorf("generate new refresh token: %w", err)
 	}
 
-	// 7. Simpan refresh token baru
+	// 7. Persist the new refresh token
 	refreshExpiry := time.Now().Add(getRefreshTokenExpiry())
 	if err := s.userRepo.SaveRefreshToken(user.ID, newRefreshToken, refreshExpiry); err != nil {
-		return nil, fmt.Errorf("simpan refresh token baru: %w", err)
+		return nil, fmt.Errorf("save new refresh token: %w", err)
 	}
 
 	accessExpirySecs := getAccessTokenExpirySecs()
@@ -162,7 +162,7 @@ func (s *AuthService) RefreshToken(refreshToken string) (*response.LoginResponse
 	}, nil
 }
 
-// Logout menghapus refresh token dari database.
+// Logout deletes the refresh token from the database.
 func (s *AuthService) Logout(refreshToken string) error {
 	if err := s.userRepo.DeleteRefreshToken(refreshToken); err != nil {
 		return fmt.Errorf("logout: %w", err)
@@ -172,7 +172,7 @@ func (s *AuthService) Logout(refreshToken string) error {
 
 // --- Private helpers ---
 
-// generateAccessToken membuat JWT access token dengan claims user.
+// generateAccessToken creates a signed JWT access token with the user's claims.
 func (s *AuthService) generateAccessToken(user *model.User) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
@@ -197,7 +197,7 @@ func (s *AuthService) generateAccessToken(user *model.User) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-// generateSecureToken menghasilkan random hex string 32 byte (64 karakter).
+// generateSecureToken produces a cryptographically random 32-byte hex string (64 chars).
 func generateSecureToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -206,7 +206,7 @@ func generateSecureToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// getAccessTokenExpirySecs membaca ACCESS_TOKEN_EXPIRY dari env (default: 3600 detik).
+// getAccessTokenExpirySecs reads ACCESS_TOKEN_EXPIRY from env (default: 3600 seconds).
 func getAccessTokenExpirySecs() int {
 	raw := os.Getenv("ACCESS_TOKEN_EXPIRY")
 	if raw == "" {
@@ -219,7 +219,7 @@ func getAccessTokenExpirySecs() int {
 	return v
 }
 
-// getRefreshTokenExpiry membaca REFRESH_TOKEN_EXPIRY dari env (default: 7 hari).
+// getRefreshTokenExpiry reads REFRESH_TOKEN_EXPIRY from env (default: 7 days).
 func getRefreshTokenExpiry() time.Duration {
 	raw := os.Getenv("REFRESH_TOKEN_EXPIRY")
 	if raw == "" {
@@ -232,7 +232,7 @@ func getRefreshTokenExpiry() time.Duration {
 	return time.Duration(secs) * time.Second
 }
 
-// logAuditAsync mencatat audit log secara asinkron (non-blocking).
+// logAuditAsync writes an audit log entry asynchronously (non-blocking).
 func (s *AuthService) logAuditAsync(log *model.AuditLog) {
 	go func() {
 		_ = s.userRepo.CreateAuditLog(log)

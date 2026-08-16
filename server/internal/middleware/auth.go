@@ -10,7 +10,7 @@ import (
 	"github.com/hideffrand/rsudtangsel/server/internal/utils"
 )
 
-// contextKey adalah tipe khusus untuk key context agar tidak bertabrakan dengan package lain.
+// contextKey is a private type used for context keys to avoid collisions with other packages.
 type contextKey string
 
 const (
@@ -18,7 +18,7 @@ const (
 	contextKeyUserRole contextKey = "user_role"
 )
 
-// Claims mendefinisikan payload JWT.
+// Claims defines the JWT token payload.
 type Claims struct {
 	UserID   int    `json:"user_id"`
 	Username string `json:"username"`
@@ -26,30 +26,30 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// AuthMiddleware memvalidasi JWT token dari header Authorization: Bearer <token>.
-// Token yang valid akan menyuntikkan user_id dan role ke dalam context.
+// AuthMiddleware validates the JWT token from the Authorization: Bearer <token> header.
+// On success, it injects user_id and role into the request context.
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			utils.ErrorResponse(w, http.StatusUnauthorized, "Authorization header wajib diisi")
+			utils.ErrorResponse(w, http.StatusUnauthorized, "Authorization header is required")
 			return
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			utils.ErrorResponse(w, http.StatusUnauthorized, "Format Authorization tidak valid. Gunakan: Bearer <token>")
+			utils.ErrorResponse(w, http.StatusUnauthorized, "Invalid Authorization format. Use: Bearer <token>")
 			return
 		}
 
 		tokenString := parts[1]
 		claims, err := parseJWT(tokenString)
 		if err != nil {
-			utils.ErrorResponse(w, http.StatusUnauthorized, "Token tidak valid atau sudah kadaluarsa")
+			utils.ErrorResponse(w, http.StatusUnauthorized, "Invalid or expired token")
 			return
 		}
 
-		// Suntikkan user_id dan role ke context
+		// Inject user_id and role into context
 		ctx := context.WithValue(r.Context(), contextKeyUserID, claims.UserID)
 		ctx = context.WithValue(ctx, contextKeyUserRole, claims.Role)
 
@@ -57,14 +57,14 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RoleMiddleware memastikan user memiliki salah satu role yang diizinkan.
-// Harus dipasang setelah AuthMiddleware.
+// RoleMiddleware ensures the authenticated user has one of the allowed roles.
+// Must be applied after AuthMiddleware.
 func RoleMiddleware(allowedRoles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role := GetUserRole(r.Context())
 			if role == "" {
-				utils.ErrorResponse(w, http.StatusUnauthorized, "Tidak terautentikasi")
+				utils.ErrorResponse(w, http.StatusUnauthorized, "Not authenticated")
 				return
 			}
 
@@ -75,25 +75,25 @@ func RoleMiddleware(allowedRoles ...string) func(http.Handler) http.Handler {
 				}
 			}
 
-			utils.ErrorResponse(w, http.StatusForbidden, "Akses ditolak: role tidak memiliki izin")
+			utils.ErrorResponse(w, http.StatusForbidden, "Access denied: insufficient role")
 		})
 	}
 }
 
-// GetUserID mengambil user ID dari context (diisi oleh AuthMiddleware).
-// Mengembalikan 0 jika tidak ada.
+// GetUserID extracts the user ID from the context (set by AuthMiddleware).
+// Returns 0 if not present.
 func GetUserID(ctx context.Context) int {
 	v, _ := ctx.Value(contextKeyUserID).(int)
 	return v
 }
 
-// GetUserRole mengambil role user dari context (diisi oleh AuthMiddleware).
+// GetUserRole extracts the user role from the context (set by AuthMiddleware).
 func GetUserRole(ctx context.Context) string {
 	v, _ := ctx.Value(contextKeyUserRole).(string)
 	return v
 }
 
-// parseJWT memvalidasi dan mem-parse JWT token string.
+// parseJWT validates and parses a JWT token string.
 func parseJWT(tokenString string) (*Claims, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {

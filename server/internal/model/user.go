@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-// User merepresentasikan tabel users di database.
+// User represents the users table in the database.
 type User struct {
 	ID           int        `db:"id"`
 	Username     string     `db:"username"`
@@ -15,7 +15,7 @@ type User struct {
 	UpdatedAt    time.Time  `db:"updated_at"`
 }
 
-// RefreshToken merepresentasikan tabel refresh_tokens di database.
+// RefreshToken represents the refresh_tokens table in the database.
 type RefreshToken struct {
 	ID        int       `db:"id"`
 	UserID    int       `db:"user_id"`
@@ -24,13 +24,13 @@ type RefreshToken struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-// AuditLog merepresentasikan tabel audit_logs di database.
+// AuditLog represents the audit_logs table in the database.
 type AuditLog struct {
 	ID        int    `db:"id"`
-	UserID    *int   `db:"user_id"` // nullable (pre-login actions)
+	UserID    *int   `db:"user_id"` // nullable (pre-login actions have no user)
 	Action    string `db:"action"`
 	IPAddress string `db:"ip_address"`
 	UserAgent string `db:"user_agent"`
-	Details   string `db:"details"` // JSON string (JSONB in postgres)
+	Details   string `db:"details"` // JSON string stored as JSONB in postgres
 	CreatedAt string `db:"created_at"`
 }
