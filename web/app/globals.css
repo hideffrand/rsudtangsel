@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
+/* ============================================================
+   DESIGN TOKENS — RSU Tangsel Care
+   Sesuai Design.md §2 — Filosofi: shadcn/ui style, clean, accessible
+   ============================================================ */
+
 :root {
+  /* --- Warna Netral (§2.1) --- */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1c2626;
+  --muted: #f4f7f7;
+  --muted-foreground: #5c6b6b;
+  --border: #e0e7e7;
+
+  /* --- Warna Brand (§2.1) --- */
+  --primary: #0e7d80;
+  --primary-foreground: #ffffff;
+  --primary-hover: #0a5f61;
+  --accent: #e63946;
+
+  /* --- Warna Status (§2.1) --- */
+  --success: #16a34a;
+  --warning: #d97706;
+  --destructive: #dc2626;
+
+  /* --- Tipografi & Spacing (§2.3) --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --container-max: 1200px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #1c2626;
+  --color-muted: #f4f7f7;
+  --color-muted-foreground: #5c6b6b;
+  --color-border: #e0e7e7;
+
+  --color-primary: #0e7d80;
+  --color-primary-foreground: #ffffff;
+  --color-primary-hover: #0a5f61;
+  --color-accent: #e63946;
+
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-destructive: #dc2626;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+html[data-font-size="lg"] {
+  font-size: 18px;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans, "Inter", -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Focus ring (accessible) (§5.2) */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Reduced motion (§5.2) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+

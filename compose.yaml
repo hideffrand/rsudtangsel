@@ -17,5 +17,25 @@ services:
       timeout: 5s
       retries: 5
 
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: rsudtangsel-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code untuk hot-reload
+      - ./web:/app
+      # Isolate node_modules di dalam container (jangan di-override host)
+      - web-node-modules:/app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  web-node-modules:

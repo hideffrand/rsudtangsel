@@ -1,0 +1,231 @@
+/**
+ * Translations — RSU Tangsel Care
+ * Sesuai Design.md §4 (Multi-Bahasa)
+ * Struktur key per fitur, semua string UI di-eksternalisasi
+ */
+
+export type Locale = "id" | "en";
+
+export const translations: Record<Locale, Record<string, string>> = {
+  id: {
+    // --- Navigasi ---
+    "nav.home": "Beranda",
+    "nav.doctor_schedule": "Jadwal Dokter",
+    "nav.registration": "Antrian Pendaftaran",
+    "nav.info": "Informasi",
+    "nav.health_services": "Layanan Kesehatan",
+    "nav.profile": "Profil Pasien",
+    "nav.lang": "ID",
+
+    // --- Header ---
+    "header.font_smaller": "Perkecil teks",
+    "header.font_larger": "Perbesar teks",
+
+    // --- Beranda ---
+    "home.hero.title": "RSU Tangsel Care",
+    "home.hero.subtitle": "Merawat Sepenuh Hati",
+    "home.hero.cta_register": "Daftar Online",
+    "home.services.title": "Layanan Kami",
+    "home.news.title": "Berita & Artikel",
+    "home.info.title": "Hubungi Kami",
+    "home.services.register": "Daftar Online",
+    "home.services.outpatient": "Rawat Jalan",
+    "home.services.chat": "Chat Dokter",
+    "home.services.emergency": "Info Darurat",
+    "home.services.register_desc": "Daftar kunjungan ke poli pilihan Anda",
+    "home.services.outpatient_desc": "Lihat jadwal dan riwayat rawat jalan",
+    "home.services.chat_desc": "Konsultasi dengan dokter via pesan",
+    "home.services.emergency_desc": "Kontak darurat dan panduan IGD",
+    "home.info.hours": "Jam Layanan",
+    "home.info.hours_value": "Senin–Jumat: 07.00–21.00 | Sabtu: 07.00–17.00 | IGD: 24 Jam",
+    "home.info.location": "Lokasi",
+    "home.info.location_value": "Jl. Raya Serpong, Tangerang Selatan, Banten 15310",
+    "home.info.emergency": "Kontak Darurat",
+    "home.info.emergency_value": "IGD (Instalasi Gawat Darurat): (021) 5555-1234",
+
+    // --- Daftar Online ---
+    "booking.title": "Daftar Online",
+    "booking.step1.label": "Pilih Poli",
+    "booking.step2.label": "Dokter & Jadwal",
+    "booking.step3.label": "Data Diri",
+    "booking.step4.label": "Konfirmasi",
+    "booking.step1.title": "Pilih Poli",
+    "booking.step1.desc": "Pilih poli yang ingin Anda kunjungi",
+    "booking.step2.title": "Pilih Dokter & Jadwal",
+    "booking.step2.desc": "Pilih dokter dan waktu kunjungan",
+    "booking.step3.title": "Data Diri",
+    "booking.step3.desc": "Isi data diri Anda untuk pendaftaran",
+    "booking.step4.title": "Konfirmasi Pendaftaran",
+    "booking.step4.desc": "Periksa kembali data sebelum mendaftar",
+    "booking.btn_next": "Lanjut",
+    "booking.btn_back": "Kembali",
+    "booking.btn_submit": "Daftar Sekarang",
+    "booking.btn_submitting": "Mendaftar...",
+    "booking.confirm_title": "Konfirmasi Pendaftaran",
+    "booking.confirm_desc": "Apakah Anda yakin dengan data yang sudah diisi?",
+    "booking.confirm_yes": "Ya, Daftar",
+    "booking.confirm_cancel": "Periksa Lagi",
+    "booking.field.poli": "Poli",
+    "booking.field.dokter": "Dokter",
+    "booking.field.tanggal": "Tanggal Kunjungan",
+    "booking.field.jam": "Jadwal Waktu",
+    "booking.field.nik": "NIK (Nomor Induk Kependudukan)",
+    "booking.field.nama": "Nama Lengkap",
+    "booking.field.tanggal_lahir": "Tanggal Lahir",
+    "booking.field.no_hp": "Nomor Handphone",
+    "booking.field.alamat": "Alamat",
+    "booking.field.pembayaran": "Jenis Pembayaran",
+    "booking.pembayaran.bpjs": "BPJS",
+    "booking.pembayaran.umum": "Umum",
+    "booking.pembayaran.asuransi": "Asuransi",
+    "booking.success.title": "Pendaftaran Berhasil!",
+    "booking.success.desc": "Nomor antrian Anda:",
+    "booking.success.instruction": "Tunjukkan kode QR ini saat tiba di rumah sakit.",
+
+    // --- Cek Status ---
+    "status.title": "Cek Status Antrian",
+    "status.desc": "Masukkan NIK atau nomor antrian untuk melihat status kunjungan Anda.",
+    "status.field.search": "NIK atau Nomor Antrian",
+    "status.btn_search": "Cek Status",
+    "status.searching": "Mencari...",
+    "status.empty": "Tidak ada data ditemukan.",
+    "status.badge.menunggu": "Menunggu",
+    "status.badge.diproses": "Diproses",
+    "status.badge.selesai": "Selesai",
+    "status.badge.batal": "Dibatalkan",
+    "status.btn_detail": "Lihat Detail",
+    "status.btn_cancel": "Batalkan",
+    "status.cancel_confirm": "Apakah Anda yakin ingin membatalkan kunjungan ini?",
+    "status.cancel_yes": "Ya, Batalkan",
+    "status.cancel_no": "Tidak",
+
+    // --- Chat Dokter ---
+    "chat.title": "Chat Dokter",
+    "chat.disclaimer_title": "Penting — Baca Sebelum Melanjutkan",
+    "chat.disclaimer_body":
+      "Layanan chat ini bukan pengganti konsultasi medis langsung. Informasi yang diberikan dokter melalui chat bersifat umum dan tidak menggantikan diagnosis atau resep dari dokter yang memeriksa Anda secara langsung. Untuk kondisi darurat, hubungi IGD (Instalasi Gawat Darurat) segera.",
+    "chat.disclaimer_confirm": "Saya Mengerti",
+    "chat.btn_start": "Mulai Chat via WhatsApp",
+
+    // --- Footer ---
+    "footer.tagline": "Merawat Sepenuh Hati",
+    "footer.copyright": "© 2026 RSU Tangsel Care. Semua hak dilindungi.",
+
+    // --- Error umum ---
+    "error.required": "Wajib diisi",
+    "error.nik_invalid": "NIK harus 16 digit angka",
+    "error.phone_invalid": "Nomor HP tidak valid",
+    "error.generic": "Terjadi kesalahan. Silakan coba lagi.",
+  },
+
+  en: {
+    // --- Navigation ---
+    "nav.home": "Home",
+    "nav.doctor_schedule": "Doctor Schedule",
+    "nav.registration": "Registration Queue",
+    "nav.info": "Information",
+    "nav.health_services": "Health Services",
+    "nav.profile": "Patient Profile",
+    "nav.lang": "EN",
+
+    // --- Header ---
+    "header.font_smaller": "Decrease text size",
+    "header.font_larger": "Increase text size",
+
+    // --- Home ---
+    "home.hero.title": "RSU Tangsel Care",
+    "home.hero.subtitle": "Caring Wholeheartedly",
+    "home.hero.cta_register": "Register Online",
+    "home.services.title": "Our Services",
+    "home.news.title": "News & Articles",
+    "home.info.title": "Contact Us",
+    "home.services.register": "Register Online",
+    "home.services.outpatient": "Outpatient",
+    "home.services.chat": "Doctor Chat",
+    "home.services.emergency": "Emergency Info",
+    "home.services.register_desc": "Register for a clinic visit",
+    "home.services.outpatient_desc": "View schedule and visit history",
+    "home.services.chat_desc": "Consult with a doctor via message",
+    "home.services.emergency_desc": "Emergency contacts and ER guidance",
+    "home.info.hours": "Service Hours",
+    "home.info.hours_value": "Mon–Fri: 07:00–21:00 | Sat: 07:00–17:00 | ER: 24 Hours",
+    "home.info.location": "Location",
+    "home.info.location_value": "Jl. Raya Serpong, South Tangerang, Banten 15310",
+    "home.info.emergency": "Emergency Contact",
+    "home.info.emergency_value": "ER (Emergency Room): (021) 5555-1234",
+
+    // --- Online Registration ---
+    "booking.title": "Online Registration",
+    "booking.step1.label": "Select Clinic",
+    "booking.step2.label": "Doctor & Schedule",
+    "booking.step3.label": "Personal Data",
+    "booking.step4.label": "Confirmation",
+    "booking.step1.title": "Select Clinic",
+    "booking.step1.desc": "Choose the clinic you want to visit",
+    "booking.step2.title": "Select Doctor & Schedule",
+    "booking.step2.desc": "Choose a doctor and visit time",
+    "booking.step3.title": "Personal Data",
+    "booking.step3.desc": "Fill in your personal details for registration",
+    "booking.step4.title": "Confirm Registration",
+    "booking.step4.desc": "Review your data before registering",
+    "booking.btn_next": "Next",
+    "booking.btn_back": "Back",
+    "booking.btn_submit": "Register Now",
+    "booking.btn_submitting": "Registering...",
+    "booking.confirm_title": "Confirm Registration",
+    "booking.confirm_desc": "Are you sure with the data you have filled in?",
+    "booking.confirm_yes": "Yes, Register",
+    "booking.confirm_cancel": "Review Again",
+    "booking.field.poli": "Clinic",
+    "booking.field.dokter": "Doctor",
+    "booking.field.tanggal": "Visit Date",
+    "booking.field.jam": "Time Slot",
+    "booking.field.nik": "National ID Number (NIK)",
+    "booking.field.nama": "Full Name",
+    "booking.field.tanggal_lahir": "Date of Birth",
+    "booking.field.no_hp": "Phone Number",
+    "booking.field.alamat": "Address",
+    "booking.field.pembayaran": "Payment Type",
+    "booking.pembayaran.bpjs": "BPJS (National Insurance)",
+    "booking.pembayaran.umum": "General / Self-Pay",
+    "booking.pembayaran.asuransi": "Private Insurance",
+    "booking.success.title": "Registration Successful!",
+    "booking.success.desc": "Your queue number:",
+    "booking.success.instruction": "Show this QR code when you arrive at the hospital.",
+
+    // --- Check Status ---
+    "status.title": "Check Queue Status",
+    "status.desc": "Enter your National ID or queue number to view your visit status.",
+    "status.field.search": "National ID or Queue Number",
+    "status.btn_search": "Check Status",
+    "status.searching": "Searching...",
+    "status.empty": "No data found.",
+    "status.badge.menunggu": "Waiting",
+    "status.badge.diproses": "In Progress",
+    "status.badge.selesai": "Completed",
+    "status.badge.batal": "Cancelled",
+    "status.btn_detail": "View Details",
+    "status.btn_cancel": "Cancel",
+    "status.cancel_confirm": "Are you sure you want to cancel this visit?",
+    "status.cancel_yes": "Yes, Cancel",
+    "status.cancel_no": "No",
+
+    // --- Doctor Chat ---
+    "chat.title": "Doctor Chat",
+    "chat.disclaimer_title": "Important — Read Before Continuing",
+    "chat.disclaimer_body":
+      "This chat service is not a substitute for direct medical consultation. Information provided by the doctor through chat is general in nature and does not replace a diagnosis or prescription from a doctor who examines you in person. For emergencies, contact the Emergency Room (ER) immediately.",
+    "chat.disclaimer_confirm": "I Understand",
+    "chat.btn_start": "Start Chat via WhatsApp",
+
+    // --- Footer ---
+    "footer.tagline": "Caring Wholeheartedly",
+    "footer.copyright": "© 2026 RSU Tangsel Care. All rights reserved.",
+
+    // --- General errors ---
+    "error.required": "This field is required",
+    "error.nik_invalid": "National ID must be 16 digits",
+    "error.phone_invalid": "Invalid phone number",
+    "error.generic": "An error occurred. Please try again.",
+  },
+};
