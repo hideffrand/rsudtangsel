@@ -1,8 +1,8 @@
 # PRD: Backend API System — RSU Tangsel
 
-> **Version**: 2.1.0
+> **Version**: 2.2.0
 > **Date**: 2026-08-16
-> **Status**: Phase 1 ✅ | Phase 2 ✅ (Admin Dashboard) | Phase 2.1 ✅ (MCU Packages)
+> **Status**: Phase 1 ✅ | Phase 2 ✅ (Admin Dashboard) | Phase 2.1 ✅ (MCU Packages) | Phase 2.2 ✅ (MCU Booking)
 > **Maintainer**: RSU Tangsel Backend Team
 
 ---
@@ -108,19 +108,22 @@ server/
 │   │   ├── doctor.go
 │   │   ├── doctor_schedule.go
 │   │   ├── user.go                      # Admin users, refresh tokens, audit logs
-│   │   └── mcu_package.go               # MCU package + items
+│   │   ├── mcu_package.go               # MCU package + items
+│   │   └── mcu_booking.go               # MCU booking entity
 │   ├── dto/                             # Data Transfer Objects
 │   │   ├── request/
-│   │   │   ├── daftar_online.go         # Public registration request
+│   │   │   ├── online_register.go       # Public registration request
 │   │   │   ├── doctor.go
 │   │   │   ├── schedule.go
 │   │   │   ├── admin.go                 # Login, refresh, change-password requests
-│   │   │   └── mcu_package.go           # MCU package create/update request
+│   │   │   ├── mcu_package.go           # MCU package create/update request
+│   │   │   └── mcu_booking.go           # MCU booking register + admin update requests
 │   │   └── response/
-│   │       ├── antrian.go               # Public queue response
+│   │       ├── queue.go                 # Public queue response
 │   │       ├── doctor.go
 │   │       ├── auth.go                  # Login, dashboard, admin queue responses
-│   │       └── mcu_package.go           # MCU package response
+│   │       ├── mcu_package.go           # MCU package response
+│   │       └── mcu_booking.go           # MCU booking detail + list responses
 │   ├── utils/
 │   │   └── response.go                  # SuccessResponse / ErrorResponse helpers
 │   ├── middleware/                       # Security middleware
@@ -134,27 +137,32 @@ server/
 │   │   ├── doctor_repository.go
 │   │   ├── doctor_schedule_repository.go
 │   │   ├── user_repository.go           # Auth, refresh tokens, audit logs
-│   │   └── mcu_package_repository.go    # MCU package CRUD
+│   │   ├── mcu_package_repository.go    # MCU package CRUD
+│   │   └── mcu_booking_repository.go    # MCU booking CRUD + filters + revenue
 │   ├── service/                         # Business logic
 │   │   ├── antrian_service.go
 │   │   ├── doctor_service.go
 │   │   ├── auth_service.go              # Login, token rotation, logout
 │   │   ├── dashboard_service.go         # Stats aggregation
-│   │   └── mcu_package_service.go       # MCU package business logic
+│   │   ├── mcu_package_service.go       # MCU package business logic
+│   │   └── mcu_booking_service.go       # MCU booking: pkg validation, price calc, NIK link
 │   └── handler/                         # HTTP handlers
 │       ├── online_registration.go
 │       ├── antrian.go
 │       ├── doctor.go
 │       ├── schedule.go
-│       ├── admin.go                     # All 6 admin endpoints
-│       └── mcu_package.go               # MCU package CRUD endpoints
+│       ├── admin.go                     # All admin auth + queue endpoints
+│       ├── mcu_package.go               # MCU package CRUD endpoints
+│       └── mcu_booking.go               # MCU booking: 2 public + 6 admin endpoints
 ├── migrations/
 │   ├── 20260816140429_init_schema.up.sql          # patients, doctors, appointments, doctor_schedules
 │   ├── 20260816140429_init_schema.down.sql
 │   ├── 20260816090000_add_admin_tables.up.sql     # users, refresh_tokens, audit_logs
 │   ├── 20260816090000_add_admin_tables.down.sql
 │   ├── 20260816150452_mcu_packages.up.sql         # mcu_packages, mcu_package_items
-│   └── 20260816150452_mcu_packages.down.sql
+│   ├── 20260816150452_mcu_packages.down.sql
+│   ├── 20260817000000_add_mcu_bookings.up.sql     # mcu_bookings (TEXT[] diagnostics)
+│   └── 20260817000000_add_mcu_bookings.down.sql
 ├── Makefile
 ├── .env
 └── go.mod / go.sum
@@ -468,7 +476,216 @@ Deletes the package and all its items (`ON DELETE CASCADE`).
 
 ---
 
-## 3.2 Admin Authentication Endpoints
+## 3.5 MCU Booking Endpoints
+
+> Patients can register an MCU appointment online without creating an account.
+> Admin can manage, confirm, cancel, and update payments.
+
+---
+
+### 3.5.1 Register MCU Booking (Public)
+
+| Attribute | Detail |
+|-----------|--------|
+| **URL**   | `POST /api/mcu/register` |
+| **Auth**  | None (public) |
+
+**Request Body:**
+
+| Field           | Type     | Required | Description |
+|-----------------|----------|:--------:|-------------|
+| `package_id`    | int      | ✅ | MCU package ID from `/api/mcu-packages` |
+| `booking_date`  | string   | ✅ | `YYYY-MM-DD` |
+| `booking_time`  | string   | ✅ | `HH:MM` |
+| `nik`           | string   | ✅ | National ID, exactly 16 digits |
+| `full_name`     | string   | ✅ | Patient full name |
+| `birth_date`    | string   | ✅ | `YYYY-MM-DD` |
+| `phone_number`  | string   | ✅ | Active phone number |
+| `address`       | string   | ❌ | Patient address |
+| `lab_tests`     | string[] | ❌ | Selected lab tests (see options below) |
+| `radiology_tests` | string[] | ❌ | Selected radiology tests |
+| `payment_method`| string   | ❌ | `transfer` / `qris` / `cash` / `bpjs` |
+| `notes`         | string   | ❌ | Additional notes |
+
+**Available `lab_tests` values:**
+`hematologi` `gula_darah` `kolesterol` `asam_urat` `fungsi_hati` `fungsi_ginjal` `lipid` `urinalisis` `hormon` `tes_kehamilan`
+
+**Available `radiology_tests` values:**
+`rontgen` `usg` `ct_scan` `mri` `mammografi` `ekg` `treadmill`
+
+**Add-on Pricing (IDR):**
+
+| Test | Price |
+|------|-------|
+| hematologi | Rp 50.000 |
+| gula_darah | Rp 25.000 |
+| kolesterol | Rp 35.000 |
+| asam_urat | Rp 30.000 |
+| fungsi_hati | Rp 75.000 |
+| fungsi_ginjal | Rp 75.000 |
+| lipid | Rp 60.000 |
+| urinalisis | Rp 30.000 |
+| hormon | Rp 150.000 |
+| tes_kehamilan | Rp 35.000 |
+| rontgen | Rp 100.000 |
+| usg | Rp 150.000 |
+| ct_scan | Rp 500.000 |
+| mri | Rp 800.000 |
+| mammografi | Rp 200.000 |
+| ekg | Rp 85.000 |
+| treadmill | Rp 175.000 |
+
+**Price Formula:** `total = package.price + sum(lab_test_fees) + sum(radiology_fees)`
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "status_code": 201,
+  "data": {
+    "id": 1,
+    "package_id": 3,
+    "package_name": "MCU Gold",
+    "nik": "1234567890123456",
+    "full_name": "Budi Santoso",
+    "phone_number": "08123456789",
+    "birth_date": "1990-01-01",
+    "address": "Jl. Raya No. 123",
+    "booking_date": "2026-08-25",
+    "booking_time": "09:00:00",
+    "lab_tests": ["hematologi", "gula_darah"],
+    "radiology_tests": ["rontgen"],
+    "status": "pending",
+    "total_price": 875000,
+    "payment_status": "unpaid",
+    "payment_method": "transfer",
+    "notes": "",
+    "created_at": "2026-08-16 22:39:00"
+  },
+  "message": "MCU booking registered successfully"
+}
+```
+
+**Error Codes:**
+
+| Code | Condition |
+|------|-----------|
+| `400` | Missing/invalid required fields |
+| `400` | NIK not exactly 16 digits |
+| `404` | Package not found or inactive |
+| `500` | Server error |
+
+---
+
+### 3.5.2 Get My Bookings (Public)
+
+| Attribute | Detail |
+|-----------|--------|
+| **URL**   | `GET /api/mcu/my-bookings?nik={NIK}` |
+| **Auth**  | None (public) |
+
+Returns all MCU bookings for a patient identified by their NIK.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status_code": 200,
+  "data": [
+    {
+      "id": 1,
+      "package_name": "MCU Gold",
+      "full_name": "Budi Santoso",
+      "nik": "1234567890123456",
+      "phone_number": "08123456789",
+      "booking_date": "2026-08-25",
+      "booking_time": "09:00:00",
+      "status": "pending",
+      "total_price": 875000,
+      "created_at": "2026-08-16 22:39:00"
+    }
+  ]
+}
+```
+
+---
+
+### 3.5.3 Admin — List MCU Bookings
+
+| Attribute | Detail |
+|-----------|--------|
+| **URL**   | `GET /api/admin/mcu/bookings` |
+| **Auth**  | `Bearer <token>` — role: admin / staff |
+
+**Query Parameters:**
+
+| Parameter | Type   | Description |
+|-----------|--------|-------------|
+| `status`  | string | Filter: `pending` / `confirmed` / `completed` / `cancelled` |
+| `tanggal` | string | Filter by booking date `YYYY-MM-DD` |
+
+---
+
+### 3.5.4 Admin — Get Booking Detail
+
+| Attribute | Detail |
+|-----------|--------|
+| **URL**   | `GET /api/admin/mcu/bookings/{id}` |
+| **Auth**  | `Bearer <token>` — role: admin / staff |
+
+---
+
+### 3.5.5 Admin — Update Booking (Partial)
+
+| Attribute | Detail |
+|-----------|--------|
+| **URL**   | `PATCH /api/admin/mcu/bookings/{id}/update` |
+| **Auth**  | `Bearer <token>` — role: admin / staff |
+
+```json
+{ "status": "confirmed", "payment_status": "awaiting_confirmation", "notes": "" }
+```
+
+---
+
+### 3.5.6 Admin — Confirm / Cancel / Payment Shortcuts
+
+| Method  | URL | Action |
+|---------|-----|--------|
+| `PATCH` | `/api/admin/mcu/bookings/{id}/confirm` | Set `status = confirmed` |
+| `PATCH` | `/api/admin/mcu/bookings/{id}/cancel` | Set `status = cancelled` |
+| `PATCH` | `/api/admin/mcu/bookings/{id}/payment/confirm` | Set `payment_status = paid` |
+
+---
+
+### 3.5.7 Status & Payment Flows
+
+**Booking Status:**
+```
+pending → confirmed → completed
+    └→ cancelled      └→ cancelled
+```
+
+**Payment Status:**
+```
+unpaid → awaiting_confirmation → paid
+                    └→ cancelled
+```
+
+---
+
+### 3.5.8 Error Codes (All MCU Booking Endpoints)
+
+| Code | Condition |
+|------|-----------|
+| `200` | Success |
+| `201` | Booking created |
+| `400` | Invalid body / missing fields / invalid status value |
+| `401` | Missing or expired token (admin endpoints) |
+| `403` | Insufficient role |
+| `404` | Booking not found / package not found |
+| `405` | Method not allowed |
+| `500` | Server / database error |
 
 ### 3.2.1 Login
 
@@ -895,6 +1112,7 @@ RATE_LIMIT_PER_MINUTE=100
 | `20260816140429_init_schema.up.sql`         | Creates `patients`, `doctors`, `appointments`, `doctor_schedules` |
 | `20260816090000_add_admin_tables.up.sql`    | Creates `users`, `refresh_tokens`, `audit_logs`   |
 | `20260816150452_mcu_packages.up.sql`        | Creates `mcu_packages`, `mcu_package_items`       |
+| `20260817000000_add_mcu_bookings.up.sql`    | Creates `mcu_bookings` (TEXT[] diagnostics, payment, status) |
 
 **Default admin credentials (seeded):**
 - Username: `admin`
@@ -949,6 +1167,24 @@ RATE_LIMIT_PER_MINUTE=100
 | `PUT /api/mcu-packages/{id}` — update package + items (full replace) | ✅ |
 | `DELETE /api/mcu-packages/{id}` — delete package + cascade items | ✅ |
 | `mcu_packages` + `mcu_package_items` DB tables | ✅ |
+
+### Phase 2.2 — MCU Booking Registration ✅ Complete
+
+| Feature | Status |
+|---------|--------|
+| `POST /api/mcu/register` — public MCU booking with package + add-on diagnostics | ✅ |
+| `GET /api/mcu/my-bookings?nik=` — patient booking history (by NIK) | ✅ |
+| `GET /api/admin/mcu/bookings` — admin list (filter by status/date) | ✅ |
+| `GET /api/admin/mcu/bookings/{id}` — booking detail | ✅ |
+| `PATCH /api/admin/mcu/bookings/{id}/update` — partial update (status/payment/notes) | ✅ |
+| `PATCH /api/admin/mcu/bookings/{id}/confirm` — confirm booking | ✅ |
+| `PATCH /api/admin/mcu/bookings/{id}/cancel` — cancel booking | ✅ |
+| `PATCH /api/admin/mcu/bookings/{id}/payment/confirm` — mark as paid | ✅ |
+| `mcu_bookings` DB table (TEXT[] for lab/radiology arrays) | ✅ |
+| Add-on pricing: 10 lab tests + 7 radiology tests | ✅ |
+| Auto-link booking to `patients` by NIK (nullable) | ✅ |
+| Booking status flow: `pending → confirmed → completed / cancelled` | ✅ |
+| Payment status flow: `unpaid → awaiting_confirmation → paid / cancelled` | ✅ |
 
 ### Phase 3 — Advanced Features *(Planned)*
 
