@@ -1,38 +1,41 @@
-# PRD: Backend Sistem Antrian RSU Tangsel
+# PRD: Backend API System — RSU Tangsel
 
-> **Versi**: 1.0.0  
-> **Tanggal**: 2026-08-16  
-> **Status**: Phase 1 (MVP) ✅  
-> **Maintainer**: Tim Backend RSU Tangsel
+> **Version**: 2.0.0
+> **Date**: 2026-08-16
+> **Status**: Phase 1 ✅ | Phase 2 ✅ (Admin Dashboard)
+> **Maintainer**: RSU Tangsel Backend Team
 
 ---
 
 ## 1. Overview
 
-### 1.1 Nama Project
-**RSU Tangsel — Backend API**  
-Sistem antrian dan pendaftaran online untuk RSU Tangerang Selatan.
+### 1.1 Project Name
+**RSU Tangsel — Backend API**
+Queue management and online registration system for RSU Tangerang Selatan.
 
 ### 1.2 Tech Stack
 
-| Komponen        | Teknologi                        | Versi     |
-|-----------------|----------------------------------|-----------|
-| Language        | Go                               | 1.22+     |
-| HTTP Server     | Standard Library (`net/http`)    | bawaan    |
-| Database        | PostgreSQL                       | 16-alpine |
-| DB Client       | `sqlx`                           | v1.4.0    |
-| Migration       | `golang-migrate`                 | v4.17.1   |
-| Config          | `godotenv`                       | v1.5.1    |
-| Driver DB       | `lib/pq`                         | v1.12.3   |
-| Container       | Docker / Docker Compose          | latest    |
-| Auth *(planned)*| JWT                              | -         |
+| Component       | Technology                         | Version   |
+|-----------------|------------------------------------|-----------|
+| Language        | Go                                 | 1.25.0    |
+| HTTP Server     | Standard Library (`net/http`)      | built-in  |
+| Database        | PostgreSQL                         | 16-alpine |
+| DB Client       | `sqlx`                             | v1.4.0    |
+| Migration       | `golang-migrate`                   | v4.17.1   |
+| Config          | `godotenv`                         | v1.5.1    |
+| DB Driver       | `lib/pq`                           | v1.12.3   |
+| Auth            | `golang-jwt/jwt/v5`                | v5.3.1    |
+| Password Hash   | `golang.org/x/crypto` (bcrypt)     | v0.55.0   |
+| Container       | Docker / Docker Compose            | latest    |
 
-### 1.3 Tujuan
+### 1.3 Goals
 
-Menyediakan REST API untuk:
-1. Pendaftaran pasien secara online dengan nomor antrian otomatis
-2. Monitoring antrian per poli secara real-time
-3. Fondasi untuk pengembangan fitur lanjutan (jadwal dokter, chat, rekam medis)
+Provide a REST API for:
+1. Online patient registration with automatic queue number generation
+2. Real-time queue monitoring per specialty (public)
+3. Admin dashboard for queue management with JWT authentication
+4. Doctor and schedule management
+5. Foundation for future features (medical records, chat, reporting)
 
 ### 1.4 Base URL
 
@@ -43,7 +46,7 @@ https://api.rsudtangsel.id     # Production (planned)
 
 ---
 
-## 2. Arsitektur
+## 2. Architecture
 
 ### 2.1 Clean Architecture
 
@@ -53,23 +56,33 @@ https://api.rsudtangsel.id     # Production (planned)
 └─────────────────────┬───────────────────────────────┘
                       ▼
 ┌─────────────────────────────────────────────────────┐
+│              Middleware Layer                       │
+│  • CORS (all routes)                                │
+│  • RateLimitMiddleware (login endpoint)             │
+│  • AuthMiddleware (protected routes)                │
+│  • RoleMiddleware (admin / staff)                   │
+│  • AuditMiddleware (async audit logging)            │
+└─────────────────────┬───────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────┐
 │                  Handler Layer                      │
-│  • Parse & validasi request                         │
-│  • Panggil service                                  │
+│  • Parse & validate request                         │
+│  • Call service                                     │
 │  • Format JSON response                             │
 └─────────────────────┬───────────────────────────────┘
                       ▼
 ┌─────────────────────────────────────────────────────┐
 │                  Service Layer                      │
 │  • Business logic                                   │
-│  • Generate nomor antrian                           │
+│  • Queue number generation                          │
+│  • JWT generation & bcrypt verification             │
 │  • Orchestrate repository calls                     │
 └─────────────────────┬───────────────────────────────┘
                       ▼
 ┌─────────────────────────────────────────────────────┐
 │                Repository Layer                     │
 │  • CRUD database                                    │
-│  • Query SQL via sqlx                               │
+│  • SQL queries via sqlx                             │
 └─────────────────────┬───────────────────────────────┘
                       ▼
 ┌─────────────────────────────────────────────────────┐
@@ -77,99 +90,103 @@ https://api.rsudtangsel.id     # Production (planned)
 └─────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Struktur Folder
+### 2.2 Folder Structure
 
 ```
 server/
 ├── cmd/
-│   └── api/
-│       └── main.go                    # Entry point — DI + routing
+│   ├── api/
+│   │   └── main.go                      # Entry point — DI + routing
+│   └── seed/
+│       └── main.go                      # Database seeder
 ├── internal/
 │   ├── database/
-│   │   └── database.go                # Koneksi PostgreSQL (sqlx)
-│   ├── model/                         # Entity — representasi tabel DB
-│   │   ├── pasien.go
-│   │   └── pendaftaran.go
-│   ├── dto/                           # Data Transfer Objects
+│   │   └── database.go                  # PostgreSQL connection (sqlx)
+│   ├── model/                           # Entities — DB table representations
+│   │   ├── patient.go
+│   │   ├── appointment.go
+│   │   ├── doctor.go
+│   │   ├── doctor_schedule.go
+│   │   └── user.go                      # Admin users, refresh tokens, audit logs
+│   ├── dto/                             # Data Transfer Objects
 │   │   ├── request/
-│   │   │   └── daftar_online.go       # Request body struct
+│   │   │   ├── daftar_online.go         # Public registration request
+│   │   │   ├── doctor.go
+│   │   │   ├── schedule.go
+│   │   │   └── admin.go                 # Login, refresh, change-password requests
 │   │   └── response/
-│   │       └── antrian.go             # Response struct
+│   │       ├── antrian.go               # Public queue response
+│   │       ├── doctor.go
+│   │       └── auth.go                  # Login, dashboard, admin queue responses
 │   ├── utils/
-│   │   └── response.go                # SuccessResponse / ErrorResponse
-│   ├── repository/                    # Database operations
-│   │   ├── pasien_repository.go
-│   │   └── pendaftaran_repository.go
-│   ├── service/                       # Business logic
-│   │   └── antrian_service.go
-│   └── handler/                       # HTTP handlers
-│       ├── daftar_online.go
-│       └── antrian.go
-├── migrations/                        # SQL migrations (golang-migrate)
-│   ├── 20260816083700_init.up.sql
-│   └── 20260816083700_init.down.sql
-├── test_api.sh                        # Script full API test
-├── Makefile                           # Shortcut commands
-├── .env                               # Environment variables (tidak di-commit)
-├── .env.example                       # Template .env
-├── go.mod
-└── go.sum
+│   │   └── response.go                  # SuccessResponse / ErrorResponse helpers
+│   ├── middleware/                       # Security middleware
+│   │   ├── cors.go                      # CORS with configurable origins
+│   │   ├── auth.go                      # JWT validation + RoleMiddleware
+│   │   ├── rate_limit.go               # Sliding window per-IP rate limiter
+│   │   └── audit.go                     # Async audit log writer
+│   ├── repository/                      # Database operations
+│   │   ├── patient_repository.go
+│   │   ├── appointment_repository.go    # Includes admin dashboard query methods
+│   │   ├── doctor_repository.go
+│   │   ├── doctor_schedule_repository.go
+│   │   └── user_repository.go           # Auth, refresh tokens, audit logs
+│   ├── service/                         # Business logic
+│   │   ├── antrian_service.go
+│   │   ├── doctor_service.go
+│   │   ├── auth_service.go              # Login, token rotation, logout
+│   │   └── dashboard_service.go         # Stats aggregation
+│   └── handler/                         # HTTP handlers
+│       ├── online_registration.go
+│       ├── antrian.go
+│       ├── doctor.go
+│       ├── schedule.go
+│       └── admin.go                     # All 6 admin endpoints
+├── migrations/
+│   ├── 20260816140429_init_schema.up.sql    # patients, doctors, appointments, doctor_schedules
+│   ├── 20260816140429_init_schema.down.sql
+│   ├── 20260816090000_add_admin_tables.up.sql   # users, refresh_tokens, audit_logs
+│   └── 20260816090000_add_admin_tables.down.sql
+├── Makefile
+├── .env
+└── go.mod / go.sum
 ```
 
-### 2.3 Alur Data (Request → Response)
+### 2.3 Middleware Chain
 
 ```
-HTTP Request
-    │
-    ▼
-cmd/api/main.go  →  Register route ke ServeMux
-    │
-    ▼
-handler/         →  Parse JSON body / query params
-                    Validasi field wajib
-    │
-    ▼
-service/         →  Business logic:
-                    - Cek/buat pasien by NIK
-                    - Hitung urutan antrian
-                    - Generate nomor antrian (format: J001)
-                    - Generate QR Code URL
-    │
-    ▼
-repository/      →  Eksekusi SQL ke PostgreSQL (via sqlx)
-    │
-    ▼
-utils/response   →  Format JSON: { "success": true, "data": {...} }
-    │
-    ▼
-HTTP Response
-```
+All routes:
+  CORS middleware
 
-### 2.4 Dependency Injection
+Public routes (/api/daftar-online, /api/antrian, /api/doctors, /api/schedules):
+  → Handler (no auth required)
 
-Semua dependency di-inisialisasi di `main.go` dengan urutan:
+Login:
+  → RateLimitMiddleware (100 req/min per IP, sliding window)
+  → AdminHandler.Login
 
-```
-database.Connect()
-    └── repository.New*()
-            └── service.New*()
-                    └── handler.New*()
-                            └── mux.HandleFunc()
+Protected admin routes (/api/admin/*):
+  → AuthMiddleware (JWT HS256 validation)
+  → RoleMiddleware (admin or staff)
+  → AuditMiddleware (async DB write)
+  → Handler
 ```
 
 ---
 
 ## 3. API Specification
 
-### Format Response
+### Response Format
 
-Semua endpoint mengembalikan format JSON yang konsisten:
+All endpoints return a consistent JSON structure:
 
 **Success:**
 ```json
 {
   "success": true,
-  "data": { ... }
+  "status_code": 200,
+  "data": { ... },
+  "message": "optional message"
 }
 ```
 
@@ -177,49 +194,147 @@ Semua endpoint mengembalikan format JSON yang konsisten:
 ```json
 {
   "success": false,
-  "error": "Pesan error yang deskriptif"
+  "status_code": 400,
+  "message": "Descriptive error message",
+  "data": null
 }
 ```
 
 ---
 
-### 3.1 Daftar Online
+## 3.1 Public Endpoints
 
-| Atribut    | Detail                           |
+### 3.1.1 Online Registration
+
+| Attribute  | Detail                           |
 |------------|----------------------------------|
 | **URL**    | `/api/daftar-online`             |
 | **Method** | `POST`                           |
-| **Auth**   | Tidak perlu (public)             |
-| **Headers**| `Content-Type: application/json` |
+| **Auth**   | None (public)                    |
 
 **Request Body:**
 
-| Field              | Type   | Wajib | Deskripsi                         |
-|--------------------|--------|:-----:|-----------------------------------|
-| `nik`              | string | ✅    | NIK KTP (16 digit)                |
-| `nama`             | string | ✅    | Nama lengkap pasien               |
-| `tanggal_lahir`    | string | ❌    | Format: `YYYY-MM-DD`              |
-| `alamat`           | string | ❌    | Alamat lengkap                    |
-| `no_hp`            | string | ✅    | Nomor HP aktif                    |
-| `poli`             | string | ✅    | Nama poli tujuan                  |
-| `dokter`           | string | ❌    | Nama dokter (default: Dokter Umum)|
-| `tanggal`          | string | ✅    | Tanggal kunjungan `YYYY-MM-DD`    |
-| `jam`              | string | ❌    | Jam kunjungan `HH:MM` (default: 08:00) |
-| `jenis_pembayaran` | string | ❌    | `BPJS` / `Umum` / `Asuransi`     |
+| Field          | Type   | Required | Description                        |
+|----------------|--------|:--------:|------------------------------------|
+| `nik`          | string | ✅       | National ID (16 digits)            |
+| `name`         | string | ✅       | Patient full name                  |
+| `birth_date`   | string | ❌       | Format: `YYYY-MM-DD`              |
+| `address`      | string | ❌       | Full address                       |
+| `phone_number` | string | ✅       | Active phone number                |
+| `doctor_id`    | int    | ✅       | Doctor ID from `/api/doctors`      |
+| `schedule_date`| string | ✅       | Appointment date `YYYY-MM-DD`      |
+| `time`         | string | ❌       | Visit time `HH:MM` (default: 08:00)|
+| `payment_type` | string | ❌       | `BPJS` / `Umum` / `Asuransi`      |
 
-**Contoh Request:**
+**Response (200 OK):**
 ```json
 {
-  "nik": "1234567890123456",
-  "nama": "Budi Santoso",
-  "tanggal_lahir": "1990-01-01",
-  "alamat": "Jl. Raya No. 123, Tangsel",
-  "no_hp": "08123456789",
-  "poli": "Jantung",
-  "dokter": "dr. Ahmad Sp.JP",
-  "tanggal": "2026-08-20",
-  "jam": "09:00",
-  "jenis_pembayaran": "BPJS"
+  "success": true,
+  "status_code": 200,
+  "data": {
+    "queue_number": "J001",
+    "qr_code": "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=J001",
+    "message": "Registration successful! Your queue number: J001"
+  }
+}
+```
+
+---
+
+### 3.1.2 Check Queue
+
+| Attribute  | Detail               |
+|------------|----------------------|
+| **URL**    | `/api/antrian`       |
+| **Method** | `GET`                |
+| **Auth**   | None (public)        |
+
+**Query Parameters:**
+
+| Parameter    | Type   | Required | Description                               |
+|--------------|--------|:--------:|-------------------------------------------|
+| `poli`       | string | ✅       | Specialty name (e.g. `Jantung`)           |
+| `tanggal`    | string | ❌       | Format `YYYY-MM-DD` (default: today)      |
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status_code": 200,
+  "data": [
+    { "nomor": "J001", "nama": "Patient Name", "status": "Waiting" }
+  ]
+}
+```
+
+---
+
+### 3.1.3 Doctor List
+
+| Attribute  | Detail               |
+|------------|----------------------|
+| **URL**    | `/api/doctors`       |
+| **Method** | `GET`                |
+| **Auth**   | None (public)        |
+
+**Query Parameters:** `specialty`, `status`
+
+---
+
+### 3.1.4 Doctor Detail
+
+| Attribute  | Detail                  |
+|------------|-------------------------|
+| **URL**    | `/api/doctors/{id}`     |
+| **Method** | `GET`, `PUT`, `DELETE`  |
+| **Auth**   | None (public)           |
+
+---
+
+### 3.1.5 Doctor Schedules
+
+| Attribute  | Detail                            |
+|------------|-----------------------------------|
+| **URL**    | `/api/doctors/{id}/schedules`     |
+| **Method** | `GET`                             |
+| **Auth**   | None (public)                     |
+
+---
+
+### 3.1.6 Schedule List
+
+| Attribute  | Detail               |
+|------------|----------------------|
+| **URL**    | `/api/schedules`     |
+| **Method** | `GET`, `POST`        |
+| **Auth**   | None (public)        |
+
+---
+
+### 3.1.7 Schedule Detail
+
+| Attribute  | Detail                  |
+|------------|-------------------------|
+| **URL**    | `/api/schedules/{id}`   |
+| **Method** | `GET`, `PUT`, `DELETE`  |
+| **Auth**   | None (public)           |
+
+---
+
+## 3.2 Admin Authentication Endpoints
+
+### 3.2.1 Login
+
+| Attribute   | Detail                           |
+|-------------|----------------------------------|
+| **URL**     | `POST /api/admin/login`          |
+| **Auth**    | None — rate limited (100/min)    |
+
+**Request Body:**
+```json
+{
+  "username": "admin",
+  "password": "admin123"
 }
 ```
 
@@ -227,109 +342,209 @@ Semua endpoint mengembalikan format JSON yang konsisten:
 ```json
 {
   "success": true,
+  "status_code": 200,
   "data": {
-    "nomor_antrian": "J001",
-    "qr_code": "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=J001",
-    "pesan": "Pendaftaran berhasil! Nomor antrian Anda: J001"
-  }
-}
-```
-
-**Response (400 Bad Request):**
-```json
-{
-  "success": false,
-  "error": "NIK, Nama, No HP, Poli, dan Tanggal wajib diisi"
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refresh_token": "a89eff30046ebc7b435000b006b37a76...",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "user": {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@rsutangsel.go.id",
+      "role": "admin"
+    }
+  },
+  "message": "Login successful"
 }
 ```
 
 **Error Codes:**
 
-| Code  | Kondisi                            |
-|-------|------------------------------------|
-| `200` | Pendaftaran berhasil               |
-| `400` | Field wajib kosong / format salah  |
-| `405` | Method bukan POST                  |
-| `500` | Error server / database            |
-
-**Business Logic:**
-1. Cek pasien by NIK → jika belum ada, insert pasien baru
-2. Hitung jumlah pendaftaran di poli + tanggal yang sama
-3. Generate nomor antrian: prefix = huruf pertama nama poli → `Jantung` = `J001`
-4. Generate QR Code URL via `api.qrserver.com`
-5. Insert pendaftaran dengan status `menunggu`
+| Code  | Condition                              |
+|-------|----------------------------------------|
+| `200` | Login successful                       |
+| `400` | Missing username or password           |
+| `401` | Invalid username or password           |
+| `429` | Rate limit exceeded (100 req/min)      |
 
 ---
 
-### 3.2 Cek Antrian
+### 3.2.2 Refresh Token
 
-| Atribut    | Detail               |
-|------------|----------------------|
-| **URL**    | `/api/antrian`       |
-| **Method** | `GET`                |
-| **Auth**   | Tidak perlu (public) |
+| Attribute  | Detail                    |
+|------------|---------------------------|
+| **URL**    | `POST /api/admin/refresh` |
+| **Auth**   | None (uses refresh token) |
 
-**Query Parameters:**
-
-| Parameter  | Type   | Wajib | Deskripsi                                   |
-|------------|--------|:-----:|---------------------------------------------|
-| `poli`     | string | ✅    | Nama poli (contoh: `Jantung`)               |
-| `tanggal`  | string | ❌    | Format `YYYY-MM-DD` (default: hari ini)     |
-
-**Contoh Request:**
+**Request Body:**
+```json
+{ "refresh_token": "a89eff30046ebc7b435000b006b37a76..." }
 ```
-GET /api/antrian?poli=Jantung&tanggal=2026-08-20
+
+**Response (200 OK):** Same structure as Login — new `access_token` + new `refresh_token` (rotation).
+
+---
+
+### 3.2.3 Logout
+
+| Attribute  | Detail                    |
+|------------|---------------------------|
+| **URL**    | `POST /api/admin/logout`  |
+| **Auth**   | `Bearer <access_token>`   |
+
+**Request Body:**
+```json
+{ "refresh_token": "a89eff30046ebc7b435000b006b37a76..." }
 ```
+
+**Response (200 OK):**
+```json
+{ "success": true, "status_code": 200, "data": null, "message": "Logged out successfully" }
+```
+
+---
+
+## 3.3 Admin Dashboard Endpoints
+
+> All endpoints below require: `Authorization: Bearer <access_token>`
+> Required roles: `admin` or `staff`
+
+---
+
+### 3.3.1 Dashboard Statistics
+
+| Attribute  | Detail                                  |
+|------------|-----------------------------------------|
+| **URL**    | `GET /api/admin/dashboard/stats`        |
+| **Auth**   | `Bearer <token>` — role: admin / staff  |
 
 **Response (200 OK):**
 ```json
 {
   "success": true,
+  "status_code": 200,
+  "data": {
+    "pasien_hari_ini": 24,
+    "rata_waktu_tunggu": 12.5,
+    "bor": 75.0,
+    "keluhan_baru": 12,
+    "total_antrian": 8,
+    "update_time": "14:26:20"
+  }
+}
+```
+
+**Field Descriptions:**
+
+| Field              | Type    | Description                                   |
+|--------------------|---------|-----------------------------------------------|
+| `pasien_hari_ini`  | int     | Unique patients registered today              |
+| `rata_waktu_tunggu`| float   | Average waiting time in minutes (done appts)  |
+| `bor`              | float   | Bed Occupancy Rate in % (mocked until beds table exists) |
+| `keluhan_baru`     | int     | New complaints (mocked until complaints table)|
+| `total_antrian`    | int     | Total appointments still in `waiting` status today |
+| `update_time`      | string  | Time this data was generated (`HH:MM:SS` UTC) |
+
+---
+
+### 3.3.2 Admin Queue List
+
+| Attribute  | Detail                                  |
+|------------|-----------------------------------------|
+| **URL**    | `GET /api/admin/antrian`                |
+| **Auth**   | `Bearer <token>` — role: admin / staff  |
+
+**Query Parameters:**
+
+| Parameter  | Type   | Required | Description                               |
+|------------|--------|:--------:|-------------------------------------------|
+| `poli`     | string | ❌       | Filter by specialty (e.g. `Jantung`)      |
+| `tanggal`  | string | ❌       | Filter by date `YYYY-MM-DD` (default: today) |
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status_code": 200,
   "data": [
     {
+      "id": 1,
       "nomor": "J001",
-      "nama": "Pasien #1",
-      "status": "Menunggu"
-    },
-    {
-      "nomor": "J002",
-      "nama": "Pasien #2",
-      "status": "Menunggu"
+      "nama": "Budi Santoso",
+      "poli": "Jantung",
+      "dokter": "dr. Ahmad Sp.JP",
+      "status": "Waiting",
+      "created_at": "08:30:00"
     }
   ]
 }
 ```
 
-**Response (400 Bad Request):**
-```json
-{
-  "success": false,
-  "error": "Query parameter 'poli' wajib diisi"
-}
-```
+**Field Descriptions:**
 
-**Error Codes:**
-
-| Code  | Kondisi                            |
-|-------|------------------------------------|
-| `200` | Berhasil (data bisa array kosong)  |
-| `400` | Query `poli` tidak ada             |
-| `405` | Method bukan GET                   |
-| `500` | Error server / database            |
+| Field       | Type   | Description                                    |
+|-------------|--------|------------------------------------------------|
+| `id`        | int    | Appointment ID (used in call/skip endpoints)   |
+| `nomor`     | string | Queue number (e.g. `J001`)                     |
+| `nama`      | string | Patient full name                              |
+| `poli`      | string | Specialty / department                         |
+| `dokter`    | string | Doctor name                                    |
+| `status`    | string | `Waiting` / `Processing` / `Done` / `Cancelled`|
+| `created_at`| string | Registration time `HH:MM:SS`                   |
 
 ---
 
-### 3.3 API yang Direncanakan (Phase 2)
+### 3.3.3 Call Patient
 
-| Method   | Endpoint                  | Deskripsi                      |
-|----------|---------------------------|--------------------------------|
-| `GET`    | `/api/jadwal-dokter`      | Daftar jadwal dokter per poli  |
-| `GET`    | `/api/pasien/:nik`        | Detail pasien by NIK           |
-| `PATCH`  | `/api/antrian/:id/status` | Update status antrian          |
-| `DELETE` | `/api/antrian/:id`        | Batal pendaftaran              |
-| `POST`   | `/api/auth/login`         | Login admin/staff (JWT)        |
-| `POST`   | `/api/auth/logout`        | Logout                         |
-| `POST`   | `/api/auth/refresh`       | Refresh JWT token              |
+| Attribute  | Detail                                              |
+|------------|-----------------------------------------------------|
+| **URL**    | `PATCH /api/admin/antrian/{id}/call`                |
+| **Auth**   | `Bearer <token>` — role: admin / staff              |
+
+Sets appointment status to `processing` (patient is being served).
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status_code": 200,
+  "data": {
+    "id": 1,
+    "nomor": "J001",
+    "nama": "Budi Santoso",
+    "poli": "Jantung",
+    "status": "Processing",
+    "called_at": "09:15:32"
+  }
+}
+```
+
+---
+
+### 3.3.4 Skip Patient
+
+| Attribute  | Detail                                              |
+|------------|-----------------------------------------------------|
+| **URL**    | `PATCH /api/admin/antrian/{id}/skip`                |
+| **Auth**   | `Bearer <token>` — role: admin / staff              |
+
+Sets appointment status to `cancelled`.
+
+**Response (200 OK):** Same structure as call — `status: "Cancelled"`.
+
+---
+
+### 3.3.5 Error Codes (All Admin Endpoints)
+
+| Code  | Condition                                          |
+|-------|----------------------------------------------------|
+| `200` | Success                                            |
+| `400` | Invalid request body / URL format                  |
+| `401` | Missing token / invalid token / expired token      |
+| `403` | Insufficient role (not admin or staff)             |
+| `429` | Rate limit exceeded (login endpoint only)          |
+| `500` | Server / database error                            |
 
 ---
 
@@ -338,504 +553,296 @@ GET /api/antrian?poli=Jantung&tanggal=2026-08-20
 ### 4.1 ERD
 
 ```
-┌──────────────┐         ┌─────────────────────┐
-│    pasien    │ 1     N │    pendaftaran       │
-├──────────────┤─────────├─────────────────────┤
-│ id (PK)      │         │ id (PK)             │
-│ nik UNIQUE   │         │ pasien_id (FK)      │
-│ nama         │         │ poli                │
-│ tanggal_lahir│         │ dokter              │
-│ alamat       │         │ tanggal             │
-│ no_hp        │         │ jam                 │
-│ created_at   │         │ jenis_pembayaran    │
-│ updated_at   │         │ nomor_antrian       │
-└──────────────┘         │ qr_code             │
-                         │ status              │
-                         │ created_at          │
-                         │ updated_at          │
-                         └─────────────────────┘
+┌──────────────────┐         ┌──────────────────────┐
+│     patients     │ 1     N │     appointments     │
+├──────────────────┤─────────├──────────────────────┤
+│ id (PK)          │         │ id (PK)              │
+│ nik UNIQUE       │         │ patient_id (FK)      │
+│ name             │         │ doctor_id (FK)       │
+│ birth_date       │         │ schedule_date        │
+│ address          │         │ time                 │
+│ phone_number     │         │ payment_type         │
+│ created_at       │         │ queue_number         │
+│ updated_at       │         │ qr_code              │
+└──────────────────┘         │ status               │
+                             │ created_at           │
+                             │ updated_at           │
+                             └──────────────────────┘
+                                       N
+                                       │
+                             ┌─────────┘
+┌──────────────────┐         │
+│     doctors      │ 1     N │
+├──────────────────┤─────────┘
+│ id (PK)          │
+│ name             │   ┌──────────────────────┐
+│ specialty        │ 1 │  doctor_schedules    │
+│ license_number   │───├──────────────────────┤
+│ email            │ N │ id (PK)              │
+│ phone_number     │   │ doctor_id (FK)       │
+│ bio              │   │ day_of_week          │
+│ status           │   │ start_time           │
+│ created_at       │   │ end_time             │
+│ updated_at       │   │ quota                │
+└──────────────────┘   └──────────────────────┘
 
-┌───────────────────────┐
-│    jadwal_dokter      │
-├───────────────────────┤
-│ id (PK)               │
-│ poli                  │
-│ dokter                │
-│ hari                  │
-│ jam_mulai             │
-│ jam_selesai           │
-│ kuota                 │
-│ created_at            │
-│ updated_at            │
-└───────────────────────┘
+┌──────────────────┐         ┌──────────────────────┐
+│      users       │ 1     N │   refresh_tokens     │
+├──────────────────┤─────────├──────────────────────┤
+│ id (PK)          │         │ id (PK)              │
+│ username UNIQUE  │         │ user_id (FK)         │
+│ email UNIQUE     │         │ token UNIQUE         │
+│ password_hash    │         │ expires_at           │
+│ role             │         │ created_at           │
+│ is_active        │         └──────────────────────┘
+│ last_login       │
+│ created_at       │   ┌──────────────────────┐
+│ updated_at       │ 1 │    audit_logs        │
+└──────────────────┘───├──────────────────────┤
+                     N │ id (PK)              │
+                       │ user_id (FK, NULL)   │
+                       │ action               │
+                       │ ip_address           │
+                       │ user_agent           │
+                       │ details (JSONB)      │
+                       │ created_at           │
+                       └──────────────────────┘
 ```
 
-### 4.2 Tabel: `pasien`
+### 4.2 Appointment Status Values
 
-```sql
-CREATE TABLE IF NOT EXISTS pasien (
-    id            SERIAL PRIMARY KEY,
-    nik           VARCHAR(20)  UNIQUE NOT NULL,
-    nama          VARCHAR(100) NOT NULL,
-    tanggal_lahir DATE         NOT NULL,
-    alamat        TEXT,
-    no_hp         VARCHAR(15)  NOT NULL,
-    created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-);
-```
+| Status        | Description                          |
+|---------------|--------------------------------------|
+| `waiting`     | Patient registered, not yet called   |
+| `processing`  | Patient is currently being served    |
+| `done`        | Service completed                    |
+| `cancelled`   | Appointment cancelled / skipped      |
 
-### 4.3 Tabel: `pendaftaran`
+### 4.3 User Roles
 
-```sql
-CREATE TABLE IF NOT EXISTS pendaftaran (
-    id               SERIAL PRIMARY KEY,
-    pasien_id        INTEGER      REFERENCES pasien(id),
-    poli             VARCHAR(50)  NOT NULL,
-    dokter           VARCHAR(100) NOT NULL,
-    tanggal          DATE         NOT NULL,
-    jam              TIME         NOT NULL,
-    jenis_pembayaran VARCHAR(20)  NOT NULL,  -- BPJS | Umum | Asuransi
-    nomor_antrian    VARCHAR(10)  NOT NULL,
-    qr_code          TEXT,
-    status           VARCHAR(20)  DEFAULT 'menunggu',  -- menunggu|diproses|selesai|batal
-    created_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-);
-
--- Index untuk query cepat
-CREATE INDEX idx_pendaftaran_tanggal ON pendaftaran(tanggal);
-CREATE INDEX idx_pendaftaran_status  ON pendaftaran(status);
-CREATE INDEX idx_pendaftaran_poli    ON pendaftaran(poli);
-```
-
-### 4.4 Tabel: `jadwal_dokter`
-
-```sql
-CREATE TABLE IF NOT EXISTS jadwal_dokter (
-    id           SERIAL PRIMARY KEY,
-    poli         VARCHAR(50)  NOT NULL,
-    dokter       VARCHAR(100) NOT NULL,
-    hari         VARCHAR(10)  NOT NULL,  -- Senin | Selasa | ... | Minggu
-    jam_mulai    TIME         NOT NULL,
-    jam_selesai  TIME         NOT NULL,
-    kuota        INTEGER      DEFAULT 20,
-    created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 4.5 Tabel: `users` *(planned — Phase 2)*
-
-```sql
-CREATE TABLE IF NOT EXISTS users (
-    id            SERIAL PRIMARY KEY,
-    username      VARCHAR(50)  UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role          VARCHAR(20)  DEFAULT 'staff',  -- admin | staff | doctor
-    created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 4.6 Status Pendaftaran
-
-| Status      | Deskripsi                             |
-|-------------|---------------------------------------|
-| `menunggu`  | Pasien sudah daftar, belum dipanggil  |
-| `diproses`  | Pasien sedang dilayani                |
-| `selesai`   | Pelayanan selesai                     |
-| `batal`     | Pendaftaran dibatalkan                |
+| Role      | Access                                             |
+|-----------|----------------------------------------------------|
+| `admin`   | All admin endpoints                                |
+| `staff`   | Read + call/skip queue                             |
+| `doctor`  | Read own specialty queue (planned)                 |
 
 ---
 
 ## 5. Security
 
-### 5.1 Authentication — JWT *(Phase 2)*
+### 5.1 Authentication — JWT (Implemented ✅)
 
 ```
-POST /api/auth/login
+POST /api/admin/login
   Body: { "username": "...", "password": "..." }
-  Response: { "token": "eyJ...", "expires_in": 3600 }
+  Response: { "access_token": "eyJ...", "refresh_token": "...", "expires_in": 3600 }
 
-Header untuk protected endpoint:
+Authorization header for protected endpoints:
   Authorization: Bearer eyJ...
 ```
 
-### 5.2 Authorization — RBAC *(Phase 2)*
+| Property      | Value                  |
+|---------------|------------------------|
+| Algorithm     | HMAC-SHA256 (HS256)    |
+| Access Token  | 1 hour expiry          |
+| Refresh Token | 7 days expiry, rotated |
+| Password Hash | bcrypt cost 10         |
 
-| Role      | Hak Akses                                      |
-|-----------|------------------------------------------------|
-| `admin`   | Semua endpoint                                 |
-| `staff`   | Baca + Update status antrian                   |
-| `doctor`  | Baca antrian poli sendiri + Update status      |
-| `patient` | Hanya bisa daftar + lihat antrian (public)     |
+### 5.2 Rate Limiting (Implemented ✅)
 
-### 5.3 Input Validation (saat ini)
+- **Algorithm**: Sliding window counter per IP address
+- **Limit**: 100 requests/minute (configurable via `RATE_LIMIT_PER_MINUTE`)
+- **Applied to**: `POST /api/admin/login` only
+- **Response on exceed**: `429 Too Many Requests` + `Retry-After: 60`
 
-| Field             | Validasi                                      |
-|-------------------|-----------------------------------------------|
-| `nik`             | Wajib diisi (validasi 16 digit — Phase 2)     |
-| `nama`            | Wajib diisi, tidak boleh kosong               |
-| `no_hp`           | Wajib diisi                                   |
-| `poli`            | Wajib diisi                                   |
-| `tanggal`         | Wajib diisi, format `YYYY-MM-DD`              |
-| `tanggal_lahir`   | Opsional, format `YYYY-MM-DD`                 |
-| `jenis_pembayaran`| Opsional (validasi enum — Phase 2)            |
+### 5.3 CORS (Implemented ✅)
 
-### 5.4 CORS *(planned — Phase 2)*
+- Allowed origins configured via `ALLOWED_ORIGINS` environment variable
+- Handles OPTIONS preflight requests
+- Credentials allowed
 
-```go
-func corsMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGINS"))
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        if r.Method == http.MethodOptions {
-            w.WriteHeader(http.StatusNoContent)
-            return
-        }
-        next.ServeHTTP(w, r)
-    })
-}
-```
+### 5.4 Audit Logging (Implemented ✅)
+
+- Every protected admin request is recorded in `audit_logs`
+- Written **asynchronously** (non-blocking goroutine) — no latency impact
+- Captures: `user_id`, `action`, `ip_address`, `user_agent`, `details (JSON)`
+
+### 5.5 Input Validation
+
+| Field      | Validation                                |
+|------------|-------------------------------------------|
+| `username` | Required, 3–50 characters                 |
+| `password` | Required, min 6 characters               |
+| Appointment ID (URL) | Must be positive integer        |
+| Action (call/skip)   | Enum: `call` or `skip`          |
 
 ---
 
-## 6. Deployment
-
-### 6.1 Environment Variables
-
-File `.env` (jangan di-commit ke Git):
+## 6. Environment Variables
 
 ```env
 # Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=rsudtangsel
-DB_PASSWORD=rsudtangsel
-DB_NAME=rsudtangsel
 DATABASE_URL=postgresql://rsudtangsel:rsudtangsel@localhost:5432/rsudtangsel?sslmode=disable
 
 # Server
 SERVER_PORT=8080
 
-# JWT (Phase 2)
-JWT_SECRET=ganti-dengan-secret-yang-kuat-minimal-32-karakter
+# Auth — IMPORTANT: set a strong 256-bit secret in production!
+JWT_SECRET=your-256-bit-secret-here
+ACCESS_TOKEN_EXPIRY=3600         # seconds (default: 1 hour)
+REFRESH_TOKEN_EXPIRY=604800      # seconds (default: 7 days)
+BCRYPT_COST=10
 
-# WhatsApp Gateway (Phase 2)
-WA_API_URL=https://api.wati.io
-WA_API_KEY=your-wa-api-key
-
-# Sentry (Phase 3)
-SENTRY_DSN=https://xxx@sentry.io/yyy
-
-# CORS (Phase 2)
+# CORS
 ALLOWED_ORIGINS=http://localhost:3000,https://rsudtangsel.id
-```
 
-### 6.2 Docker Setup (`compose.yaml`)
-
-```yaml
-services:
-  db:
-    image: postgres:16-alpine
-    container_name: rsudtangsel-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rsudtangsel}
-      POSTGRES_USER: ${POSTGRES_USER:-rsudtangsel}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rsudtangsel}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rsudtangsel} -d ${POSTGRES_DB:-rsudtangsel}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # Planned: tambahkan service server di sini
-  # server:
-  #   build: { context: ./server }
-  #   ports: ["8080:8080"]
-  #   depends_on: { db: { condition: service_healthy } }
-  #   env_file: ["./server/.env"]
-
-volumes:
-  postgres-data:
-```
-
-### 6.3 Makefile Commands
-
-```bash
-make help                         # Tampilkan semua command
-make run                          # Jalankan server (go run .)
-make build                        # Build binary ke bin/server
-make db-up                        # Start PostgreSQL via Docker
-make db-down                      # Stop PostgreSQL
-make migrate-up                   # Apply semua migration
-make migrate-down                 # Rollback 1 migration
-make migrate-create name=add_users  # Buat migration baru
-make migrate-version              # Cek versi migration saat ini
-make migrate-force v=1            # Force versi tertentu
-```
-
-### 6.4 CI/CD Pipeline — GitHub Actions *(planned)*
-
-```yaml
-# .github/workflows/ci.yml
-name: CI — Build & Test
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: rsudtangsel_test
-          POSTGRES_USER: rsudtangsel
-          POSTGRES_PASSWORD: rsudtangsel
-        ports:
-          - 5432:5432
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - name: Build
-        run: cd server && go build ./cmd/api/...
-      - name: Test
-        run: cd server && go test ./...
+# Rate limiting
+RATE_LIMIT_PER_MINUTE=100
 ```
 
 ---
 
-## 7. Testing
+## 7. Migrations
 
-### 7.1 Build Test
+| File                                        | Description                                       |
+|---------------------------------------------|---------------------------------------------------|
+| `20260816140429_init_schema.up.sql`         | Creates `patients`, `doctors`, `appointments`, `doctor_schedules` |
+| `20260816090000_add_admin_tables.up.sql`    | Creates `users`, `refresh_tokens`, `audit_logs` + seeds default admin |
 
-```bash
-# Di dalam folder server/
-go build ./cmd/api/...
-```
-
-### 7.2 Unit Testing *(planned — Phase 2)*
-
-Struktur test yang direncanakan:
-
-```
-server/
-└── internal/
-    ├── service/
-    │   └── antrian_service_test.go     # Test business logic
-    └── repository/
-        └── pasien_repository_test.go   # Test DB dengan testcontainers
-```
-
-```bash
-go test ./internal/...
-go test ./internal/... -v              # Verbose
-go test ./internal/... -cover          # Coverage report
-```
-
-### 7.3 API Testing — `test_api.sh`
-
-Script `test_api.sh` tersedia di root `server/`:
-
-```bash
-# Pastikan server sudah running, lalu:
-bash test_api.sh
-```
-
-Test yang dicakup (8 test case):
-
-| # | Test Case                                 | Validasi            |
-|---|-------------------------------------------|---------------------|
-| 1 | POST daftar-online — pasien baru          | `nomor_antrian` ada |
-| 2 | POST daftar-online — poli berbeda         | Prefix nomor sesuai poli |
-| 3 | POST daftar-online — NIK sudah ada        | Tidak duplikat pasien |
-| 4 | GET antrian — dengan poli + tanggal       | Array data antrian  |
-| 5 | GET antrian — poli berbeda               | Data terpisah per poli |
-| 6 | POST — field wajib kosong                 | `error` di response |
-| 7 | GET — tanpa query `poli`                  | `error` di response |
-| 8 | DELETE — method not allowed               | `error` di response |
+**Default admin credentials (seeded):**
+- Username: `admin`
+- Password: `admin123`
+- **⚠️ Change immediately in production!**
 
 ---
 
-## 8. Monitoring & Logging
+## 8. Roadmap
 
-### 8.1 Logging *(planned — Phase 2)*
+### Phase 1 — Public Queue MVP ✅ Complete
 
-Rencana menggunakan `zerolog` (lightweight, structured logging):
-
-```go
-import "github.com/rs/zerolog/log"
-
-log.Info().Str("poli", req.Poli).Str("nik", req.NIK).Msg("daftar-online request")
-log.Error().Err(err).Msg("gagal insert pendaftaran")
-```
-
-### 8.2 Middleware Logging HTTP *(planned)*
-
-```go
-func loggingMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        start := time.Now()
-        next.ServeHTTP(w, r)
-        log.Info().
-            Str("method", r.Method).
-            Str("path", r.URL.Path).
-            Dur("latency", time.Since(start)).
-            Msg("request")
-    })
-}
-```
-
-### 8.3 Metrics yang Dipantau *(planned — Phase 3)*
-
-| Metric               | Deskripsi                          |
-|----------------------|------------------------------------|
-| `request_total`      | Jumlah request per endpoint        |
-| `request_duration`   | Latency response (ms)              |
-| `error_rate`         | Persentase response error (5xx)    |
-| `antrian_per_poli`   | Jumlah antrian aktif per poli      |
-| `db_connection_pool` | Jumlah koneksi DB aktif            |
-
-### 8.4 Error Tracking — Sentry *(planned — Phase 3)*
-
-```go
-import "github.com/getsentry/sentry-go"
-
-sentry.Init(sentry.ClientOptions{
-    Dsn:              os.Getenv("SENTRY_DSN"),
-    TracesSampleRate: 1.0,
-    Environment:      os.Getenv("APP_ENV"),
-})
-
-sentry.CaptureException(err)
-```
-
----
-
-## 9. Roadmap
-
-### Phase 1 — MVP ✅ Selesai
-
-| Fitur | Status |
-|-------|--------|
+| Feature | Status |
+|---------|--------|
 | Clean Architecture (handler/service/repository/model/dto) | ✅ |
-| `POST /api/daftar-online` — pendaftaran + nomor antrian otomatis | ✅ |
-| `GET /api/antrian` — cek antrian per poli | ✅ |
-| Database schema (pasien, pendaftaran, jadwal_dokter) | ✅ |
-| QR Code otomatis via api.qrserver.com | ✅ |
-| Response format konsisten (`success/error`) | ✅ |
-| Full API test suite (`test_api.sh`, 8 test case) | ✅ |
+| `POST /api/daftar-online` — registration + auto queue number | ✅ |
+| `GET /api/antrian` — queue check per specialty | ✅ |
+| QR Code auto-generated via api.qrserver.com | ✅ |
+| Consistent response format (`success/error`) | ✅ |
 
-### Phase 2 — Core Features *(Next)*
+### Phase 2 — Admin Dashboard ✅ Complete
 
-| Fitur | Status |
-|-------|--------|
-| `GET /api/jadwal-dokter` | ⬜ |
-| `GET /api/pasien/:nik` | ⬜ |
-| `PATCH /api/antrian/:id/status` | ⬜ |
-| `DELETE /api/antrian/:id` (batal) | ⬜ |
-| JWT Authentication (`/api/auth/*`) | ⬜ |
-| RBAC (admin / staff / doctor) | ⬜ |
-| CORS middleware | ⬜ |
-| Validasi NIK 16 digit dan format HP | ⬜ |
-| Nama pasien di response GET antrian (JOIN query) | ⬜ |
-| WhatsApp notification nomor antrian | ⬜ |
-| Unit test (service layer) | ⬜ |
+| Feature | Status |
+|---------|--------|
+| Database schema refactor (patients, doctors, appointments) | ✅ |
+| `GET /api/doctors` — doctor list | ✅ |
+| `GET /api/doctors/{id}` — doctor detail | ✅ |
+| `GET /api/doctors/{id}/schedules` — doctor schedules | ✅ |
+| `GET /api/schedules` — all schedules | ✅ |
+| `POST /api/admin/login` — JWT login (rate limited) | ✅ |
+| `POST /api/admin/refresh` — token rotation | ✅ |
+| `POST /api/admin/logout` — revoke refresh token | ✅ |
+| `GET /api/admin/dashboard/stats` — live statistics | ✅ |
+| `GET /api/admin/antrian` — admin queue view (with patient & doctor details) | ✅ |
+| `PATCH /api/admin/antrian/{id}/call` — call patient | ✅ |
+| `PATCH /api/admin/antrian/{id}/skip` — skip patient | ✅ |
+| CORS middleware | ✅ |
+| JWT Auth middleware (HS256) | ✅ |
+| Role-based access (admin / staff) | ✅ |
+| Sliding window rate limiter | ✅ |
+| Async audit logging | ✅ |
+| bcrypt password hashing (cost 10) | ✅ |
 
-### Phase 3 — Advanced Features *(Future)*
+### Phase 3 — Advanced Features *(Planned)*
 
-| Fitur | Status |
-|-------|--------|
-| Dashboard Admin (antrian live, statistik) | ⬜ |
-| QR Code Scanner (validasi kedatangan) | ⬜ |
-| Laporan harian/bulanan (PDF/Excel) | ⬜ |
-| Notifikasi push (Firebase FCM) | ⬜ |
-| Integrasi BPJS | ⬜ |
-| Monitoring (Prometheus + Grafana) | ⬜ |
+| Feature | Status |
+|---------|--------|
+| `POST /api/admin/users` — create staff accounts | ⬜ |
+| BOR from real beds table | ⬜ |
+| Complaints table + keluhan_baru real query | ⬜ |
+| WhatsApp notification for queue number | ⬜ |
+| QR Code scanner (arrival validation) | ⬜ |
+| Daily/monthly reports (PDF/Excel) | ⬜ |
+| Unit tests (service layer) | ⬜ |
+| Structured logging (zerolog) | ⬜ |
+| Metrics (Prometheus + Grafana) | ⬜ |
 | Error tracking (Sentry) | ⬜ |
+| GitHub Actions CI/CD | ⬜ |
 
 ### Phase 4 — Hospital Information System *(Long-term)*
 
-| Fitur | Status |
-|-------|--------|
-| Rekam Medis Digital | ⬜ |
-| Chat Dokter (WebSocket) | ⬜ |
+| Feature | Status |
+|---------|--------|
+| Digital Medical Records | ⬜ |
+| Doctor Chat (WebSocket) | ⬜ |
 | Telemedicine | ⬜ |
 | HIRS (Hospital Information and Reporting System) | ⬜ |
-| Integrasi ICD-10 (kode diagnosa) | ⬜ |
+| ICD-10 integration (diagnosis codes) | ⬜ |
+| BPJS integration | ⬜ |
 
 ---
 
-## 10. Cara Menjalankan
+## 9. Running Locally
 
-### 10.1 Setup Awal
+### 9.1 Initial Setup
 
 ```bash
 # 1. Clone repository
 git clone https://github.com/hideffrand/rsudtangsel.git
 cd rsudtangsel
 
-# 2. Konfigurasi environment
+# 2. Configure environment
 cp server/.env.example server/.env
-# Edit server/.env sesuai kebutuhan
+# Edit server/.env — set DATABASE_URL and JWT_SECRET
 
-# 3. Jalankan PostgreSQL
+# 3. Start PostgreSQL
 make -C server db-up
 
-# 4. Jalankan migration
+# 4. Run migrations
 make -C server migrate-up
 
-# 5. Jalankan server (via WSL / Linux)
+# 5. Start the server (via WSL)
 cd server
 go run ./cmd/api/main.go
 ```
 
-### 10.2 Command Harian
+### 9.2 Daily Commands
 
 ```bash
-# Jalankan server
-go run ./cmd/api/main.go
-
-# Build binary
-go build -o bin/server ./cmd/api/main.go
-
-# Test API
-bash test_api.sh
-
-# Buat migration baru
-make migrate-create name=add_users
-
-# Apply migration
-make migrate-up
-
-# Rollback migration
-make migrate-down
+go run ./cmd/api/main.go          # Start server
+go build -o bin/server ./cmd/api  # Build binary
+go build ./...                     # Verify build (no output = success)
+make migrate-up                   # Apply migrations
+make migrate-down                 # Rollback 1 migration
+make migrate-create name=xxx      # Create new migration
 ```
 
-### 10.3 Troubleshooting
+### 9.3 Quick API Test
 
-| Masalah | Solusi |
-|---------|--------|
-| `go` not found di PowerShell | Gunakan WSL: `wsl -e bash -c "cd /mnt/c/... && go run ./cmd/api/main.go"` |
-| `DATABASE_URL is not set` | Pastikan file `.env` ada dan berisi `DATABASE_URL` |
-| `connect: connection refused` | Jalankan PostgreSQL dulu: `make db-up` |
-| `pq: duplicate key value` | NIK sudah terdaftar — normal, pasien lama tetap bisa dapat antrian baru |
-| Port 8080 sudah dipakai | Ubah `SERVER_PORT` di `.env` |
+```bash
+# Login and get token
+curl -X POST http://localhost:8080/api/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# Use token to access dashboard
+curl http://localhost:8080/api/admin/dashboard/stats \
+  -H "Authorization: Bearer <access_token>"
+
+# Call a patient (set status to processing)
+curl -X PATCH http://localhost:8080/api/admin/antrian/1/call \
+  -H "Authorization: Bearer <access_token>"
+```
+
+### 9.4 Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `go` not found in PowerShell | Use WSL: `wsl -e go run ./cmd/api/main.go` |
+| `DATABASE_URL is not set` | Ensure `.env` exists with `DATABASE_URL` |
+| `connect: connection refused` | Start PostgreSQL first: `make db-up` |
+| Port 8080 already in use | Change `SERVER_PORT` in `.env`, or run `fuser -k 8080/tcp` |
+| Login returns 401 | Re-run migration to apply correct bcrypt hash |
 
 ---
 
-> **Catatan**: Dokumentasi ini diperbarui seiring perkembangan project.  
-> Untuk pertanyaan atau kontribusi, buka issue di repository GitHub.
+> **Note**: This document is updated as the project evolves.
+> For questions or contributions, open an issue on the GitHub repository.
