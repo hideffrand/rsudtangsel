@@ -49,11 +49,14 @@ func main() {
 
 	antrianSvc := service.NewAntrianService(patientRepo, doctorRepo, appointmentRepo)
 	doctorSvc := service.NewDoctorService(doctorRepo, scheduleRepo)
+	mcuPackageRepo := repository.NewMcuPackageRepository(db)
+	mcuPackageSvc := service.NewMcuPackageService(mcuPackageRepo)
 
 	registrationHandler := handler.NewRegistrationHandler(antrianSvc)
 	antrianHandler := handler.NewAntrianHandler(antrianSvc)
 	doctorHandler := handler.NewDoctorHandler(doctorSvc)
 	scheduleHandler := handler.NewScheduleHandler(doctorSvc)
+	mcuPackageHandler := handler.NewMcuPackageHandler(mcuPackageSvc)
 
 	// --- Admin endpoints (auth, dashboard, queue management) ---
 	userRepo := repository.NewUserRepository(db)
@@ -74,6 +77,8 @@ func main() {
 	mux.HandleFunc("/api/doctors/{id}/schedules", doctorHandler.DoctorSchedules)
 	mux.HandleFunc("/api/schedules", scheduleHandler.Collection)
 	mux.HandleFunc("/api/schedules/{id}", scheduleHandler.Item)
+	mux.HandleFunc("/api/mcu-packages", mcuPackageHandler.Collection)
+	mux.HandleFunc("/api/mcu-packages/{id}", mcuPackageHandler.Item)
 
 	// --- Admin public routes (rate limited) ---
 	mux.Handle("/api/admin/login",

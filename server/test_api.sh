@@ -195,6 +195,41 @@ echo -e "${YELLOW}[TEST 18] GET /api/schedules/999999 - Tidak ada${NC}"
 R18=$(curl -s "$BASE_URL/api/schedules/999999")
 check "GET jadwal tidak ada → error" "$R18" "message"
 
+# ─── TEST 19: GET semua paket MCU ───
+echo -e "${YELLOW}[TEST 19] GET /api/mcu-packages${NC}"
+R19=$(curl -s "$BASE_URL/api/mcu-packages")
+check "GET semua paket MCU" "$R19" "success"
+
+# ─── TEST 20: POST buat paket MCU ───
+echo -e "${YELLOW}[TEST 20] POST /api/mcu-packages - Buat paket MCU${NC}"
+R20=$(curl -s -X POST "$BASE_URL/api/mcu-packages" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Paket MCU Test","description":"Paket uji","price":750000,"items":[{"name":"Cek Darah Lengkap"},{"name":"EKG"}]}')
+check "POST buat paket MCU" "$R20" "price"
+PID=$(echo "$R20" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])" 2>/dev/null)
+
+# ─── TEST 21: GET satu paket MCU ───
+echo -e "${YELLOW}[TEST 21] GET /api/mcu-packages/$PID${NC}"
+R21=$(curl -s "$BASE_URL/api/mcu-packages/$PID")
+check "GET satu paket MCU" "$R21" "items"
+
+# ─── TEST 22: PUT update paket MCU ───
+echo -e "${YELLOW}[TEST 22] PUT /api/mcu-packages/$PID - Update paket${NC}"
+R22=$(curl -s -X PUT "$BASE_URL/api/mcu-packages/$PID" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Paket MCU Test V2","description":"Paket uji v2","price":900000,"items":[{"name":"EKG"}]}')
+check "PUT update paket MCU" "$R22" "EKG"
+
+# ─── TEST 23: DELETE paket MCU ───
+echo -e "${YELLOW}[TEST 23] DELETE /api/mcu-packages/$PID${NC}"
+R23=$(curl -s -X DELETE "$BASE_URL/api/mcu-packages/$PID")
+check "DELETE paket MCU" "$R23" "success"
+
+# ─── TEST 24: GET paket tidak ada → 404 ───
+echo -e "${YELLOW}[TEST 24] GET /api/mcu-packages/999999 - Tidak ada${NC}"
+R24=$(curl -s "$BASE_URL/api/mcu-packages/999999")
+check "GET paket tidak ada → error" "$R24" "message"
+
 # ─── Ringkasan ───
 echo -e "${CYAN}================================================${NC}"
 echo -e "${CYAN}   HASIL TEST${NC}"
