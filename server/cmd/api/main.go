@@ -12,7 +12,9 @@ import (
 	"github.com/hideffrand/rsudtangsel/server/internal/middleware"
 	"github.com/hideffrand/rsudtangsel/server/internal/repository"
 	"github.com/hideffrand/rsudtangsel/server/internal/service"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -33,7 +35,9 @@ func main() {
 
 	fmt.Println("✅ connected to database")
 
-	// =========================================================
+	// Seed the default admin account from environment variables (idempotent)
+	seedAdminUser(db)
+
 	// Initialize layers: repository → service → handler
 	// =========================================================
 
@@ -129,4 +133,46 @@ func buildAdminProtectedRouter(
 			middleware.AuditMiddleware(userRepo)(protectedMux),
 		),
 	)
+}
+
+// seedAdminUser creates the default admin account on first startup.
+// Credentials are read from ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD environment variables.
+// The operation is idempotent — it does nothing if the username already exists.
+func seedAdminUser(db *sqlx.DB) {
+	username := os.Getenv("ADMIN_USERNAME")
+	email := os.Getenv("ADMIN_EMAIL")
+	password := os.Getenv("ADMIN_PASSWORD")
+
+	// Skip seeding if credentials are not configured
+	if username == "" || password == "" {
+		log.Println("⚠️  ADMIN_USERNAME or ADMIN_PASSWORD not set — skipping admin seed")
+		return
+	}
+	if email == "" {
+		email = username + "@rsutangsel.go.id"
+	}
+
+	// Hash the password with bcrypt
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		log.Printf("❌ seedAdminUser: failed to hash password: %v", err)
+		return
+	}
+
+	// Insert admin user — ON CONFLICT DO NOTHING makes this idempotent
+	query := `INSERT INTO users (username, email, password_hash, role)
+	           VALUES ($1, $2, $3, 'admin')
+	           ON CONFLICT (username) DO NOTHING`
+	result, err := db.Exec(query, username, email, string(hash))
+	if err != nil {
+		log.Printf("❌ seedAdminUser: failed to insert admin user: %v", err)
+		return
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows > 0 {
+		fmt.Printf("🔑 Admin user '%s' seeded successfully\n", username)
+	} else {
+		fmt.Printf("🔑 Admin user '%s' already exists — skipping seed\n", username)
+	}
 }

@@ -41,13 +41,6 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id     ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at  ON audit_logs(created_at);
 
--- Seed default admin account
--- Default password: admin123 (bcrypt cost 10)
--- IMPORTANT: Change this password immediately after deploying to production!
-INSERT INTO users (username, email, password_hash, role)
-VALUES (
-    'admin',
-    'admin@rsutangsel.go.id',
-    '$2a$10$oono1XJhs1B9J3c6RcZFaeoRN8erUdARSnEWWWfcCc6AeHkwTC0A.',
-    'admin'
-) ON CONFLICT (username) DO NOTHING;
+-- Default admin account is seeded at server startup from environment variables:
+-- ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD (see .env)
+-- This keeps credentials out of migration files and version control.
