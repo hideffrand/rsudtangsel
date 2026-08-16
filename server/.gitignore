@@ -1,0 +1,18 @@
+# Binaries
+/server
+*.exe
+*.test
+*.out
+*.prof
+
+# Coverage
+coverage.out
+coverage/
+
+# Environment
+.env
+.env.*
+
+# Editors
+.vscode/
+.idea/
