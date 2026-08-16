@@ -52,11 +52,16 @@ func main() {
 	mcuPackageRepo := repository.NewMcuPackageRepository(db)
 	mcuPackageSvc := service.NewMcuPackageService(mcuPackageRepo)
 
+	// MCU booking layer
+	mcuBookingRepo := repository.NewMcuBookingRepository(db)
+	mcuBookingSvc := service.NewMcuBookingService(mcuBookingRepo, mcuPackageRepo, patientRepo)
+
 	registrationHandler := handler.NewRegistrationHandler(antrianSvc)
 	antrianHandler := handler.NewAntrianHandler(antrianSvc)
 	doctorHandler := handler.NewDoctorHandler(doctorSvc)
 	scheduleHandler := handler.NewScheduleHandler(doctorSvc)
 	mcuPackageHandler := handler.NewMcuPackageHandler(mcuPackageSvc)
+	mcuBookingHandler := handler.NewMcuBookingHandler(mcuBookingSvc)
 
 	// --- Admin endpoints (auth, dashboard, queue management) ---
 	userRepo := repository.NewUserRepository(db)
@@ -80,6 +85,10 @@ func main() {
 	mux.HandleFunc("/api/mcu-packages", mcuPackageHandler.Collection)
 	mux.HandleFunc("/api/mcu-packages/{id}", mcuPackageHandler.Item)
 
+	// --- MCU booking public routes ---
+	mux.HandleFunc("/api/mcu/register", mcuBookingHandler.Register)
+	mux.HandleFunc("/api/mcu/my-bookings", mcuBookingHandler.GetMyBookings)
+
 	// --- Admin public routes (rate limited) ---
 	mux.Handle("/api/admin/login",
 		middleware.RateLimitMiddleware(
@@ -91,7 +100,7 @@ func main() {
 	)
 
 	// --- Admin protected routes (JWT auth + role check + audit logging) ---
-	adminProtected := buildAdminProtectedRouter(adminHandler, userRepo)
+	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, userRepo)
 	mux.Handle("/api/admin/", adminProtected)
 
 	// --- Apply CORS middleware to all routes ---
@@ -114,10 +123,12 @@ func main() {
 // Middleware chain: AuthMiddleware → RoleMiddleware → AuditMiddleware → handler
 func buildAdminProtectedRouter(
 	adminHandler *handler.AdminHandler,
+	mcuBookingHandler *handler.McuBookingHandler,
 	userRepo *repository.UserRepository,
 ) http.Handler {
 	protectedMux := http.NewServeMux()
 
+	// --- Queue management ---
 	protectedMux.HandleFunc("/api/admin/logout", adminHandler.Logout)
 	protectedMux.HandleFunc("/api/admin/dashboard/stats", adminHandler.DashboardStats)
 	protectedMux.HandleFunc("/api/admin/antrian", adminHandler.AdminAntrian)
@@ -131,6 +142,14 @@ func buildAdminProtectedRouter(
 		}
 		adminHandler.UpdateAntrianStatus(w, r)
 	})
+
+	// --- MCU booking management ---
+	protectedMux.HandleFunc("/api/admin/mcu/bookings", mcuBookingHandler.AdminListBookings)
+	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}", mcuBookingHandler.AdminGetBooking)
+	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/update", mcuBookingHandler.AdminUpdateBooking)
+	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/confirm", mcuBookingHandler.AdminConfirmBooking)
+	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/cancel", mcuBookingHandler.AdminCancelBooking)
+	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/payment/confirm", mcuBookingHandler.AdminConfirmPayment)
 
 	// Apply middleware stack: Auth → Role(admin, staff) → Audit
 	return middleware.AuthMiddleware(
