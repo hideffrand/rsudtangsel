@@ -17,23 +17,23 @@ func NewAntrianHandler(svc *service.AntrianService) *AntrianHandler {
 	return &AntrianHandler{service: svc}
 }
 
-// Handle menangani GET /api/antrian?poli=...&tanggal=...
+// Handle menangani GET /api/antrian?department=...&tanggal=...
 func (h *AntrianHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	poli := r.URL.Query().Get("poli")
-	if poli == "" {
-		utils.ErrorResponse(w, http.StatusBadRequest, "Query parameter 'poli' wajib diisi")
+	department := r.URL.Query().Get("department")
+	if department == "" {
+		utils.ErrorResponse(w, http.StatusBadRequest, "Query parameter 'department' wajib diisi")
 		return
 	}
 
 	// tanggal opsional — default ke hari ini di service
 	tanggal := r.URL.Query().Get("tanggal")
 
-	items, err := h.service.CekAntrian(poli, tanggal)
+	items, err := h.service.CekAntrian(department, tanggal)
 	if err != nil {
 		utils.ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return

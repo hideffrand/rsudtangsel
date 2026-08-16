@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
@@ -11,126 +12,130 @@ import (
 	"github.com/hideffrand/rsudtangsel/server/internal/repository"
 )
 
+// ErrDoctorNotFound dikembalikan ketika dokter tidak ditemukan di master data.
+var ErrDoctorNotFound = errors.New("doctor not found")
+
 // AntrianService menangani business logic untuk pendaftaran dan antrian.
 type AntrianService struct {
-	pasienRepo      *repository.PasienRepository
-	pendaftaranRepo *repository.PendaftaranRepository
+	patientRepo     *repository.PatientRepository
+	doctorRepo      *repository.DoctorRepository
+	appointmentRepo *repository.AppointmentRepository
 }
 
 // NewAntrianService membuat instance AntrianService baru.
 func NewAntrianService(
-	pasienRepo *repository.PasienRepository,
-	pendaftaranRepo *repository.PendaftaranRepository,
+	patientRepo *repository.PatientRepository,
+	doctorRepo *repository.DoctorRepository,
+	appointmentRepo *repository.AppointmentRepository,
 ) *AntrianService {
 	return &AntrianService{
-		pasienRepo:      pasienRepo,
-		pendaftaranRepo: pendaftaranRepo,
+		patientRepo:     patientRepo,
+		doctorRepo:      doctorRepo,
+		appointmentRepo: appointmentRepo,
 	}
 }
 
 // DaftarOnline memproses pendaftaran pasien dan mengembalikan nomor antrian.
 func (s *AntrianService) DaftarOnline(req request.DaftarOnlineRequest) (*response.DaftarOnlineResponse, error) {
 	// 1. Cek apakah pasien sudah ada berdasarkan NIK
-	pasien, err := s.pasienRepo.FindByNIK(req.NIK)
+	patient, err := s.patientRepo.FindByNIK(req.NIK)
 	if err != nil {
 		return nil, fmt.Errorf("cek pasien: %w", err)
 	}
 
-	var pasienID int
-
-	if pasien == nil {
-		// 2. Pasien belum ada — parse tanggal lahir dan buat pasien baru
-		tanggalLahir, err := parseTanggal(req.TanggalLahir)
+	var patientID int
+	if patient == nil {
+		// 2. Pasien belum ada — buat baru
+		birthDate, err := parseTanggal(req.BirthDate)
 		if err != nil {
-			tanggalLahir = time.Now() // fallback jika tidak diisi
+			birthDate = time.Now() // fallback jika tidak diisi
 		}
-
-		newPasien := &model.Pasien{
-			NIK:          req.NIK,
-			Nama:         req.Nama,
-			TanggalLahir: tanggalLahir,
-			Alamat:       req.Alamat,
-			NoHP:         req.NoHP,
+		newPatient := &model.Patient{
+			NIK:         req.NIK,
+			Name:        req.Name,
+			BirthDate:   birthDate,
+			Address:     req.Address,
+			PhoneNumber: req.PhoneNumber,
 		}
-		pasienID, err = s.pasienRepo.Create(newPasien)
+		patientID, err = s.patientRepo.Create(newPatient)
 		if err != nil {
 			return nil, fmt.Errorf("buat pasien: %w", err)
 		}
 	} else {
-		pasienID = pasien.ID
+		patientID = patient.ID
 	}
 
-	// 3. Generate nomor antrian berdasarkan jumlah pendaftaran di poli + tanggal yang sama
-	count, err := s.pendaftaranRepo.CountByPoliAndTanggal(req.Poli, req.Tanggal)
+	// 3. Ambil dokter dari master data
+	doctor, err := s.doctorRepo.FindByID(req.DoctorID)
+	if err != nil {
+		return nil, fmt.Errorf("ambil dokter: %w", err)
+	}
+	if doctor == nil {
+		return nil, ErrDoctorNotFound
+	}
+
+	// 4. Generate nomor antrian berdasarkan spesialisasi dokter + tanggal yang sama
+	count, err := s.appointmentRepo.CountByDepartmentAndDate(doctor.Specialty, req.ScheduleDate)
 	if err != nil {
 		return nil, fmt.Errorf("hitung antrian: %w", err)
 	}
-	nomorAntrian := generateNomorAntrian(req.Poli, count+1)
+	queueNumber := generateQueueNumber(doctor.Specialty, count+1)
 
-	// 4. Generate QR code URL
-	qrCode := generateQRCodeURL(nomorAntrian)
+	// 5. Generate QR code URL
+	qrCode := generateQRCodeURL(queueNumber)
 
-	// 5. Tentukan jam default jika kosong
-	jam := req.Jam
-	if jam == "" {
-		jam = "08:00"
-	}
-
-	// 6. Tentukan dokter default jika kosong
-	dokter := req.Dokter
-	if dokter == "" {
-		dokter = "Dokter Umum"
+	// 6. Tentukan jam default jika kosong
+	timeOfDay := req.Time
+	if timeOfDay == "" {
+		timeOfDay = "08:00"
 	}
 
 	// 7. Parse tanggal pendaftaran
-	tanggal, err := parseTanggal(req.Tanggal)
+	scheduleDate, err := parseTanggal(req.ScheduleDate)
 	if err != nil {
 		return nil, fmt.Errorf("format tanggal tidak valid (gunakan YYYY-MM-DD): %w", err)
 	}
 
 	// 8. Simpan pendaftaran
-	pendaftaran := &model.Pendaftaran{
-		PasienID:        pasienID,
-		Poli:            req.Poli,
-		Dokter:          dokter,
-		Tanggal:         tanggal,
-		Jam:             jam,
-		JenisPembayaran: req.JenisPembayaran,
-		NomorAntrian:    nomorAntrian,
-		QRCode:          qrCode,
-		Status:          "menunggu",
+	appointment := &model.Appointment{
+		PatientID:    patientID,
+		DoctorID:     doctor.ID,
+		ScheduleDate: scheduleDate,
+		Time:         timeOfDay,
+		PaymentType:  req.PaymentType,
+		QueueNumber:  queueNumber,
+		QRCode:       qrCode,
+		Status:       "waiting",
 	}
-	if err := s.pendaftaranRepo.Create(pendaftaran); err != nil {
+	if err := s.appointmentRepo.Create(appointment); err != nil {
 		return nil, fmt.Errorf("simpan pendaftaran: %w", err)
 	}
 
 	return &response.DaftarOnlineResponse{
-		NomorAntrian: nomorAntrian,
-		QRCode:       qrCode,
-		Pesan:        fmt.Sprintf("Pendaftaran berhasil! Nomor antrian Anda: %s", nomorAntrian),
+		QueueNumber: queueNumber,
+		QRCode:      qrCode,
+		Message:     fmt.Sprintf("Pendaftaran berhasil! Nomor antrian Anda: %s", queueNumber),
 	}, nil
 }
 
-// CekAntrian mengembalikan daftar antrian untuk poli dan tanggal tertentu.
-func (s *AntrianService) CekAntrian(poli, tanggal string) ([]response.AntrianItem, error) {
+// CekAntrian mengembalikan daftar antrian untuk spesialisasi dan tanggal tertentu.
+func (s *AntrianService) CekAntrian(department, scheduleDate string) ([]response.AntrianItem, error) {
 	// Gunakan tanggal hari ini jika tidak disertakan
-	if tanggal == "" {
-		tanggal = time.Now().Format("2006-01-02")
+	if scheduleDate == "" {
+		scheduleDate = time.Now().Format("2006-01-02")
 	}
 
-	list, err := s.pendaftaranRepo.FindByPoliAndTanggal(poli, tanggal)
+	entries, err := s.appointmentRepo.FindByDepartmentAndDate(department, scheduleDate)
 	if err != nil {
 		return nil, fmt.Errorf("cek antrian: %w", err)
 	}
 
-	// Kita perlu nama pasien — ambil dari join atau buat struct sementara
-	// Untuk saat ini gunakan pasien_id sebagai placeholder (bisa di-enhance dengan JOIN)
-	items := make([]response.AntrianItem, len(list))
-	for i, p := range list {
+	items := make([]response.AntrianItem, len(entries))
+	for i, e := range entries {
 		items[i] = response.AntrianItem{
-			Nomor:  p.NomorAntrian,
-			Nama:   fmt.Sprintf("Pasien #%d", p.PasienID),
-			Status: capitalizeStatus(p.Status),
+			Number: e.QueueNumber,
+			Name:   e.PatientName,
+			Status: capitalizeStatus(e.Status),
 		}
 	}
 
@@ -139,18 +144,18 @@ func (s *AntrianService) CekAntrian(poli, tanggal string) ([]response.AntrianIte
 
 // --- Private helpers ---
 
-// generateNomorAntrian menghasilkan nomor antrian format "A001" berdasarkan huruf poli dan urutan.
-func generateNomorAntrian(poli string, urutan int) string {
+// generateQueueNumber menghasilkan nomor antrian format "A001" berdasarkan huruf spesialisasi dan urutan.
+func generateQueueNumber(specialty string, urutan int) string {
 	prefix := "A"
-	if len(poli) > 0 {
-		prefix = string([]rune(poli)[0])
+	if len(specialty) > 0 {
+		prefix = string([]rune(specialty)[0])
 	}
 	return fmt.Sprintf("%s%03d", prefix, urutan)
 }
 
 // generateQRCodeURL menghasilkan URL QR code dari nomor antrian.
-func generateQRCodeURL(nomorAntrian string) string {
-	return "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + url.QueryEscape(nomorAntrian)
+func generateQRCodeURL(queueNumber string) string {
+	return "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + url.QueryEscape(queueNumber)
 }
 
 // parseTanggal mengurai string tanggal format "YYYY-MM-DD".

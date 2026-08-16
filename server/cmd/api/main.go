@@ -32,18 +32,28 @@ func main() {
 	fmt.Println("✅ connected to database")
 
 	// Inisialisasi layer: repository → service → handler
-	pasienRepo := repository.NewPasienRepository(db)
-	pendaftaranRepo := repository.NewPendaftaranRepository(db)
+	patientRepo := repository.NewPatientRepository(db)
+	doctorRepo := repository.NewDoctorRepository(db)
+	appointmentRepo := repository.NewAppointmentRepository(db)
+	scheduleRepo := repository.NewDoctorScheduleRepository(db)
 
-	antrianSvc := service.NewAntrianService(pasienRepo, pendaftaranRepo)
+	antrianSvc := service.NewAntrianService(patientRepo, doctorRepo, appointmentRepo)
+	doctorSvc := service.NewDoctorService(doctorRepo, scheduleRepo)
 
-	daftarOnlineHandler := handler.NewDaftarOnlineHandler(antrianSvc)
+	registrationHandler := handler.NewRegistrationHandler(antrianSvc)
 	antrianHandler := handler.NewAntrianHandler(antrianSvc)
+	doctorHandler := handler.NewDoctorHandler(doctorSvc)
+	scheduleHandler := handler.NewScheduleHandler(doctorSvc)
 
 	// Register routes
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/daftar-online", daftarOnlineHandler.Handle)
+	mux.HandleFunc("/api/daftar-online", registrationHandler.Handle)
 	mux.HandleFunc("/api/antrian", antrianHandler.Handle)
+	mux.HandleFunc("/api/doctors", doctorHandler.Collection)
+	mux.HandleFunc("/api/doctors/{id}", doctorHandler.Item)
+	mux.HandleFunc("/api/doctors/{id}/schedules", doctorHandler.DoctorSchedules)
+	mux.HandleFunc("/api/schedules", scheduleHandler.Collection)
+	mux.HandleFunc("/api/schedules/{id}", scheduleHandler.Item)
 
 	// Jalankan server
 	port := os.Getenv("SERVER_PORT")

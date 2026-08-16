@@ -1,6 +1,7 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Design tokens from DESIGN.md (RSU Tangsel Care).
+ * Light values follow the spec exactly; dark values are app-side derivations
+ * (the spec only defines light mode) with a cool teal undertone matching the brand.
  */
 
 import '@/global.css';
@@ -9,18 +10,34 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#1C2626',
+    background: '#FFFFFF',
+    backgroundElement: '#F1F4F4',
+    backgroundSelected: '#E6EBEB',
+    textSecondary: '#5C6B6B',
+    border: '#E2E8E8',
+    primary: '#0E7D80',
+    primaryForeground: '#FFFFFF',
+    primaryHover: '#0A5F61',
+    accent: '#E63946',
+    success: '#16A34A',
+    warning: '#D97706',
+    destructive: '#DC2626',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#E8EEEE',
+    background: '#0F1313',
+    backgroundElement: '#1A2020',
+    backgroundSelected: '#243030',
+    textSecondary: '#9DA9A9',
+    border: '#263030',
+    primary: '#52B9BD',
+    primaryForeground: '#FFFFFF',
+    primaryHover: '#5FC7CA',
+    accent: '#E63946',
+    success: '#16A34A',
+    warning: '#D97706',
+    destructive: '#DC2626',
   },
 } as const;
 
@@ -59,6 +76,11 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+export const Radius = {
+  sm: 8,
+  md: 12,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

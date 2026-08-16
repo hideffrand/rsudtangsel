@@ -5,7 +5,7 @@ MIGRATE_DIR := migrations
 MIGRATE_ARGS := -path $(MIGRATE_DIR) -database $(DATABASE_URL)
 MIGRATE ?= go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.17.1
 
-.PHONY: help run build db-up db-down migrate-up migrate-down migrate-create migrate-version migrate-force install-migrate
+.PHONY: help run build seed db-up db-down migrate-up migrate-down migrate-create migrate-version migrate-force install-migrate
 
 help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -15,6 +15,9 @@ run: ## run the server
 
 build: ## build binary to bin/
 	go build -o bin/server .
+
+seed: ## load doctor schedules from CSV (truncates doctors/appointments)
+	go run ./cmd/seed
 
 db-up: ## start postgres via compose
 	docker compose -f ../compose.yaml up -d db
