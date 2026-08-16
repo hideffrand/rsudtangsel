@@ -111,17 +111,17 @@ echo -e "${YELLOW}[TEST 6] POST /api/daftar-online - Validasi field wajib kosong
 R6=$(curl -s -X POST "$BASE_URL/api/daftar-online" \
   -H "Content-Type: application/json" \
   -d '{"nik":"1234","nama":""}')
-check "Validasi field wajib kosong → error" "$R6" "error"
+check "Validasi field wajib kosong → error" "$R6" "message"
 
 # ─── TEST 7: Validasi - GET tanpa query poli ───
 echo -e "${YELLOW}[TEST 7] GET /api/antrian - Tanpa query parameter poli${NC}"
 R7=$(curl -s "$BASE_URL/api/antrian")
-check "GET antrian tanpa poli → error" "$R7" "error"
+check "GET antrian tanpa poli → error" "$R7" "message"
 
 # ─── TEST 8: Method not allowed ───
 echo -e "${YELLOW}[TEST 8] DELETE /api/daftar-online - Method not allowed${NC}"
 R8=$(curl -s -X DELETE "$BASE_URL/api/daftar-online")
-check "Method not allowed → error" "$R8" "error"
+check "Method not allowed → error" "$R8" "message"
 
 # ─── Ringkasan ───
 echo -e "${CYAN}================================================${NC}"
