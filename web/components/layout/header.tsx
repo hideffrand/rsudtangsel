@@ -18,7 +18,7 @@ export function Header() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [fontSizeLg, setFontSizeLg] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<"layanan" | null>(null);
+  const [activeDropdown, setActiveDropdown] = useState<"layanan" | "profil-rsu" | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Kontrol A-/A+ — set data-font-size di <html>
@@ -137,6 +137,29 @@ export function Header() {
               <span>{t("nav.health_services")}</span>
               <svg
                 className={`w-3.5 h-3.5 transition-transform duration-200 ${activeDropdown === "layanan" ? "rotate-180 text-primary" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+          </div>
+          {/* Dropdown: Profil RSU */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === "profil-rsu" ? null : "profil-rsu")}
+              onMouseEnter={() => setActiveDropdown("profil-rsu")}
+              className={`
+                flex items-center gap-1 px-3 py-2 text-sm rounded-sm transition-colors whitespace-nowrap cursor-pointer
+                ${isActive("/profil-rsu") || activeDropdown === "profil-rsu" ? "text-primary font-semibold bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"}
+              `}
+              aria-expanded={activeDropdown === "profil-rsu"}
+            >
+              <span>Profil RSU</span>
+              <svg
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${activeDropdown === "profil-rsu" ? "rotate-180 text-primary" : ""}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -337,6 +360,58 @@ export function Header() {
         </div>
       )}
 
+      {/* ── DROPDOWN MENU PANEL PROFIL RSU ─────────────────── */}
+      {activeDropdown === "profil-rsu" && (
+        <div
+          className="
+            absolute left-0 right-0 top-16 bg-background border-b border-border shadow-xl
+            p-6 animate-[fadeIn_0.15s_ease-out] z-40 hidden xl:block
+          "
+          onMouseEnter={() => setActiveDropdown("profil-rsu")}
+        >
+          <div
+            className="mx-auto max-w-6xl"
+            style={{ maxWidth: "var(--container-max)" }}
+          >
+            <div className="flex items-center gap-2 pb-2 border-b border-border mb-4">
+              <h3 className="font-bold text-base text-foreground tracking-tight uppercase">
+                Profil RSU Tangsel Care
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {[
+                "Sejarah RSU Kota Tangerang Selatan",
+                "Perkembangan Rumah Sakit",
+                "Penghargaan Yang Diraih",
+                "Visi & Misi",
+                "Maklumat Pelayanan",
+                "Struktur Organisasi",
+                "Capaian Indikator Nasional Mutu 2024",
+                "Survey Kepuasan Masyarakat Tahun 2025",
+                "Jumlah Penanganan Pengaduan Tahun 2025",
+                "Standar Pelayanan Publik",
+                "Kepwal Penetapan Pola Pengelolaan Keuangan",
+                "Perwal Tupoksi",
+                "Laporan Kinerja Instansi Pemerintah (LKIP)"
+              ].map((item, idx) => (
+                <Link
+                  key={idx}
+                  href={`/profil-rsu/${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                  onClick={() => setActiveDropdown(null)}
+                  className="
+                    flex items-center gap-2 p-2.5 rounded-sm border border-border/70 bg-muted/40
+                    hover:bg-primary/10 hover:border-primary/40 text-sm font-medium text-foreground hover:text-primary
+                    transition-all
+                  "
+                >
+                  <span className="truncate">{item}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MOBILE MENU ─────────────────────────────────────────────────── */}
       {isMobileMenuOpen && (
         <nav
@@ -381,6 +456,28 @@ export function Header() {
               {mcuPackages.map((pkg, idx) => (
                 <Link key={idx} href={`/cari-layanan?tipe=mcu&paket=${encodeURIComponent(pkg)}`} className="py-1 hover:text-primary">
                   • {pkg}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Profil RSU Accordion in Mobile */}
+          <div className="border border-border rounded-md p-3 space-y-2 bg-muted/30">
+            <div className="font-bold text-sm text-primary uppercase">Profil RSU</div>
+            <div className="flex flex-col gap-1 text-xs text-foreground/90 pl-2">
+              {[
+                "Sejarah RSU Kota Tangerang Selatan",
+                "Perkembangan Rumah Sakit",
+                "Penghargaan Yang Diraih",
+                "Visi & Misi",
+                "Maklumat Pelayanan",
+                "Struktur Organisasi",
+                "Capaian Indikator Nasional Mutu 2024",
+                "Survey Kepuasan Masyarakat Tahun 2025",
+                "Jumlah Penanganan Pengaduan Tahun 2025"
+              ].map((item, idx) => (
+                <Link key={idx} href={`/profil-rsu/${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} className="py-1.5 hover:text-primary border-b border-border/40 last:border-0">
+                  • {item}
                 </Link>
               ))}
             </div>
