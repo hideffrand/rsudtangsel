@@ -5,6 +5,7 @@ import { I18nProvider } from "@/lib/i18n-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { WhatsappFloat } from "@/components/ui/whatsapp-float";
 
 // Inter — font utama sesuai Design.md §2.2
 const inter = Inter({
@@ -34,6 +35,7 @@ export default function RootLayout({
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
+            <WhatsappFloat />
           </ToastProvider>
         </I18nProvider>
       </body>

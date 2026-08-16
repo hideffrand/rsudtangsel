@@ -30,11 +30,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "home.info.title": "Hubungi Kami",
     "home.services.register": "Daftar Online",
     "home.services.outpatient": "Rawat Jalan",
-    "home.services.chat": "Chat Dokter",
+    "home.services.chat": "Chatbot",
     "home.services.emergency": "Info Darurat",
     "home.services.register_desc": "Daftar kunjungan ke poli pilihan Anda",
     "home.services.outpatient_desc": "Lihat jadwal dan riwayat rawat jalan",
-    "home.services.chat_desc": "Konsultasi dengan dokter via pesan",
+    "home.services.chat_desc": "Konsultasi medis via Chatbot WhatsApp",
     "home.services.emergency_desc": "Kontak darurat dan panduan IGD",
     "home.info.hours": "Jam Layanan",
     "home.info.hours_value": "Senin–Jumat: 07.00–21.00 | Sabtu: 07.00–17.00 | IGD: 24 Jam",
@@ -99,8 +99,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "status.cancel_yes": "Ya, Batalkan",
     "status.cancel_no": "Tidak",
 
-    // --- Chat Dokter ---
-    "chat.title": "Chat Dokter",
+    // --- Chatbot ---
+    "chat.title": "Chatbot RSU Tangsel Care",
     "chat.disclaimer_title": "Penting — Baca Sebelum Melanjutkan",
     "chat.disclaimer_body":
       "Layanan chat ini bukan pengganti konsultasi medis langsung. Informasi yang diberikan dokter melalui chat bersifat umum dan tidak menggantikan diagnosis atau resep dari dokter yang memeriksa Anda secara langsung. Untuk kondisi darurat, hubungi IGD (Instalasi Gawat Darurat) segera.",
@@ -141,11 +141,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "home.info.title": "Contact Us",
     "home.services.register": "Register Online",
     "home.services.outpatient": "Outpatient",
-    "home.services.chat": "Doctor Chat",
+    "home.services.chat": "Chatbot",
     "home.services.emergency": "Emergency Info",
     "home.services.register_desc": "Register for a clinic visit",
     "home.services.outpatient_desc": "View schedule and visit history",
-    "home.services.chat_desc": "Consult with a doctor via message",
+    "home.services.chat_desc": "Medical consultation via WhatsApp Chatbot",
     "home.services.emergency_desc": "Emergency contacts and ER guidance",
     "home.info.hours": "Service Hours",
     "home.info.hours_value": "Mon–Fri: 07:00–21:00 | Sat: 07:00–17:00 | ER: 24 Hours",

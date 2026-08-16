@@ -1,56 +1,58 @@
 "use client";
 
 /**
- * Informasi — RSU Tangsel Care
+ * Halaman Utama Informasi — RSU Tangsel Care
+ * Menampilkan 4 Kartu Informasi Utama. Klik pada kartu akan membuka Halaman Full Detail (/informasi/[slug]).
  */
 
-import { useI18n } from "@/lib/i18n-context";
+import Link from "next/link";
+import { INFO_TOPICS } from "@/lib/informasi-data";
 import { Card, CardBody } from "@/components/ui/card";
 
 export default function InformasiPage() {
-  const { t } = useI18n();
-
-  const infoList = [
-    {
-      title: "Jam Layanan Poliklinik & IGD",
-      content: "Poliklinik Rawat Jalan buka Senin–Jumat pukul 07.00–21.00 WIB dan Sabtu pukul 07.00–17.00 WIB. Instalasi Gawat Darurat (IGD) dan Rawat Inap melayani 24 Jam Nonstop.",
-    },
-    {
-      title: "Ketentuan Pendaftaran Online",
-      content: "Pendaftaran online antrian poli dapat dilakukan mulai H-7 hingga H-1 sebelum tanggal kunjungan. Pasien wajib membawa KTP/Kartu Keluarga asli dan kartu BPJS/Asuransi saat verifikasi fisik di rumah sakit.",
-    },
-    {
-      title: "Alamat & Lokasi Rumah Sakit",
-      content: "Jl. Raya Serpong, Kota Tangerang Selatan, Banten 15310. Tersedia fasilitas parkir luas, halte angkutan umum depan gedung utama, dan akses ramah disabilitas.",
-    },
-    {
-      title: "Layanan Pasien BPJS Kesehatan",
-      content: "RSU Tangsel Care menerima seluruh rujukan Faskes 1 (Puskesmas/Klinik). Harap memastikan surat rujukan masih aktif dan nomor Kartu Indonesia Sehat (KIS) sesuai NIK KTP.",
-    },
-  ];
-
   return (
     <div
-      className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8"
+      className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-8"
       style={{ maxWidth: "var(--container-max)" }}
     >
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-          Informasi Rumah Sakit
+          Informasi &amp; Standar Pelayanan Publik
         </h1>
         <p className="mt-2 text-muted-foreground text-base">
-          Panduan layanan, jam operasional, dan informasi penting bagi pasien dan keluarga.
+          Panduan resmi persyaratan pendaftaran, pembuatan dokumen medis, dan alur pelayanan pasien RSU Tangsel Care.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {infoList.map((item, idx) => (
-          <Card key={idx} className="shadow-xs border-border">
-            <CardBody className="space-y-2">
-              <h2 className="text-lg font-semibold text-primary">{item.title}</h2>
-              <p className="text-sm text-foreground/80 leading-relaxed">{item.content}</p>
-            </CardBody>
-          </Card>
+      {/* Grid 4 Kartu Informasi Utama (Gambar 1 Style) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {INFO_TOPICS.map((topic) => (
+          <Link
+            key={topic.slug}
+            href={`/informasi/${topic.slug}`}
+            className="
+              group flex flex-col justify-between p-6 border border-border rounded-lg
+              bg-background hover:bg-muted/40 hover:border-primary/50 hover:shadow-md
+              transition-all duration-200 cursor-pointer space-y-4
+            "
+          >
+            <div className="space-y-3">
+              <div className="w-12 h-12 rounded-md bg-primary/10 text-primary flex items-center justify-center text-2xl border border-primary/20">
+                {topic.icon}
+              </div>
+              <h2 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors leading-snug">
+                {topic.title}
+              </h2>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {topic.summary}
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs font-semibold text-primary">
+              <span>Buka Selengkapnya</span>
+              <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+            </div>
+          </Link>
         ))}
       </div>
     </div>

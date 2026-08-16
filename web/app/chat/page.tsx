@@ -18,7 +18,7 @@ const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent
   "Halo, saya ingin berkonsultasi dengan dokter RSU Tangsel Care."
 )}`;
 
-export default function ChatDokterPage() {
+export default function ChatbotPage() {
   const { t } = useI18n();
   const [disclaimerShown, setDisclaimerShown] = useState(false);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);

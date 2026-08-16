@@ -2,16 +2,20 @@
 
 /**
  * Beranda — RSU Tangsel Care
- * Design.md §6.1 — Fungsional, bukan landing page marketing
- * 2 CTA utama above the fold di mobile
+ * - Hero Banner Carousel dengan Background Image photo1.png, photo2.png, photo3.png
+ * - Judul Carousel KONSISTEN HANYA "RSU Tangsel Care"
+ * - Section Layanan Kami
+ * - Section Berita & Artikel
+ * - Section Hubungi Kami & Google Maps Embed
  */
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n-context";
 import { buttonVariants } from "@/components/ui/button";
 import { ARTICLES } from "@/lib/articles-data";
 
-// ─── Ikon SVG inline (bukan emoji) ───────────────────────────────────────────
+// ─── Ikon SVG inline ──────────────────────────────────────────────────────────
 
 function IconCalendar({ className }: { className?: string }) {
   return (
@@ -70,10 +74,72 @@ function IconMail({ className }: { className?: string }) {
   );
 }
 
-// ─── Komponen utama ───────────────────────────────────────────────────────────
+// ─── Data Slide Carousel (Judul KONSISTEN: RSU Tangsel Care) ─────────────────
+
+const HERO_SLIDES = [
+  {
+    id: 1,
+    badge: "Layanan Kesehatan Terpadu Tangsel",
+    title: "RSU Tangsel Care",
+    subtitle: "Merawat Sepenuh Hati dengan Pendaftaran Online Cepat, Transparan & Praktis",
+    primaryCtaText: "Antrian Pendaftaran",
+    primaryCtaLink: "/daftar-online",
+    secondaryCtaText: "Jadwal Dokter",
+    secondaryCtaLink: "/jadwal-dokter",
+    image: "/photo1.png",
+    accentColor: "bg-emerald-400",
+  },
+  {
+    id: 2,
+    badge: "Layanan Baru Eksekutif",
+    title: "RSU Tangsel Care",
+    subtitle: "Poliklinik Eksekutif Malam Hari — Konsultasi Spesialis Pukul 17.00 – 21.00 WIB Tanpa Mengganggu Jam Kerja Siang",
+    primaryCtaText: "Daftar Poli Malam",
+    primaryCtaLink: "/daftar-online",
+    secondaryCtaText: "Tanya via Chatbot",
+    secondaryCtaLink: "/chat",
+    image: "/photo2.png",
+    accentColor: "bg-teal-400",
+  },
+  {
+    id: 3,
+    badge: "Fasilitas Medis Canggih",
+    title: "RSU Tangsel Care",
+    subtitle: "Fasilitas Radiologi & MRI 1.5 Tesla Dosis Radiasi Rendah — Diagnostik Presisi Tinggi 24 Jam Nonstop",
+    primaryCtaText: "Lihat Layanan Medis",
+    primaryCtaLink: "/layanan-kesehatan",
+    secondaryCtaText: "Jadwal Spesialis",
+    secondaryCtaLink: "/jadwal-dokter",
+    image: "/photo3.png",
+    accentColor: "bg-sky-400",
+  },
+];
+
+// ─── Komponen Utama Beranda ───────────────────────────────────────────────────
 
 export default function HomePage() {
   const { t } = useI18n();
+
+  // State Hero Carousel
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Auto-play Carousel tiap 5 detik
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+  };
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev === 0 ? HERO_SLIDES.length - 1 : prev - 1));
+  };
 
   const services = [
     {
@@ -94,8 +160,8 @@ export default function HomePage() {
       key: "chat",
       href: "/chat",
       icon: <IconChat className="w-6 h-6 text-primary" />,
-      label: t("home.services.chat"),
-      desc: t("home.services.chat_desc"),
+      label: "Chatbot",
+      desc: "Konsultasi medis cepat via Chatbot WhatsApp",
     },
     {
       key: "emergency",
@@ -103,30 +169,6 @@ export default function HomePage() {
       icon: <IconExclamation className="w-6 h-6 text-accent" />,
       label: t("home.services.emergency"),
       desc: t("home.services.emergency_desc"),
-    },
-  ];
-
-  const articles = [
-    {
-      id: 1,
-      title: "RSU Tangsel Care Resmikan Poliklinik Eksekutif Malam Hari",
-      date: "14 Agustus 2026",
-      category: "Layanan Baru",
-      desc: "Memudahkan masyarakat dan pekerja kantoran untuk mendapatkan layanan kesehatan spesialis tanpa harus mengganggu jam kerja siang.",
-    },
-    {
-      id: 2,
-      title: "Tips Menjaga Kesehatan Jantung & Pola Makan Sehat",
-      date: "10 Agustus 2026",
-      category: "Edukasi Kesehatan",
-      desc: "Simak ulasan lengkap dr. Bagas Pratama, Sp.JP mengenai 5 kebiasaan harian yang ampuh menjaga kebugaran otot jantung Anda.",
-    },
-    {
-      id: 3,
-      title: "Panduan Mudah Pendaftaran Antrian Online BPJS Kesehatan",
-      date: "05 Agustus 2026",
-      category: "Panduan Pasien",
-      desc: "Langkah praktis melakukan verifikasi rujukan Faskes 1 dan mengambil nomor antrian poli RSU Tangsel Care dari smartphone.",
     },
   ];
 
@@ -148,54 +190,126 @@ export default function HomePage() {
     },
   ];
 
+  const activeSlideData = HERO_SLIDES[currentSlide];
+
   return (
     <div
-      className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12"
+      className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-12"
       style={{ maxWidth: "var(--container-max)" }}
     >
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section aria-labelledby="hero-heading">
-        <div className="py-6 sm:py-8 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4 border border-primary/20">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Layanan Kesehatan Terpadu Tangsel
-          </div>
-          <h1
-            id="hero-heading"
-            className="text-3xl sm:text-4xl font-bold text-foreground leading-tight tracking-tight"
-          >
-            {t("home.hero.title")}
-          </h1>
-          <p className="mt-3 text-lg text-muted-foreground leading-relaxed">
-            {t("home.hero.subtitle")}
-          </p>
+      {/* ── HERO BANNER CAROUSEL DENGAN BACKGROUND PHOTO (photo1, photo2, photo3) ── */}
+      <section
+        aria-label="Carousel Pengumuman & Layanan Unggulan"
+        className="relative overflow-hidden rounded-xl border border-border bg-slate-900 shadow-md min-h-[380px]"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        {/* Background Image per Slide dengan Effect Transition */}
+        {HERO_SLIDES.map((slide, idx) => (
+          <div
+            key={slide.id}
+            className={`
+              absolute inset-0 bg-cover bg-center transition-opacity duration-700 transform scale-105
+              ${currentSlide === idx ? "opacity-100 z-0" : "opacity-0 -z-10"}
+            `}
+            style={{ backgroundImage: `url(${slide.image})` }}
+          />
+        ))}
 
-          {/* 2 CTA utama — above the fold di mobile */}
-          <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            <Link
-              href="/daftar-online"
-              id="cta-daftar-online"
-              className={buttonVariants({
-                variant: "primary",
-                size: "lg",
-                className: "w-full sm:w-auto shadow-sm hover:shadow-md",
-              })}
-            >
-              <IconCalendar className="w-5 h-5" />
-              Antrian Pendaftaran
-            </Link>
-            <Link
-              href="/jadwal-dokter"
-              id="cta-jadwal-dokter"
-              className={buttonVariants({
-                variant: "outline",
-                size: "lg",
-                className: "w-full sm:w-auto shadow-2xs hover:shadow-xs",
-              })}
-            >
-              <IconClipboard className="w-5 h-5" />
-              Jadwal Dokter
-            </Link>
+        {/* Dark Overlay Gradient agar Teks & Tombol Kontras & Tajam */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-900/75 to-slate-900/40 z-10 pointer-events-none" />
+
+        {/* Content Overlay */}
+        <div className="relative z-20 p-6 sm:p-10 min-h-[380px] flex flex-col justify-between">
+          <div className="max-w-2xl space-y-4">
+            {/* Badge Indicator */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-white text-xs font-semibold border border-white/20 shadow-xs">
+              <span className={`w-2 h-2 rounded-full ${activeSlideData.accentColor} animate-pulse`} />
+              {activeSlideData.badge}
+            </div>
+
+            {/* Title (KONSISTEN: RSU Tangsel Care) */}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight tracking-tight drop-shadow-sm">
+              {activeSlideData.title}
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-base sm:text-lg text-slate-200 leading-relaxed drop-shadow-xs max-w-xl">
+              {activeSlideData.subtitle}
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+              <Link
+                href={activeSlideData.primaryCtaLink}
+                className={buttonVariants({
+                  variant: "primary",
+                  size: "lg",
+                  className: "w-full sm:w-auto shadow-sm hover:shadow-md",
+                })}
+              >
+                <IconCalendar className="w-5 h-5" />
+                {activeSlideData.primaryCtaText}
+              </Link>
+              <Link
+                href={activeSlideData.secondaryCtaLink}
+                className="
+                  inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md text-sm font-semibold
+                  bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-sm
+                  transition-all shadow-xs w-full sm:w-auto
+                "
+              >
+                <IconClipboard className="w-5 h-5" />
+                {activeSlideData.secondaryCtaText}
+              </Link>
+            </div>
+          </div>
+
+          {/* Bottom Controls: Dots & Navigation Arrows */}
+          <div className="pt-6 flex items-center justify-between border-t border-white/20 mt-6">
+            {/* Indicator Dots */}
+            <div className="flex items-center gap-2" role="tablist">
+              {HERO_SLIDES.map((slide, idx) => (
+                <button
+                  key={slide.id}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`
+                    h-2.5 rounded-full transition-all duration-300 cursor-pointer
+                    ${currentSlide === idx ? "w-8 bg-emerald-400" : "w-2.5 bg-white/40 hover:bg-white/70"}
+                  `}
+                  aria-label={`Ke slide ${idx + 1}`}
+                  aria-selected={currentSlide === idx}
+                />
+              ))}
+            </div>
+
+            {/* Navigation Arrows */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePrevSlide}
+                className="
+                  p-2 rounded-full border border-white/30 bg-black/30 hover:bg-black/60
+                  text-white transition-colors cursor-pointer backdrop-blur-xs
+                "
+                aria-label="Slide Sebelumnya"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+              </button>
+              <button
+                onClick={handleNextSlide}
+                className="
+                  p-2 rounded-full border border-white/30 bg-black/30 hover:bg-black/60
+                  text-white transition-colors cursor-pointer backdrop-blur-xs
+                "
+                aria-label="Slide Selanjutnya"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -203,7 +317,7 @@ export default function HomePage() {
       {/* Divider */}
       <hr className="border-border" />
 
-      {/* ── Layanan Kami ────────────────────────────────────────────────── */}
+      {/* ── LAYANAN KAMI ────────────────────────────────────────────────── */}
       <section aria-labelledby="services-heading">
         <h2
           id="services-heading"
@@ -244,7 +358,7 @@ export default function HomePage() {
       {/* Divider */}
       <hr className="border-border" />
 
-      {/* ── Berita & Artikel ───────────────────────────────────────────────── */}
+      {/* ── BERITA & ARTIKEL ───────────────────────────────────────────────── */}
       <section aria-labelledby="news-heading">
         <div className="flex items-center justify-between mb-5">
           <h2
@@ -298,7 +412,7 @@ export default function HomePage() {
       {/* Divider */}
       <hr className="border-border" />
 
-      {/* ── Hubungi Kami & Map Embed ────────────────────────────────────────── */}
+      {/* ── HUBUNGI KAMI & MAP EMBED ────────────────────────────────────────── */}
       <section aria-labelledby="contact-heading" className="space-y-6">
         <div>
           <h2
