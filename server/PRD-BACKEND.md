@@ -1,8 +1,8 @@
 # PRD: Backend API System — RSU Tangsel
 
-> **Version**: 2.0.0
+> **Version**: 2.1.0
 > **Date**: 2026-08-16
-> **Status**: Phase 1 ✅ | Phase 2 ✅ (Admin Dashboard)
+> **Status**: Phase 1 ✅ | Phase 2 ✅ (Admin Dashboard) | Phase 2.1 ✅ (MCU Packages)
 > **Maintainer**: RSU Tangsel Backend Team
 
 ---
@@ -107,17 +107,20 @@ server/
 │   │   ├── appointment.go
 │   │   ├── doctor.go
 │   │   ├── doctor_schedule.go
-│   │   └── user.go                      # Admin users, refresh tokens, audit logs
+│   │   ├── user.go                      # Admin users, refresh tokens, audit logs
+│   │   └── mcu_package.go               # MCU package + items
 │   ├── dto/                             # Data Transfer Objects
 │   │   ├── request/
 │   │   │   ├── daftar_online.go         # Public registration request
 │   │   │   ├── doctor.go
 │   │   │   ├── schedule.go
-│   │   │   └── admin.go                 # Login, refresh, change-password requests
+│   │   │   ├── admin.go                 # Login, refresh, change-password requests
+│   │   │   └── mcu_package.go           # MCU package create/update request
 │   │   └── response/
 │   │       ├── antrian.go               # Public queue response
 │   │       ├── doctor.go
-│   │       └── auth.go                  # Login, dashboard, admin queue responses
+│   │       ├── auth.go                  # Login, dashboard, admin queue responses
+│   │       └── mcu_package.go           # MCU package response
 │   ├── utils/
 │   │   └── response.go                  # SuccessResponse / ErrorResponse helpers
 │   ├── middleware/                       # Security middleware
@@ -130,23 +133,28 @@ server/
 │   │   ├── appointment_repository.go    # Includes admin dashboard query methods
 │   │   ├── doctor_repository.go
 │   │   ├── doctor_schedule_repository.go
-│   │   └── user_repository.go           # Auth, refresh tokens, audit logs
+│   │   ├── user_repository.go           # Auth, refresh tokens, audit logs
+│   │   └── mcu_package_repository.go    # MCU package CRUD
 │   ├── service/                         # Business logic
 │   │   ├── antrian_service.go
 │   │   ├── doctor_service.go
 │   │   ├── auth_service.go              # Login, token rotation, logout
-│   │   └── dashboard_service.go         # Stats aggregation
+│   │   ├── dashboard_service.go         # Stats aggregation
+│   │   └── mcu_package_service.go       # MCU package business logic
 │   └── handler/                         # HTTP handlers
 │       ├── online_registration.go
 │       ├── antrian.go
 │       ├── doctor.go
 │       ├── schedule.go
-│       └── admin.go                     # All 6 admin endpoints
+│       ├── admin.go                     # All 6 admin endpoints
+│       └── mcu_package.go               # MCU package CRUD endpoints
 ├── migrations/
-│   ├── 20260816140429_init_schema.up.sql    # patients, doctors, appointments, doctor_schedules
+│   ├── 20260816140429_init_schema.up.sql          # patients, doctors, appointments, doctor_schedules
 │   ├── 20260816140429_init_schema.down.sql
-│   ├── 20260816090000_add_admin_tables.up.sql   # users, refresh_tokens, audit_logs
-│   └── 20260816090000_add_admin_tables.down.sql
+│   ├── 20260816090000_add_admin_tables.up.sql     # users, refresh_tokens, audit_logs
+│   ├── 20260816090000_add_admin_tables.down.sql
+│   ├── 20260816150452_mcu_packages.up.sql         # mcu_packages, mcu_package_items
+│   └── 20260816150452_mcu_packages.down.sql
 ├── Makefile
 ├── .env
 └── go.mod / go.sum
@@ -318,6 +326,145 @@ All endpoints return a consistent JSON structure:
 | **URL**    | `/api/schedules/{id}`   |
 | **Method** | `GET`, `PUT`, `DELETE`  |
 | **Auth**   | None (public)           |
+
+---
+
+## 3.4 MCU Package Endpoints
+
+> MCU = Medical Check-Up. These endpoints manage available health screening packages offered by the hospital.
+> All endpoints are **public** (no auth required for reading; write operations may be protected in a future iteration).
+
+---
+
+### 3.4.1 List MCU Packages
+
+| Attribute  | Detail                  |
+|------------|-------------------------|
+| **URL**    | `GET /api/mcu-packages` |
+| **Auth**   | None (public)           |
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status_code": 200,
+  "data": [
+    {
+      "id": 1,
+      "name": "Paket MCU Basic",
+      "description": "Pemeriksaan kesehatan dasar",
+      "price": 350000,
+      "is_active": true,
+      "items": [
+        { "id": 1, "name": "Darah Lengkap", "description": "Complete blood count" },
+        { "id": 2, "name": "Urin Lengkap", "description": "Urinalysis" }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### 3.4.2 Get MCU Package Detail
+
+| Attribute  | Detail                       |
+|------------|------------------------------|
+| **URL**    | `GET /api/mcu-packages/{id}` |
+| **Auth**   | None (public)                |
+
+**Response (404 Not Found):**
+```json
+{ "success": false, "status_code": 404, "message": "mcu package not found" }
+```
+
+---
+
+### 3.4.3 Create MCU Package
+
+| Attribute  | Detail                        |
+|------------|-------------------------------|
+| **URL**    | `POST /api/mcu-packages`      |
+| **Auth**   | None (public — to be secured) |
+
+**Request Body:**
+```json
+{
+  "name": "Paket MCU Premium",
+  "description": "Pemeriksaan kesehatan menyeluruh",
+  "price": 750000,
+  "is_active": true,
+  "items": [
+    { "name": "EKG", "description": "Elektrokardiogram" },
+    { "name": "Rontgen Dada", "description": "Chest X-Ray" },
+    { "name": "Gula Darah", "description": "Blood glucose" }
+  ]
+}
+```
+
+**Request Fields:**
+
+| Field         | Type    | Required | Description                              |
+|---------------|---------|:--------:|------------------------------------------|
+| `name`        | string  | ✅       | Package name                             |
+| `description` | string  | ❌       | Package description (default: `""`)      |
+| `price`       | int64   | ✅       | Price in IDR (Rupiah), must be `>= 0`   |
+| `is_active`   | bool    | ❌       | Whether the package is active (default: `true`) |
+| `items`       | array   | ❌       | List of check-up items in this package   |
+| `items[].name`| string  | ✅       | Item name (e.g. `"Darah Lengkap"`)       |
+| `items[].description` | string | ❌ | Item description                      |
+
+**Response (201 Created):** Same structure as detail response.
+
+**Validation:**
+- `name` must not be empty
+- `price` must be `>= 0`
+
+---
+
+### 3.4.4 Update MCU Package
+
+| Attribute  | Detail                        |
+|------------|-------------------------------|
+| **URL**    | `PUT /api/mcu-packages/{id}`  |
+| **Auth**   | None (public — to be secured) |
+
+**Request Body:** Same as Create. Replaces all items (cascade delete + re-insert).
+
+**Response (200 OK):** Updated package object.
+
+**Error (404):** Package not found.
+
+---
+
+### 3.4.5 Delete MCU Package
+
+| Attribute  | Detail                           |
+|------------|----------------------------------|
+| **URL**    | `DELETE /api/mcu-packages/{id}`  |
+| **Auth**   | None (public — to be secured)    |
+
+Deletes the package and all its items (`ON DELETE CASCADE`).
+
+**Response (200 OK):**
+```json
+{ "success": true, "status_code": 200, "data": null, "message": "mcu package deleted" }
+```
+
+**Error (404):** Package not found.
+
+---
+
+### 3.4.6 Error Codes (MCU Endpoints)
+
+| Code  | Condition                                     |
+|-------|-----------------------------------------------|
+| `200` | Success                                       |
+| `201` | Package created successfully                  |
+| `400` | Invalid request body / missing required fields |
+| `404` | Package not found                             |
+| `405` | Method not allowed                            |
+| `500` | Server / database error                       |
 
 ---
 
@@ -554,6 +701,18 @@ Sets appointment status to `cancelled`.
 
 ```
 ┌──────────────────┐         ┌──────────────────────┐
+│   mcu_packages   │ 1     N │  mcu_package_items   │
+├──────────────────┤─────────├──────────────────────┤
+│ id (PK)          │         │ id (PK)              │
+│ name             │         │ package_id (FK)      │
+│ description      │         │ name                 │
+│ price (IDR)      │         │ description          │
+│ is_active        │         │ position             │
+│ created_at       │         │ created_at           │
+│ updated_at       │         └──────────────────────┘
+└──────────────────┘
+
+┌──────────────────┐         ┌──────────────────────┐
 │     patients     │ 1     N │     appointments     │
 ├──────────────────┤─────────├──────────────────────┤
 │ id (PK)          │         │ id (PK)              │
@@ -609,7 +768,34 @@ Sets appointment status to `cancelled`.
                        └──────────────────────┘
 ```
 
-### 4.2 Appointment Status Values
+### 4.2 MCU Package Tables
+
+**`mcu_packages`** — Master list of health screening packages:
+
+| Column        | Type          | Description                     |
+|---------------|---------------|---------------------------------|
+| `id`          | SERIAL PK     | Auto-increment primary key      |
+| `name`        | VARCHAR(100)  | Package name                    |
+| `description` | TEXT          | Package description             |
+| `price`       | BIGINT        | Price in IDR (Rupiah)           |
+| `is_active`   | BOOLEAN       | Whether package is active       |
+| `created_at`  | TIMESTAMP     | Creation timestamp              |
+| `updated_at`  | TIMESTAMP     | Last update timestamp           |
+
+**`mcu_package_items`** — Check-up items within each package:
+
+| Column        | Type          | Description                     |
+|---------------|---------------|---------------------------------|
+| `id`          | SERIAL PK     | Auto-increment primary key      |
+| `package_id`  | INTEGER FK    | References `mcu_packages(id)` with CASCADE DELETE |
+| `name`        | VARCHAR(150)  | Item name (e.g. "Darah Lengkap") |
+| `description` | TEXT          | Item description                |
+| `position`    | INTEGER       | Display ordering (default: 0)   |
+| `created_at`  | TIMESTAMP     | Creation timestamp              |
+
+---
+
+### 4.3 Appointment Status Values
 
 | Status        | Description                          |
 |---------------|--------------------------------------|
@@ -618,7 +804,7 @@ Sets appointment status to `cancelled`.
 | `done`        | Service completed                    |
 | `cancelled`   | Appointment cancelled / skipped      |
 
-### 4.3 User Roles
+### 4.4 User Roles
 
 | Role      | Access                                             |
 |-----------|----------------------------------------------------|
@@ -707,7 +893,8 @@ RATE_LIMIT_PER_MINUTE=100
 | File                                        | Description                                       |
 |---------------------------------------------|---------------------------------------------------|
 | `20260816140429_init_schema.up.sql`         | Creates `patients`, `doctors`, `appointments`, `doctor_schedules` |
-| `20260816090000_add_admin_tables.up.sql`    | Creates `users`, `refresh_tokens`, `audit_logs` + seeds default admin |
+| `20260816090000_add_admin_tables.up.sql`    | Creates `users`, `refresh_tokens`, `audit_logs`   |
+| `20260816150452_mcu_packages.up.sql`        | Creates `mcu_packages`, `mcu_package_items`       |
 
 **Default admin credentials (seeded):**
 - Username: `admin`
@@ -750,6 +937,18 @@ RATE_LIMIT_PER_MINUTE=100
 | Sliding window rate limiter | ✅ |
 | Async audit logging | ✅ |
 | bcrypt password hashing (cost 10) | ✅ |
+| Admin seed credentials via `.env` (not hardcoded in SQL) | ✅ |
+
+### Phase 2.1 — MCU Packages ✅ Complete
+
+| Feature | Status |
+|---------|--------|
+| `GET /api/mcu-packages` — list all packages (with nested items) | ✅ |
+| `GET /api/mcu-packages/{id}` — package detail | ✅ |
+| `POST /api/mcu-packages` — create package + items | ✅ |
+| `PUT /api/mcu-packages/{id}` — update package + items (full replace) | ✅ |
+| `DELETE /api/mcu-packages/{id}` — delete package + cascade items | ✅ |
+| `mcu_packages` + `mcu_package_items` DB tables | ✅ |
 
 ### Phase 3 — Advanced Features *(Planned)*
 
