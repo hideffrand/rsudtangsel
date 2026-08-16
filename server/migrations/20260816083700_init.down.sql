@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS pendaftaran;
+DROP TABLE IF EXISTS pasien;
+DROP TABLE IF EXISTS jadwal_dokter;
