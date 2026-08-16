@@ -1,5 +1,6 @@
 # Binaries
 /server
+/bin/
 *.exe
 *.test
 *.out
@@ -12,6 +13,7 @@ coverage/
 # Environment
 .env
 .env.*
+!.env.example
 
 # Editors
 .vscode/
