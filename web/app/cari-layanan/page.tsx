@@ -3,6 +3,7 @@
 /**
  * Halaman Cari & Daftar Layanan Kesehatan (/cari-layanan)
  * Tampilan UI presisi sesuai Gambar 4 (Siloam Hospitals style catalog page).
+ * Paket MCU diambil dari backend API; lab & radiologi tetap data statis.
  */
 
 import { useSearchParams } from "next/navigation";
@@ -11,6 +12,24 @@ import Link from "next/link";
 import { CATALOG_SERVICES, MedicalServiceItem } from "@/lib/services-catalog-data";
 import { Dialog } from "@/components/ui/dialog";
 import { buttonVariants } from "@/components/ui/button";
+import { mcuPackagesApi, McuPackage } from "@/services/mcuPackages";
+
+// Lab & radiologi masih statis; MCU diambil dari API.
+const STATIC_SERVICES = CATALOG_SERVICES.filter((item) => item.category !== "mcu");
+
+const formatPrice = (price: number) => `Rp ${price.toLocaleString("id-ID")}`;
+
+const toCatalogItem = (pkg: McuPackage): MedicalServiceItem => ({
+  id: `mcu-${pkg.id}`,
+  title: pkg.name,
+  category: "mcu",
+  categoryLabel: "Medical Check-Up",
+  itemsCount: `${pkg.items.length} Service/Item`,
+  priceNumber: pkg.price,
+  priceFormatted: formatPrice(pkg.price),
+  description: pkg.description,
+  itemsIncluded: pkg.items.map((item) => item.name),
+});
 
 function CariLayananContent() {
   const searchParams = useSearchParams();
@@ -21,14 +40,32 @@ function CariLayananContent() {
   const [searchQuery, setSearchQuery] = useState<string>(initialPaket);
   const [priceSort, setPriceSort] = useState<"default" | "asc" | "desc">("default");
   const [detailModalItem, setDetailModalItem] = useState<MedicalServiceItem | null>(null);
+  const [mcuServices, setMcuServices] = useState<MedicalServiceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (initialType) setSelectedCategory(initialType);
-    if (initialPaket) setSearchQuery(initialPaket);
-  }, [initialType, initialPaket]);
+    let cancelled = false;
+    mcuPackagesApi
+      .getAll()
+      .then((packages) => {
+        if (!cancelled) setMcuServices(packages.map(toCatalogItem));
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const services = [...mcuServices, ...STATIC_SERVICES];
 
   // Filter & Sort Logic
-  const filteredServices = CATALOG_SERVICES.filter((item) => {
+  const filteredServices = services.filter((item) => {
     const matchCategory =
       selectedCategory === "semua" || item.category === selectedCategory;
     const matchQuery =
@@ -149,61 +186,68 @@ function CariLayananContent() {
             </span>
           </div>
 
-          {/* Service Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {filteredServices.map((item) => (
-              <div
-                key={item.id}
-                className="
-                  group relative border border-border rounded-lg bg-background p-5 shadow-2xs
-                  hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4
-                "
-              >
-                {/* Badge (TERPOPULER / REKOMENDASI) */}
-                {item.badge && (
-                  <span className="absolute -top-3 right-4 px-2.5 py-0.5 text-[10px] font-bold uppercase bg-emerald-600 text-white rounded-full shadow-2xs tracking-wider">
-                    {item.badge}
-                  </span>
-                )}
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Memuat katalog layanan...</p>
+          ) : error ? (
+            <p className="text-sm text-destructive">
+              Gagal memuat paket MCU dari API. Pastikan backend tersedia.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {filteredServices.map((item) => (
+                <div
+                  key={item.id}
+                  className="
+                    group relative border border-border rounded-lg bg-background p-5 shadow-2xs
+                    hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4
+                  "
+                >
+                  {/* Badge (TERPOPULER / REKOMENDASI) */}
+                  {item.badge && (
+                    <span className="absolute -top-3 right-4 px-2.5 py-0.5 text-[10px] font-bold uppercase bg-emerald-600 text-white rounded-full shadow-2xs tracking-wider">
+                      {item.badge}
+                    </span>
+                  )}
 
-                <div className="space-y-2">
-                  <span className="text-[11px] font-semibold text-primary">
-                    {item.categoryLabel}
-                  </span>
-                  <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors leading-snug">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {item.description}
-                  </p>
-                  <div className="inline-block text-[11px] font-medium px-2 py-0.5 bg-muted rounded text-foreground">
-                    {item.itemsCount}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-semibold text-primary">
+                      {item.categoryLabel}
+                    </span>
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors leading-snug">
+                      {item.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {item.description}
+                    </p>
+                    <div className="inline-block text-[11px] font-medium px-2 py-0.5 bg-muted rounded text-foreground">
+                      {item.itemsCount}
+                    </div>
+                  </div>
+
+                  {/* Price & Action Buttons (Gambar 4 Style) */}
+                  <div className="pt-3 border-t border-border/60 space-y-3">
+                    <div className="text-lg font-extrabold text-primary">
+                      {item.priceFormatted}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setDetailModalItem(item)}
+                        className="flex-1 py-2 px-3 text-xs font-semibold text-foreground border border-border rounded hover:bg-muted transition-colors cursor-pointer"
+                      >
+                        Lihat Detail
+                      </button>
+                      <Link
+                        href="/daftar-online"
+                        className="flex-1 py-2 px-3 text-xs font-semibold text-center text-white bg-primary hover:bg-primary/90 rounded transition-colors"
+                      >
+                        Daftar Now
+                      </Link>
+                    </div>
                   </div>
                 </div>
-
-                {/* Price & Action Buttons (Gambar 4 Style) */}
-                <div className="pt-3 border-t border-border/60 space-y-3">
-                  <div className="text-lg font-extrabold text-primary">
-                    {item.priceFormatted}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setDetailModalItem(item)}
-                      className="flex-1 py-2 px-3 text-xs font-semibold text-foreground border border-border rounded hover:bg-muted transition-colors cursor-pointer"
-                    >
-                      Lihat Detail
-                    </button>
-                    <Link
-                      href="/daftar-online"
-                      className="flex-1 py-2 px-3 text-xs font-semibold text-center text-white bg-primary hover:bg-primary/90 rounded transition-colors"
-                    >
-                      Daftar Now
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
