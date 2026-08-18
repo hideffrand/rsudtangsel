@@ -115,7 +115,7 @@ func main() {
 	}
 	serverAddr := ":" + port
 
-	fmt.Printf("🚀 Server running on http://localhost%s\n", serverAddr)
+	fmt.Printf("Server running on http://localhost%s\n", serverAddr)
 	log.Fatal(http.ListenAndServe(serverAddr, rootHandler))
 }
 
@@ -195,8 +195,8 @@ func seedAdminUser(db *sqlx.DB) {
 
 	rows, _ := result.RowsAffected()
 	if rows > 0 {
-		fmt.Printf("🔑 Admin user '%s' seeded successfully\n", username)
+		fmt.Printf(" Admin user '%s' seeded successfully\n", username)
 	} else {
-		fmt.Printf("🔑 Admin user '%s' already exists — skipping seed\n", username)
+		fmt.Printf(" Admin user '%s' already exists — skipping seed\n", username)
 	}
 }

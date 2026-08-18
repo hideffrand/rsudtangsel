@@ -2,66 +2,92 @@
 
 /**
  * Layanan Kesehatan — RSU Tangsel Care
- * - Paket Medical Check Up (MCU)
+ * - Paket Medical Check Up (MCU 10 Jenis)
  * - Layanan Spesialis & Fasilitas Medis Terpadu
  */
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n-context";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { mcuPackagesApi, McuPackage } from "@/services/mcuPackages";
 
-interface McuDisplay {
-  id: number;
-  name: string;
-  price: string;
-  desc: string;
-  features: string[];
-}
-
-const formatPrice = (price: number) => `Rp ${price.toLocaleString("id-ID")}`;
-
-const toMcuDisplay = (pkg: McuPackage): McuDisplay => ({
-  id: pkg.id,
-  name: pkg.name,
-  price: formatPrice(pkg.price),
-  desc: pkg.description,
-  features: pkg.items.map((item) => item.name),
-});
+const MCU_PACKAGES = [
+  {
+    name: "MCU Hemat",
+    price: "Rp 250.000",
+    desc: "Pemeriksaan kesehatan dasar hemat & efisien (Darah Rutin, Urin Rutin, Fisik Dokter Umum).",
+    features: ["Pemeriksaan Fisik Dokter Umum", "Hematologi Rutin (Hb, Leukosit, Trombosit)", "Urine Lengkap"],
+  },
+  {
+    name: "MCU Pelajar",
+    price: "Rp 300.000",
+    desc: "Khusus untuk syarat pendaftaran sekolah, kuliah, atau bebas narkoba.",
+    features: ["Fisik & Visus Mata", "Tes Bebas Narkoba 5 Parameter", "Surat Keterangan Sehat Pelajar"],
+  },
+  {
+    name: "MCU Pegawai",
+    price: "Rp 450.000",
+    desc: "Persyaratan tes kesehatan CPNS, BUMN, dan karyawan perusahaan.",
+    features: ["Rontgen Thorax Digital", "Tes Bebas Narkoba 6 Parameter", "EKG Jantung Dasar", "Fisik Dokter"],
+  },
+  {
+    name: "MCU Calon Pengantin",
+    price: "Rp 650.000",
+    desc: "Pemeriksaan pranikah (Premarital Check Up) untuk pasangan calon pengantin.",
+    features: ["Golongan Darah & Rhesus", "Skrining Golongan Darah & Thalassemia", "HBsAg & HIV", "Skrining Kebidanan/Urologi"],
+  },
+  {
+    name: "MCU ROHAJJ (Haji/Umroh)",
+    price: "Rp 750.000",
+    desc: "Pemeriksaan kesehatan lengkap dan vaksinasi istitha'ah untuk calon jemaah Haji dan Umroh.",
+    features: ["Rontgen Dada & EKG Jantung", "Laboratorium Lengkap & Tes Kehamilan", "Vaksin Meningitis & Influenza"],
+  },
+  {
+    name: "MCU Silver",
+    price: "Rp 850.000",
+    desc: "Paket skrining organ penting bagi dewasa muda.",
+    features: ["Laboratorium Darah & Urine Lengkap", "Fungsi Hati & Ginjal (Ureum, Kreatinin)", "Profil Kolesterol & Gula Darah", "Rontgen Dada"],
+  },
+  {
+    name: "MCU Gold",
+    price: "Rp 1.350.000",
+    desc: "Skrining kesehatan eksekutif menengah.",
+    features: ["Seluruh Fasilitas MCU Silver", "USG Abdomen / Perut", "Treadmill Test Jantung", "Konsultasi Dokter Spesialis Penyakit Dalam"],
+  },
+  {
+    name: "MCU Platinum",
+    price: "Rp 2.100.000",
+    desc: "Skrining komprehensif organ dalam & tumor marker.",
+    features: ["Seluruh Fasilitas MCU Gold", "Tumor Marker (CEA & AFP)", "CT-Scan Thorax / USG Mammografi", "Pemeriksaan Mata & THT"],
+  },
+  {
+    name: "MCU Titanium",
+    price: "Rp 3.500.000",
+    desc: "Paket kualitatif terlengkap VVIP RSU Tangsel Care.",
+    features: ["Seluruh Fasilitas MCU Platinum", "MRI 1.5 Tesla organ pilihan", "Ekokardiografi Jantung", "Kamar Rawat Transit VVIP 1 Hari"],
+  },
+  {
+    name: "MCU Jantung",
+    price: "Rp 1.200.000",
+    desc: "Skrining khusus kebugaran & potensi serangan jantung.",
+    features: ["EKG Jantung 12 Lead", "Treadmill Stress Test", "Ekokardiografi USG Jantung", "Profil Lipid Lengkap & Konsultasi Spesialis Jantung"],
+  },
+];
 
 function LayananKesehatanContent() {
   const searchParams = useSearchParams();
   const selectedMcu = searchParams.get("mcu") || "";
-  // Derive the active filter: URL param unless the user explicitly clears it.
-  const [cleared, setCleared] = useState(false);
-  const filterMcu = cleared ? "" : selectedMcu;
-  const [mcuList, setMcuList] = useState<McuDisplay[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [filterMcu, setFilterMcu] = useState(selectedMcu);
 
   useEffect(() => {
-    let cancelled = false;
-    mcuPackagesApi
-      .getAll()
-      .then((packages) => {
-        if (!cancelled) setMcuList(packages.map(toMcuDisplay));
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (selectedMcu) setFilterMcu(selectedMcu);
+  }, [selectedMcu]);
 
   const filteredMcuList = filterMcu
-    ? mcuList.filter((p) => p.name.toLowerCase().includes(filterMcu.toLowerCase()))
-    : mcuList;
+    ? MCU_PACKAGES.filter((p) => p.name.toLowerCase().includes(filterMcu.toLowerCase()))
+    : MCU_PACKAGES;
 
   return (
     <div
@@ -73,7 +99,7 @@ function LayananKesehatanContent() {
           Layanan Kesehatan &amp; Medical Check Up (MCU)
         </h1>
         <p className="mt-2 text-muted-foreground text-base">
-          Fasilitas pemeriksaan kesehatan berkala RSU Tangsel Care dengan {loading ? "berbagai" : mcuList.length} paket MCU pilihan dan pelayanan medis terpadu.
+          Fasilitas pemeriksaan kesehatan berkala RSU Tangsel Care dengan 10 paket MCU pilihan dan pelayanan medis terpadu.
         </p>
       </div>
 
@@ -90,54 +116,47 @@ function LayananKesehatanContent() {
           </div>
           {filterMcu && (
             <button
-              onClick={() => setCleared(true)}
+              onClick={() => setFilterMcu("")}
               className="text-xs text-primary font-semibold hover:underline border border-primary/20 px-3 py-1.5 rounded bg-primary/5"
             >
-              Tampilkan Semua {mcuList.length} Paket MCU
+              Tampilkan Semua 10 Paket MCU
             </button>
           )}
         </div>
 
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Memuat paket MCU...</p>
-        ) : error ? (
-          <p className="text-sm text-destructive">
-            Gagal memuat paket MCU. Pastikan backend API tersedia.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMcuList.map((pkg) => (
-              <Card key={pkg.id} className="hover:border-primary/40 hover:shadow-sm transition-all flex flex-col justify-between">
-                <CardHeader className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-bold text-lg text-primary">{pkg.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{pkg.desc}</p>
-                  </div>
-                  <span className="text-xs font-bold px-2.5 py-1 bg-muted text-foreground rounded">
-                    {pkg.price}
-                  </span>
-                </CardHeader>
-                <CardBody className="space-y-4 pt-2">
-                  <div className="space-y-1.5 text-xs text-muted-foreground border-t border-border/60 pt-3">
-                    <p className="font-semibold text-foreground text-[11px] uppercase tracking-wider">Fasilitas Pemeriksaan:</p>
-                    {pkg.features.map((feat, fIdx) => (
-                      <div key={fIdx} className="flex gap-2 items-center">
-                        <span className="text-primary font-bold">•</span>
-                        <span className="text-foreground/90">{feat}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Link
-                    href="/daftar-online"
-                    className={buttonVariants({ variant: "primary", size: "sm", className: "w-full mt-2" })}
-                  >
-                    Daftar Paket {pkg.name}
-                  </Link>
-                </CardBody>
-              </Card>
-            ))}
-          </div>
-        )}
+        {/* Grid 10 Paket MCU */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredMcuList.map((pkg, idx) => (
+            <Card key={idx} className="hover:border-primary/40 hover:shadow-sm transition-all flex flex-col justify-between">
+              <CardHeader className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-bold text-lg text-primary">{pkg.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{pkg.desc}</p>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 bg-muted text-foreground rounded">
+                  {pkg.price}
+                </span>
+              </CardHeader>
+              <CardBody className="space-y-4 pt-2">
+                <div className="space-y-1.5 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                  <p className="font-semibold text-foreground text-[11px] uppercase tracking-wider">Fasilitas Pemeriksaan:</p>
+                  {pkg.features.map((feat, fIdx) => (
+                    <div key={fIdx} className="flex gap-2 items-center">
+                      <span className="text-primary font-bold">•</span>
+                      <span className="text-foreground/90">{feat}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  href="/daftar-online"
+                  className={buttonVariants({ variant: "primary", size: "sm", className: "w-full mt-2" })}
+                >
+                  Daftar Paket {pkg.name}
+                </Link>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
       </section>
 
       {/* ── SECTION 2: FASILITAS MEDIS UTAMA RS ──────────────────────────── */}
