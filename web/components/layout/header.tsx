@@ -133,7 +133,7 @@ export function Header() {
               onMouseEnter={() => setActiveDropdown("layanan")}
               className={`
                 flex items-center gap-1 px-3 py-2 text-sm rounded-sm transition-colors whitespace-nowrap cursor-pointer
-                ${isActive("/layanan-kesehatan") || isActive("/cari-layanan") || activeDropdown === "layanan" ? "text-primary font-semibold bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"}
+                ${isActive("/layanan-kesehatan") || activeDropdown === "layanan" ? "text-primary font-semibold bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"}
               `}
               aria-expanded={activeDropdown === "layanan"}
             >
@@ -317,7 +317,7 @@ export function Header() {
                 {mcuPackages.map((pkg, idx) => (
                   <Link
                     key={idx}
-                    href={`/cari-layanan?tipe=mcu&paket=${encodeURIComponent(pkg)}`}
+                    href={`/layanan-kesehatan?tipe=mcu&paket=${encodeURIComponent(pkg)}`}
                     onClick={() => setActiveDropdown(null)}
                     className="
                       flex items-center gap-2 p-2.5 rounded-sm border border-border/70 bg-muted/40
@@ -341,8 +341,8 @@ export function Header() {
 
               <div className="space-y-2 text-xs">
                 {[
-                  { name: "Cek Laboratorium", href: "/cari-layanan?tipe=lab" },
-                  { name: "Cek Radiologi", href: "/cari-layanan?tipe=radiologi" },
+                  { name: "Cek Laboratorium", href: "/layanan-kesehatan?tipe=lab" },
+                  { name: "Cek Radiologi", href: "/layanan-kesehatan?tipe=radiologi" },
                 ].map((serv, idx) => (
                   <Link
                     key={idx}
@@ -457,7 +457,7 @@ export function Header() {
             <div className="font-bold text-sm text-primary uppercase">Medical Check Up (MCU)</div>
             <div className="grid grid-cols-2 gap-1 text-xs text-foreground/90 pl-2">
               {mcuPackages.map((pkg, idx) => (
-                <Link key={idx} href={`/cari-layanan?tipe=mcu&paket=${encodeURIComponent(pkg)}`} className="py-1 hover:text-primary">
+                <Link key={idx} href={`/layanan-kesehatan?tipe=mcu&paket=${encodeURIComponent(pkg)}`} className="py-1 hover:text-primary">
                   • {pkg}
                 </Link>
               ))}
