@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n-context";
 import { buttonVariants } from "@/components/ui/button";
+import { HealthAccessSection } from "@/components/sections/health-access-section";
 import { ARTICLES } from "@/lib/articles-data";
 
 // ─── Ikon SVG inline ──────────────────────────────────────────────────────────
@@ -354,6 +355,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <HealthAccessSection />
 
       {/* Divider */}
       <hr className="border-border" />

@@ -1,20 +1,14 @@
 "use client";
 
-/**
- * Layanan Kesehatan — RSU Tangsel Care
- * Katalog & daftar layanan: MCU dari /api/mcu-packages, Lab & Radiologi dari /api/diagnostic-services.
- * Plus fasilitas layanan medis terpadu RS.
- */
-
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Dialog } from "@/components/ui/dialog";
-import { Card, CardBody } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { Hospital, Siren, BedDouble, Search, X, Check, ChevronRight } from "lucide-react";
+import { Search, X, Check, ChevronRight } from "lucide-react";
 import { mcuPackagesApi } from "@/services/mcuPackages";
 import { diagnosticServicesApi } from "@/services/diagnosticServices";
+import { HealthAccessSection } from "@/components/sections/health-access-section";
 
 type CatalogCategory = "mcu" | "lab" | "radiologi";
 
@@ -354,49 +348,7 @@ function LayananKesehatanContent() {
         </div>
       </div>
 
-      <section className="space-y-6 pt-4 border-t border-border">
-        <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-          Fasilitas Layanan Medis Terpadu
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              id: "rawat-jalan",
-              title: "Poliklinik Rawat Jalan Spesialis",
-              desc: "Konsultasi spesialis Penyakit Dalam, Anak, Kandungan, Jantung, Gigi, Mata, THT, Bedah, dan Orthopedi.",
-              icon: <Hospital className="w-5 h-5" />,
-            },
-            {
-              id: "igd",
-              title: "Instalasi Gawat Darurat (IGD 24 Jam)",
-              desc: "Penanganan kondisi gawat darurat medis dan kecelakaan 24 jam nonstop dengan tim dokter emergency.",
-              icon: <Siren className="w-5 h-5" />,
-            },
-            {
-              id: "rawat-inap",
-              title: "Rawat Inap & Intensive Care (ICU)",
-              desc: "Ruang perawatan VVIP, VIP, Kelas 1-3, serta ICU/NICU/PICU lengkap dengan pemantauan medis 24 jam.",
-              icon: <BedDouble className="w-5 h-5" />,
-            },
-          ].map((item, idx) => (
-            <Card key={idx} id={item.id} className="shadow-2xs">
-              <CardBody className="space-y-3">
-                <div className="w-10 h-10 rounded bg-primary/10 text-primary flex items-center justify-center">
-                  {item.icon}
-                </div>
-                <h3 className="font-bold text-base text-foreground">{item.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                <Link
-                  href="/daftar-online"
-                  className={buttonVariants({ variant: "outline", size: "sm", className: "w-full mt-2" })}
-                >
-                  Daftar Antrian Online
-                </Link>
-              </CardBody>
-            </Card>
-          ))}
-        </div>
-      </section>
+      <HealthAccessSection />
 
       <Dialog
         isOpen={detailModalItem !== null}
