@@ -1,18 +1,12 @@
 "use client";
 
-/**
- * Layanan Kesehatan — RSU Tangsel Care
- * Katalog & daftar layanan: MCU dari /api/mcu-packages, Lab & Radiologi dari /api/diagnostic-services.
- * Plus fasilitas layanan medis terpadu RS.
- */
-
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Dialog } from "@/components/ui/dialog";
 import { Card, CardBody } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { Hospital, Siren, BedDouble } from "lucide-react";
+import { Hospital, Siren, BedDouble, Search, X } from "lucide-react";
 import { mcuPackagesApi } from "@/services/mcuPackages";
 import { diagnosticServicesApi } from "@/services/diagnosticServices";
 
@@ -122,7 +116,6 @@ function LayananKesehatanContent() {
     loadCatalog();
   }, [loadCatalog]);
 
-  // Filter & Sort Logic
   const filteredServices = items.filter((item) => {
     const matchCategory =
       selectedCategory === "semua" || item.category === selectedCategory;
@@ -148,7 +141,6 @@ function LayananKesehatanContent() {
       className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8"
       style={{ maxWidth: "var(--container-max)" }}
     >
-      {/* Header Page */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
           Layanan Kesehatan
@@ -158,9 +150,7 @@ function LayananKesehatanContent() {
         </p>
       </div>
 
-      {/* Main Grid: Left Sidebar Filter + Right Services Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-        {/* ── LEFT SIDEBAR FILTER ──────────────────────────────────────────── */}
         <div className="lg:col-span-1 border border-border rounded-lg p-5 bg-background shadow-xs space-y-6 sticky top-20">
           <div className="flex items-center justify-between border-b border-border pb-3">
             <h3 className="font-bold text-base text-foreground">Filter Layanan</h3>
@@ -172,7 +162,6 @@ function LayananKesehatanContent() {
             </button>
           </div>
 
-          {/* Filter Tipe / Kategori Pills */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               Tipe Layanan
@@ -202,21 +191,6 @@ function LayananKesehatanContent() {
             </div>
           </div>
 
-          {/* Filter Search Input */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Pencarian Kata Kunci
-            </label>
-            <input
-              type="search"
-              placeholder="Contoh: Hemat, Diabetes, USG..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 px-3 text-xs bg-background border border-border rounded-md focus:outline-none focus:border-primary"
-            />
-          </div>
-
-          {/* Filter Urutkan Harga */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               Urutkan Harga
@@ -233,8 +207,27 @@ function LayananKesehatanContent() {
           </div>
         </div>
 
-        {/* ── RIGHT MAIN CONTENT GRID ──────────────────────────────────────── */}
-        <div className="lg:col-span-3 space-y-5">
+        <div className="lg:col-span-3 space-y-6">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Cari paket layanan kesehatan, tes darah, USG, MCU..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-12 sm:h-14 pl-11 pr-10 text-sm sm:text-base bg-background border-2 border-border rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-xs transition-all text-foreground placeholder:text-muted-foreground"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
           <div className="flex items-center justify-between border-b border-border pb-3">
             <h2 className="text-xl font-bold text-foreground tracking-tight">
               Semua Layanan <span className="text-primary">({filteredServices.length})</span>
@@ -260,7 +253,6 @@ function LayananKesehatanContent() {
               Tidak ada layanan yang cocok.
             </div>
           ) : (
-          /* Service Cards Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {filteredServices.map((item) => (
               <div
@@ -270,7 +262,6 @@ function LayananKesehatanContent() {
                   hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between space-y-4
                 "
               >
-                {/* Badge (TERPOPULER / REKOMENDASI) */}
                 {item.badge && (
                   <span className="absolute -top-3 right-4 px-2.5 py-0.5 text-[10px] font-bold uppercase bg-emerald-600 text-white rounded-full shadow-2xs tracking-wider">
                     {item.badge}
@@ -292,7 +283,6 @@ function LayananKesehatanContent() {
                   </div>
                 </div>
 
-                {/* Price & Action Buttons */}
                 <div className="pt-3 border-t border-border/60 space-y-3">
                   <div className="text-lg font-extrabold text-primary">
                     {item.priceFormatted}
@@ -319,7 +309,6 @@ function LayananKesehatanContent() {
         </div>
       </div>
 
-      {/* ── FASILITAS LAYANAN MEDIS TERPADU ─────────────────────────────────── */}
       <section className="space-y-6 pt-4 border-t border-border">
         <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
           Fasilitas Layanan Medis Terpadu
@@ -364,7 +353,6 @@ function LayananKesehatanContent() {
         </div>
       </section>
 
-      {/* ── MODAL DIALOG DETAIL PAKET MEDIS ─────────────────────────────────── */}
       <Dialog
         isOpen={detailModalItem !== null}
         onClose={() => setDetailModalItem(null)}
