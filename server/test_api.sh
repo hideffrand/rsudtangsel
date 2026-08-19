@@ -34,8 +34,8 @@ echo -e "${CYAN}================================================${NC}"
 echo ""
 
 # ─── TEST 1: POST daftar-online - pasien baru (Ani, doctor_id=1 Anak) ───
-echo -e "${YELLOW}[TEST 1] POST /api/daftar-online - Pasien baru (Ani Wijaya, dr. Vollico/Anak)${NC}"
-R1=$(curl -s -X POST "$BASE_URL/api/daftar-online" \
+echo -e "${YELLOW}[TEST 1] POST /api/online-registration - Pasien baru (Ani Wijaya, dr. Vollico/Anak)${NC}"
+R1=$(curl -s -X POST "$BASE_URL/api/online-registration" \
   -H "Content-Type: application/json" \
   -d @- <<'EOF'
 {
@@ -54,8 +54,8 @@ EOF
 check "POST daftar-online (Ani)" "$R1" "queue_number"
 
 # ─── TEST 2: POST daftar-online - pasien baru (Citra, doctor_id=33 Mata) ───
-echo -e "${YELLOW}[TEST 2] POST /api/daftar-online - Pasien baru (Citra Dewi, dr. Arif/Mata)${NC}"
-R2=$(curl -s -X POST "$BASE_URL/api/daftar-online" \
+echo -e "${YELLOW}[TEST 2] POST /api/online-registration - Pasien baru (Citra Dewi, dr. Arif/Mata)${NC}"
+R2=$(curl -s -X POST "$BASE_URL/api/online-registration" \
   -H "Content-Type: application/json" \
   -d @- <<'EOF'
 {
@@ -74,8 +74,8 @@ EOF
 check "POST daftar-online (Citra - dr. Arif)" "$R2" "queue_number"
 
 # ─── TEST 3: POST daftar-online - pasien lama (NIK Budi sudah ada) ───
-echo -e "${YELLOW}[TEST 3] POST /api/daftar-online - NIK sudah terdaftar (Budi, kunjungan ke-2)${NC}"
-R3=$(curl -s -X POST "$BASE_URL/api/daftar-online" \
+echo -e "${YELLOW}[TEST 3] POST /api/online-registration - NIK sudah terdaftar (Budi, kunjungan ke-2)${NC}"
+R3=$(curl -s -X POST "$BASE_URL/api/online-registration" \
   -H "Content-Type: application/json" \
   -d @- <<'EOF'
 {
@@ -94,30 +94,30 @@ EOF
 check "POST daftar-online (Budi - NIK sudah ada)" "$R3" "queue_number"
 
 # ─── TEST 4: GET antrian Klinik Anak ───
-echo -e "${YELLOW}[TEST 4] GET /api/antrian?department=Anak&tanggal=2026-08-20${NC}"
-R4=$(curl -s "$BASE_URL/api/antrian?department=Anak&tanggal=2026-08-20")
+echo -e "${YELLOW}[TEST 4] GET /api/queue?department=Anak&date=2026-08-20${NC}"
+R4=$(curl -s "$BASE_URL/api/queue?department=Anak&date=2026-08-20")
 check "GET antrian Klinik Anak" "$R4" "success"
 
 # ─── TEST 5: GET antrian Klinik Mata ───
-echo -e "${YELLOW}[TEST 5] GET /api/antrian?department=Mata&tanggal=2026-08-20${NC}"
-R5=$(curl -s "$BASE_URL/api/antrian?department=Mata&tanggal=2026-08-20")
+echo -e "${YELLOW}[TEST 5] GET /api/queue?department=Mata&date=2026-08-20${NC}"
+R5=$(curl -s "$BASE_URL/api/queue?department=Mata&date=2026-08-20")
 check "GET antrian Klinik Mata" "$R5" "success"
 
 # ─── TEST 6: Validasi - field wajib kosong ───
-echo -e "${YELLOW}[TEST 6] POST /api/daftar-online - Validasi field wajib kosong${NC}"
-R6=$(curl -s -X POST "$BASE_URL/api/daftar-online" \
+echo -e "${YELLOW}[TEST 6] POST /api/online-registration - Validasi field wajib kosong${NC}"
+R6=$(curl -s -X POST "$BASE_URL/api/online-registration" \
   -H "Content-Type: application/json" \
   -d '{"nik":"1234","name":""}')
 check "Validasi field wajib kosong → error" "$R6" "message"
 
 # ─── TEST 7: Validasi - GET tanpa query department ───
-echo -e "${YELLOW}[TEST 7] GET /api/antrian - Tanpa query parameter department${NC}"
-R7=$(curl -s "$BASE_URL/api/antrian")
+echo -e "${YELLOW}[TEST 7] GET /api/queue - Tanpa query parameter department${NC}"
+R7=$(curl -s "$BASE_URL/api/queue")
 check "GET antrian tanpa department → error" "$R7" "message"
 
 # ─── TEST 8: Method not allowed ───
-echo -e "${YELLOW}[TEST 8] DELETE /api/daftar-online - Method not allowed${NC}"
-R8=$(curl -s -X DELETE "$BASE_URL/api/daftar-online")
+echo -e "${YELLOW}[TEST 8] DELETE /api/online-registration - Method not allowed${NC}"
+R8=$(curl -s -X DELETE "$BASE_URL/api/online-registration")
 check "Method not allowed → error" "$R8" "message"
 
 # ─── TEST 9: GET semua dokter ───
@@ -229,6 +229,21 @@ check "DELETE paket MCU" "$R23" "success"
 echo -e "${YELLOW}[TEST 24] GET /api/mcu-packages/999999 - Tidak ada${NC}"
 R24=$(curl -s "$BASE_URL/api/mcu-packages/999999")
 check "GET paket tidak ada → error" "$R24" "message"
+
+# ─── TEST 25: GET semua poli ───
+echo -e "${YELLOW}[TEST 25] GET /api/poli${NC}"
+R25=$(curl -s "$BASE_URL/api/poli")
+check "GET semua poli" "$R25" "success"
+
+# ─── TEST 26: GET satu poli ───
+echo -e "${YELLOW}[TEST 26] GET /api/poli/1${NC}"
+R26=$(curl -s "$BASE_URL/api/poli/1")
+check "GET satu poli" "$R26" "name"
+
+# ─── TEST 27: GET poli tidak ada → 404 ───
+echo -e "${YELLOW}[TEST 27] GET /api/poli/999999 - Tidak ada${NC}"
+R27=$(curl -s "$BASE_URL/api/poli/999999")
+check "GET poli tidak ada → error" "$R27" "message"
 
 # ─── Ringkasan ───
 echo -e "${CYAN}================================================${NC}"

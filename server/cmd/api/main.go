@@ -46,9 +46,11 @@ func main() {
 	doctorRepo := repository.NewDoctorRepository(db)
 	appointmentRepo := repository.NewAppointmentRepository(db)
 	scheduleRepo := repository.NewDoctorScheduleRepository(db)
+	poliRepo := repository.NewPoliklinikRepository(db)
 
-	antrianSvc := service.NewAntrianService(patientRepo, doctorRepo, appointmentRepo)
-	doctorSvc := service.NewDoctorService(doctorRepo, scheduleRepo)
+	poliSvc := service.NewPoliklinikService(poliRepo)
+	queueSvc := service.NewQueueService(patientRepo, doctorRepo, appointmentRepo)
+	doctorSvc := service.NewDoctorService(doctorRepo, scheduleRepo, poliSvc)
 	mcuPackageRepo := repository.NewMcuPackageRepository(db)
 	mcuPackageSvc := service.NewMcuPackageService(mcuPackageRepo)
 
@@ -56,10 +58,11 @@ func main() {
 	mcuBookingRepo := repository.NewMcuBookingRepository(db)
 	mcuBookingSvc := service.NewMcuBookingService(mcuBookingRepo, mcuPackageRepo, patientRepo)
 
-	registrationHandler := handler.NewRegistrationHandler(antrianSvc)
-	antrianHandler := handler.NewAntrianHandler(antrianSvc)
+	registrationHandler := handler.NewRegistrationHandler(queueSvc)
+	queueHandler := handler.NewQueueHandler(queueSvc)
 	doctorHandler := handler.NewDoctorHandler(doctorSvc)
 	scheduleHandler := handler.NewScheduleHandler(doctorSvc)
+	poliHandler := handler.NewPoliklinikHandler(poliSvc)
 	mcuPackageHandler := handler.NewMcuPackageHandler(mcuPackageSvc)
 	mcuBookingHandler := handler.NewMcuBookingHandler(mcuBookingSvc)
 
@@ -75,13 +78,15 @@ func main() {
 	mux := http.NewServeMux()
 
 	// --- Public routes (from teammate) ---
-	mux.HandleFunc("/api/daftar-online", registrationHandler.Handle)
-	mux.HandleFunc("/api/antrian", antrianHandler.Handle)
+	mux.HandleFunc("/api/online-registration", registrationHandler.Handle)
+	mux.HandleFunc("/api/queue", queueHandler.Handle)
 	mux.HandleFunc("/api/doctors", doctorHandler.Collection)
 	mux.HandleFunc("/api/doctors/{id}", doctorHandler.Item)
 	mux.HandleFunc("/api/doctors/{id}/schedules", doctorHandler.DoctorSchedules)
 	mux.HandleFunc("/api/schedules", scheduleHandler.Collection)
 	mux.HandleFunc("/api/schedules/{id}", scheduleHandler.Item)
+	mux.HandleFunc("/api/poli", poliHandler.Collection)
+	mux.HandleFunc("/api/poli/{id}", poliHandler.Item)
 	mux.HandleFunc("/api/mcu-packages", mcuPackageHandler.Collection)
 	mux.HandleFunc("/api/mcu-packages/{id}", mcuPackageHandler.Item)
 
@@ -103,8 +108,8 @@ func main() {
 	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, userRepo)
 	mux.Handle("/api/admin/", adminProtected)
 
-	// --- Apply CORS middleware to all routes ---
-	rootHandler := middleware.CORSMiddleware(mux)
+	// --- Apply CORS middleware, then request logger to all routes ---
+	rootHandler := middleware.RequestLoggerMiddleware(middleware.CORSMiddleware(mux))
 
 	// =========================================================
 	// Start the server
@@ -131,16 +136,16 @@ func buildAdminProtectedRouter(
 	// --- Queue management ---
 	protectedMux.HandleFunc("/api/admin/logout", adminHandler.Logout)
 	protectedMux.HandleFunc("/api/admin/dashboard/stats", adminHandler.DashboardStats)
-	protectedMux.HandleFunc("/api/admin/antrian", adminHandler.AdminAntrian)
+	protectedMux.HandleFunc("/api/admin/queue", adminHandler.AdminQueue)
 
-	// Dynamic sub-path handler: /api/admin/antrian/{id}/call or /skip
-	protectedMux.HandleFunc("/api/admin/antrian/", func(w http.ResponseWriter, r *http.Request) {
-		trimmed := strings.TrimPrefix(r.URL.Path, "/api/admin/antrian/")
+	// Dynamic sub-path handler: /api/admin/queue/{id}/call or /skip
+	protectedMux.HandleFunc("/api/admin/queue/", func(w http.ResponseWriter, r *http.Request) {
+		trimmed := strings.TrimPrefix(r.URL.Path, "/api/admin/queue/")
 		if trimmed == "" {
-			adminHandler.AdminAntrian(w, r)
+			adminHandler.AdminQueue(w, r)
 			return
 		}
-		adminHandler.UpdateAntrianStatus(w, r)
+		adminHandler.UpdateQueueStatus(w, r)
 	})
 
 	// --- MCU booking management ---

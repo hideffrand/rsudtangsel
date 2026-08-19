@@ -8,8 +8,9 @@
  * 3. Status slot real-time
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog } from "@/components/ui/dialog";
+import { poliApi, type Poli } from "@/services/poli";
 
 interface ScheduleSlot {
   id: number;
@@ -35,6 +36,7 @@ export default function AdminJadwalDokterPage() {
   const [slots, setSlots] = useState<ScheduleSlot[]>(INITIAL_SLOTS);
   const [filterPoli, setFilterPoli] = useState("");
   const [searchDoc, setSearchDoc] = useState("");
+  const [polis, setPolis] = useState<Poli[]>([]);
 
   // Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -43,11 +45,29 @@ export default function AdminJadwalDokterPage() {
 
   // Form State
   const [newDoc, setNewDoc] = useState("");
-  const [newPoli, setNewPoli] = useState("Jantung");
+  const [newPoli, setNewPoli] = useState("");
   const [newDay, setNewDay] = useState("Senin");
   const [newStart, setNewStart] = useState("08:00");
   const [newEnd, setNewEnd] = useState("12:00");
   const [newQuota, setNewQuota] = useState(20);
+
+  // Muat master data poli dari API.
+  useEffect(() => {
+    let cancelled = false;
+    poliApi
+      .getAll()
+      .then((data) => {
+        if (cancelled) return;
+        setPolis(data);
+        if (data.length > 0) setNewPoli((prev) => (prev || data[0].name));
+      })
+      .catch(() => {
+        if (!cancelled) setPolis([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredSlots = slots.filter((s) => {
     const matchPoli = !filterPoli || s.specialty === filterPoli;
@@ -127,8 +147,8 @@ export default function AdminJadwalDokterPage() {
             className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
           >
             <option value="">Semua Poli</option>
-            {["Jantung", "Anak", "Kandungan", "Mata", "Bedah", "Penyakit Dalam"].map((p) => (
-              <option key={p} value={p}>{p}</option>
+            {polis.map((p) => (
+              <option key={p.id} value={p.name}>{p.name}</option>
             ))}
           </select>
         </div>
@@ -223,8 +243,8 @@ export default function AdminJadwalDokterPage() {
                 onChange={(e) => setNewPoli(e.target.value)}
                 className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
               >
-                {["Jantung", "Anak", "Kandungan", "Mata", "Bedah", "Penyakit Dalam"].map((p) => (
-                  <option key={p} value={p}>{p}</option>
+                {polis.map((p) => (
+                  <option key={p.id} value={p.name}>{p.name}</option>
                 ))}
               </select>
             </div>

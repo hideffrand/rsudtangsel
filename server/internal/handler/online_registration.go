@@ -12,22 +12,22 @@ import (
 
 // RegistrationHandler handles HTTP requests for online registration.
 type RegistrationHandler struct {
-	service *service.AntrianService
+	service *service.QueueService
 }
 
 // NewRegistrationHandler creates a new RegistrationHandler instance.
-func NewRegistrationHandler(svc *service.AntrianService) *RegistrationHandler {
+func NewRegistrationHandler(svc *service.QueueService) *RegistrationHandler {
 	return &RegistrationHandler{service: svc}
 }
 
-// Handle handles POST /api/daftar-online.
+// Handle handles POST /api/online-registration.
 func (h *RegistrationHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	var req request.DaftarOnlineRequest
+	var req request.OnlineRegistrationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
@@ -39,7 +39,7 @@ func (h *RegistrationHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.DaftarOnline(req)
+	result, err := h.service.RegisterOnline(req)
 	if err != nil {
 		if errors.Is(err, service.ErrDoctorNotFound) {
 			utils.ErrorResponse(w, http.StatusNotFound, err.Error())

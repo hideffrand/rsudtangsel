@@ -56,14 +56,14 @@ func (r *ChangePasswordRequest) Validate() string {
 	return ""
 }
 
-// UpdateAntrianStatusRequest is the request body for PATCH /api/admin/antrian/:id/call.
-type UpdateAntrianStatusRequest struct {
+// UpdateQueueStatusRequest is the request body for PATCH /api/admin/queue/:id/call.
+type UpdateQueueStatusRequest struct {
 	// Action: "call" sets status to "processing", "skip" sets status to "cancelled"
 	Action string `json:"action"`
 }
 
-// Validate checks all fields in UpdateAntrianStatusRequest.
-func (r *UpdateAntrianStatusRequest) Validate() string {
+// Validate checks all fields in UpdateQueueStatusRequest.
+func (r *UpdateQueueStatusRequest) Validate() string {
 	if r.Action != "call" && r.Action != "skip" {
 		return "action must be 'call' or 'skip'"
 	}

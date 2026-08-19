@@ -85,7 +85,7 @@ func (h *McuBookingHandler) GetMyBookings(w http.ResponseWriter, r *http.Request
 // ======================== Admin Endpoints ========================
 
 // AdminListBookings handles GET /api/admin/mcu/bookings
-// Query params: status (optional), tanggal (optional, YYYY-MM-DD)
+// Query params: status (optional), date (optional, YYYY-MM-DD)
 func (h *McuBookingHandler) AdminListBookings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -93,7 +93,7 @@ func (h *McuBookingHandler) AdminListBookings(w http.ResponseWriter, r *http.Req
 	}
 
 	status := r.URL.Query().Get("status")
-	date := r.URL.Query().Get("tanggal")
+	date := r.URL.Query().Get("date")
 
 	bookings, err := h.svc.AdminGetBookings(status, date)
 	if err != nil {

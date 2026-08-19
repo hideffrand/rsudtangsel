@@ -16,16 +16,19 @@ var ErrScheduleNotFound = errors.New("schedule not found")
 type DoctorService struct {
 	doctorRepo   *repository.DoctorRepository
 	scheduleRepo *repository.DoctorScheduleRepository
+	poliSvc      *PoliklinikService
 }
 
 // NewDoctorService membuat instance DoctorService baru.
 func NewDoctorService(
 	doctorRepo *repository.DoctorRepository,
 	scheduleRepo *repository.DoctorScheduleRepository,
+	poliSvc *PoliklinikService,
 ) *DoctorService {
 	return &DoctorService{
 		doctorRepo:   doctorRepo,
 		scheduleRepo: scheduleRepo,
+		poliSvc:      poliSvc,
 	}
 }
 
@@ -57,9 +60,14 @@ func (s *DoctorService) GetDoctor(id int) (*response.DoctorResponse, error) {
 
 // CreateDoctor membuat dokter baru.
 func (s *DoctorService) CreateDoctor(req request.DoctorRequest) (*response.DoctorResponse, error) {
+	poliID, err := s.poliSvc.FindOrCreatePoliID(req.Specialty)
+	if err != nil {
+		return nil, err
+	}
 	doctor := &model.Doctor{
 		Name:          req.Name,
 		Specialty:     req.Specialty,
+		PoliID:        &poliID,
 		LicenseNumber: req.LicenseNumber,
 		Email:         req.Email,
 		PhoneNumber:   req.PhoneNumber,
@@ -75,10 +83,15 @@ func (s *DoctorService) CreateDoctor(req request.DoctorRequest) (*response.Docto
 
 // UpdateDoctor memperbarui dokter.
 func (s *DoctorService) UpdateDoctor(id int, req request.DoctorRequest) (*response.DoctorResponse, error) {
+	poliID, err := s.poliSvc.FindOrCreatePoliID(req.Specialty)
+	if err != nil {
+		return nil, err
+	}
 	doctor := &model.Doctor{
 		ID:            id,
 		Name:          req.Name,
 		Specialty:     req.Specialty,
+		PoliID:        &poliID,
 		LicenseNumber: req.LicenseNumber,
 		Email:         req.Email,
 		PhoneNumber:   req.PhoneNumber,
@@ -148,11 +161,11 @@ func (s *DoctorService) CreateSchedule(req request.ScheduleRequest) (*response.D
 	}
 
 	schedule := &model.DoctorSchedule{
-		DoctorID:   req.DoctorID,
-		DayOfWeek:  req.DayOfWeek,
-		StartTime:  req.StartTime,
-		EndTime:    req.EndTime,
-		Quota:      defaultQuota(req.Quota),
+		DoctorID:  req.DoctorID,
+		DayOfWeek: req.DayOfWeek,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+		Quota:     defaultQuota(req.Quota),
 	}
 	id, err := s.scheduleRepo.Create(schedule)
 	if err != nil {
@@ -185,12 +198,12 @@ func (s *DoctorService) UpdateSchedule(id int, req request.ScheduleRequest) (*re
 	}
 
 	schedule := &model.DoctorSchedule{
-		ID:         id,
-		DoctorID:   req.DoctorID,
-		DayOfWeek:  req.DayOfWeek,
-		StartTime:  req.StartTime,
-		EndTime:    req.EndTime,
-		Quota:      defaultQuota(req.Quota),
+		ID:        id,
+		DoctorID:  req.DoctorID,
+		DayOfWeek: req.DayOfWeek,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+		Quota:     defaultQuota(req.Quota),
 	}
 	updated, err := s.scheduleRepo.Update(schedule)
 	if err != nil {
@@ -227,6 +240,7 @@ func toDoctorResponse(d model.Doctor) response.DoctorResponse {
 		ID:            d.ID,
 		Name:          d.Name,
 		Specialty:     d.Specialty,
+		PoliID:        d.PoliID,
 		LicenseNumber: d.LicenseNumber,
 		Email:         d.Email,
 		PhoneNumber:   d.PhoneNumber,

@@ -132,17 +132,17 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, stats)
 }
 
-// AdminAntrian handles GET /api/admin/antrian
+// AdminQueue handles GET /api/admin/queue
 // Returns the appointment queue with patient and doctor details.
-// Query params: poli (specialty filter), tanggal (date, defaults to today)
-func (h *AdminHandler) AdminAntrian(w http.ResponseWriter, r *http.Request) {
+// Query params: poli (specialty filter), date (defaults to today)
+func (h *AdminHandler) AdminQueue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	specialty := r.URL.Query().Get("poli")
-	date := r.URL.Query().Get("tanggal")
+	date := r.URL.Query().Get("date")
 	if date == "" {
 		date = time.Now().Format("2006-01-02")
 	}
@@ -166,15 +166,15 @@ func (h *AdminHandler) AdminAntrian(w http.ResponseWriter, r *http.Request) {
 	utils.SuccessResponse(w, http.StatusOK, items)
 }
 
-// UpdateAntrianStatus handles PATCH /api/admin/antrian/{id}/call or /skip
-// URL format: /api/admin/antrian/123/call or /api/admin/antrian/123/skip
-func (h *AdminHandler) UpdateAntrianStatus(w http.ResponseWriter, r *http.Request) {
+// UpdateQueueStatus handles PATCH /api/admin/queue/{id}/call or /skip
+// URL format: /api/admin/queue/123/call or /api/admin/queue/123/skip
+func (h *AdminHandler) UpdateQueueStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	id, action, err := parseAntrianPath(r.URL.Path)
+	id, action, err := parseQueuePath(r.URL.Path)
 	if err != nil {
 		utils.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -203,11 +203,11 @@ func (h *AdminHandler) UpdateAntrianStatus(w http.ResponseWriter, r *http.Reques
 
 // --- Private helpers ---
 
-// parseAntrianPath extracts the ID and action from a URL path: /api/admin/antrian/{id}/{action}.
-func parseAntrianPath(path string) (int, string, error) {
+// parseQueuePath extracts the ID and action from a URL path: /api/admin/queue/{id}/{action}.
+func parseQueuePath(path string) (int, string, error) {
 	path = strings.TrimSuffix(path, "/")
 	parts := strings.Split(path, "/")
-	// Expected: ["", "api", "admin", "antrian", "{id}", "{action}"]
+	// Expected: ["", "api", "admin", "queue", "{id}", "{action}"]
 	if len(parts) < 6 {
 		return 0, "", fmt.Errorf("invalid URL path")
 	}

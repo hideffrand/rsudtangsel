@@ -67,20 +67,20 @@ export interface LoginResponse {
 }
 
 export interface DashboardStats {
-  pasien_hari_ini: number;
-  rata_waktu_tunggu: number;
-  dokter_aktif: number;
-  keluhan_baru: number;
-  total_antrian: number;
+  patients_today: number;
+  avg_wait_time: number;
+  active_doctors: number;
+  new_complaints: number;
+  total_queue: number;
   update_time: string;
 }
 
-export interface AntrianItem {
+export interface QueueItem {
   id: number;
-  nomor: string;
-  nama: string;
+  number: string;
+  patient_name: string;
   poli: string;
-  dokter: string;
+  doctor_name: string;
   status: "Waiting" | "Processing" | "Done" | "Cancelled";
   created_at: string;
 }
@@ -103,13 +103,13 @@ export interface McuBookingItem {
 
 // ─── Mock Data Standalone ─────────────────────────────────────────────────────
 
-const MOCK_ANTRIAN: AntrianItem[] = [
-  { id: 1, nomor: "J001", nama: "Budi Santoso", poli: "Jantung", dokter: "dr. Ahmad Sp.JP", status: "Waiting", created_at: "08:15:00" },
-  { id: 2, nomor: "J002", nama: "Siti Rahma", poli: "Jantung", dokter: "dr. Ahmad Sp.JP", status: "Waiting", created_at: "08:30:00" },
-  { id: 3, nomor: "A001", nama: "Ahmad Fauzi", poli: "Anak", dokter: "dr. Siti Sp.A", status: "Processing", created_at: "08:45:00" },
-  { id: 4, nomor: "K001", nama: "Dewi Lestari", poli: "Kandungan", dokter: "dr. Budi Sp.OG", status: "Done", created_at: "09:00:00" },
-  { id: 5, nomor: "M001", nama: "Rini Astuti", poli: "Mata", dokter: "dr. Maya Sp.M", status: "Waiting", created_at: "09:15:00" },
-  { id: 6, nomor: "B001", nama: "Hendra Wijaya", poli: "Bedah", dokter: "dr. Irwan Sp.B", status: "Cancelled", created_at: "09:30:00" },
+const MOCK_QUEUE: QueueItem[] = [
+  { id: 1, number: "J001", patient_name: "Budi Santoso", poli: "Jantung", doctor_name: "dr. Ahmad Sp.JP", status: "Waiting", created_at: "08:15:00" },
+  { id: 2, number: "J002", patient_name: "Siti Rahma", poli: "Jantung", doctor_name: "dr. Ahmad Sp.JP", status: "Waiting", created_at: "08:30:00" },
+  { id: 3, number: "A001", patient_name: "Ahmad Fauzi", poli: "Anak", doctor_name: "dr. Siti Sp.A", status: "Processing", created_at: "08:45:00" },
+  { id: 4, number: "K001", patient_name: "Dewi Lestari", poli: "Kandungan", doctor_name: "dr. Budi Sp.OG", status: "Done", created_at: "09:00:00" },
+  { id: 5, number: "M001", patient_name: "Rini Astuti", poli: "Mata", doctor_name: "dr. Maya Sp.M", status: "Waiting", created_at: "09:15:00" },
+  { id: 6, number: "B001", patient_name: "Hendra Wijaya", poli: "Bedah", doctor_name: "dr. Irwan Sp.B", status: "Cancelled", created_at: "09:30:00" },
 ];
 
 const MOCK_MCU: McuBookingItem[] = [
@@ -208,30 +208,30 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   } catch {
     const now = new Date();
     return {
-      pasien_hari_ini: 38,
-      rata_waktu_tunggu: 14.2,
-      dokter_aktif: 14,
-      keluhan_baru: 5,
-      total_antrian: 12,
+      patients_today: 38,
+      avg_wait_time: 14.2,
+      active_doctors: 14,
+      new_complaints: 5,
+      total_queue: 12,
       update_time: now.toLocaleTimeString("id-ID"),
     };
   }
 }
 
-// ─── Antrian (Queue) ─────────────────────────────────────────────────────────
+// ─── Queue ────────────────────────────────────────────────────────────────────
 
-export async function getAntrianAdmin(params?: {
+export async function getAdminQueue(params?: {
   poli?: string;
-  tanggal?: string;
-}): Promise<AntrianItem[]> {
+  date?: string;
+}): Promise<QueueItem[]> {
   try {
     const qs = new URLSearchParams();
     if (params?.poli) qs.set("poli", params.poli);
-    if (params?.tanggal) qs.set("tanggal", params.tanggal);
+    if (params?.date) qs.set("date", params.date);
     const query = qs.toString() ? `?${qs.toString()}` : "";
-    return await adminFetch<AntrianItem[]>(`/api/admin/antrian${query}`);
+    return await adminFetch<QueueItem[]>(`/api/admin/queue${query}`);
   } catch {
-    let result = [...MOCK_ANTRIAN];
+    let result = [...MOCK_QUEUE];
     if (params?.poli) {
       result = result.filter((a) => a.poli.toLowerCase() === params.poli?.toLowerCase());
     }
@@ -239,20 +239,20 @@ export async function getAntrianAdmin(params?: {
   }
 }
 
-export async function callPatient(id: number): Promise<AntrianItem> {
+export async function callPatient(id: number): Promise<QueueItem> {
   try {
-    return await adminFetch<AntrianItem>(`/api/admin/antrian/${id}/call`, { method: "PATCH" });
+    return await adminFetch<QueueItem>(`/api/admin/queue/${id}/call`, { method: "PATCH" });
   } catch {
-    const item = MOCK_ANTRIAN.find((a) => a.id === id) ?? MOCK_ANTRIAN[0];
+    const item = MOCK_QUEUE.find((a) => a.id === id) ?? MOCK_QUEUE[0];
     return { ...item, status: "Processing" };
   }
 }
 
-export async function skipPatient(id: number): Promise<AntrianItem> {
+export async function skipPatient(id: number): Promise<QueueItem> {
   try {
-    return await adminFetch<AntrianItem>(`/api/admin/antrian/${id}/skip`, { method: "PATCH" });
+    return await adminFetch<QueueItem>(`/api/admin/queue/${id}/skip`, { method: "PATCH" });
   } catch {
-    const item = MOCK_ANTRIAN.find((a) => a.id === id) ?? MOCK_ANTRIAN[0];
+    const item = MOCK_QUEUE.find((a) => a.id === id) ?? MOCK_QUEUE[0];
     return { ...item, status: "Cancelled" };
   }
 }
@@ -261,12 +261,12 @@ export async function skipPatient(id: number): Promise<AntrianItem> {
 
 export async function getMcuBookings(params?: {
   status?: string;
-  tanggal?: string;
+  date?: string;
 }): Promise<McuBookingItem[]> {
   try {
     const qs = new URLSearchParams();
     if (params?.status) qs.set("status", params.status);
-    if (params?.tanggal) qs.set("tanggal", params.tanggal);
+    if (params?.date) qs.set("date", params.date);
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return await adminFetch<McuBookingItem[]>(`/api/admin/mcu/bookings${query}`);
   } catch {

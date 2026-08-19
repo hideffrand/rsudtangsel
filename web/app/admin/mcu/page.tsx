@@ -41,7 +41,7 @@ export default function McuAdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [filterStatus, setFilterStatus] = useState("");
-  const [filterTanggal, setFilterTanggal] = useState("");
+  const [filterDate, setFilterDate] = useState("");
 
   const [confirm, setConfirm] = useState<{
     id: number; action: ActionType; name: string; package_name: string;
@@ -56,7 +56,7 @@ export default function McuAdminPage() {
     try {
       const data = await getMcuBookings({
         status: filterStatus || undefined,
-        tanggal: filterTanggal || undefined,
+        date: filterDate || undefined,
       });
       setBookings(data);
     } catch (err: unknown) {
@@ -64,7 +64,7 @@ export default function McuAdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, filterTanggal]);
+  }, [filterStatus, filterDate]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -148,8 +148,8 @@ export default function McuAdminPage() {
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tanggal Booking</label>
           <input
             type="date"
-            value={filterTanggal}
-            onChange={(e) => setFilterTanggal(e.target.value)}
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
             className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
           />
         </div>
@@ -161,7 +161,7 @@ export default function McuAdminPage() {
             Filter
           </button>
           <button
-            onClick={() => { setFilterStatus(""); setFilterTanggal(""); }}
+            onClick={() => { setFilterStatus(""); setFilterDate(""); }}
             className="h-9 px-4 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
           >
             Reset

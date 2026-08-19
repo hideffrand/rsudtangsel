@@ -1,7 +1,7 @@
 package request
 
-// DaftarOnlineRequest adalah struct untuk request body POST /api/daftar-online.
-type DaftarOnlineRequest struct {
+// OnlineRegistrationRequest adalah struct untuk request body POST /api/online-registration.
+type OnlineRegistrationRequest struct {
 	NIK          string `json:"nik"`
 	Name         string `json:"name"`
 	BirthDate    string `json:"birth_date"`

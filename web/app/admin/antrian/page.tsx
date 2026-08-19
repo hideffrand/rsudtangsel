@@ -7,11 +7,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  getAntrianAdmin,
+  getAdminQueue,
   callPatient,
   skipPatient,
-  type AntrianItem,
+  type QueueItem,
 } from "@/lib/admin-api";
+import { poliApi, type Poli } from "@/services/poli";
 import { Dialog } from "@/components/ui/dialog";
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
@@ -21,48 +22,60 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   Cancelled: { label: "Dibatalkan", cls: "bg-red-100 text-red-600 border border-red-200" },
 };
 
-const POLI_OPTIONS = [
-  "Jantung", "Penyakit Dalam", "Anak", "Kandungan", "Bedah",
-  "Mata", "THT", "Kulit", "Gigi", "Orthopedi", "Neurologi",
-];
-
 export default function AntrianAdminPage() {
-  const [antrian, setAntrian] = useState<AntrianItem[]>([]);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [polis, setPolis] = useState<Poli[]>([]);
 
   // Filters
   const [filterPoli, setFilterPoli] = useState("");
-  const [filterTanggal, setFilterTanggal] = useState(
+  const [filterDate, setFilterDate] = useState(
     new Date().toISOString().split("T")[0]
   );
 
+  // Load master data poli untuk dropdown filter.
+  useEffect(() => {
+    let cancelled = false;
+    poliApi
+      .getAll()
+      .then((data) => {
+        if (!cancelled) setPolis(data);
+      })
+      .catch(() => {
+        if (!cancelled) setPolis([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Dialog konfirmasi
   const [confirm, setConfirm] = useState<{
-    id: number; action: "call" | "skip"; nomor: string; nama: string;
+    id: number; action: "call" | "skip"; number: string; patient_name: string;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchAntrian = useCallback(async () => {
+  const fetchQueue = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getAntrianAdmin({
+      const data = await getAdminQueue({
         poli: filterPoli || undefined,
-        tanggal: filterTanggal || undefined,
+        date: filterDate || undefined,
       });
-      setAntrian(data);
+      setQueue(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat data antrian.");
     } finally {
       setLoading(false);
     }
-  }, [filterPoli, filterTanggal]);
+  }, [filterPoli, filterDate]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAntrian();
-  }, [fetchAntrian]);
+    fetchQueue();
+  }, [fetchQueue]);
 
   const handleConfirmAction = async () => {
     if (!confirm) return;
@@ -72,7 +85,7 @@ export default function AntrianAdminPage() {
         confirm.action === "call"
           ? await callPatient(confirm.id)
           : await skipPatient(confirm.id);
-      setAntrian((prev) =>
+      setQueue((prev) =>
         prev.map((a) => (a.id === confirm.id ? { ...a, status: updated.status } : a))
       );
     } catch {
@@ -84,10 +97,10 @@ export default function AntrianAdminPage() {
   };
 
   // Summary counts
-  const waiting = antrian.filter((a) => a.status === "Waiting").length;
-  const processing = antrian.filter((a) => a.status === "Processing").length;
-  const done = antrian.filter((a) => a.status === "Done").length;
-  const cancelled = antrian.filter((a) => a.status === "Cancelled").length;
+  const waiting = queue.filter((a) => a.status === "Waiting").length;
+  const processing = queue.filter((a) => a.status === "Processing").length;
+  const done = queue.filter((a) => a.status === "Done").length;
+  const cancelled = queue.filter((a) => a.status === "Cancelled").length;
 
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -124,8 +137,8 @@ export default function AntrianAdminPage() {
             className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
           >
             <option value="">Semua Poli</option>
-            {POLI_OPTIONS.map((p) => (
-              <option key={p} value={p}>{p}</option>
+            {polis.map((p) => (
+              <option key={p.id} value={p.name}>{p.name}</option>
             ))}
           </select>
         </div>
@@ -133,20 +146,20 @@ export default function AntrianAdminPage() {
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tanggal</label>
           <input
             type="date"
-            value={filterTanggal}
-            onChange={(e) => setFilterTanggal(e.target.value)}
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
             className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
           />
         </div>
         <div className="flex items-end gap-2">
           <button
-            onClick={fetchAntrian}
+            onClick={fetchQueue}
             className="h-9 px-4 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
           >
             Filter
           </button>
           <button
-            onClick={() => { setFilterPoli(""); setFilterTanggal(new Date().toISOString().split("T")[0]); }}
+            onClick={() => { setFilterPoli(""); setFilterDate(new Date().toISOString().split("T")[0]); }}
             className="h-9 px-4 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
           >
             Reset
@@ -158,7 +171,7 @@ export default function AntrianAdminPage() {
       {error && (
         <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           {error}{" "}
-          <button onClick={fetchAntrian} className="underline font-semibold ml-1">Coba lagi</button>
+          <button onClick={fetchQueue} className="underline font-semibold ml-1">Coba lagi</button>
         </div>
       )}
 
@@ -166,10 +179,10 @@ export default function AntrianAdminPage() {
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="font-bold text-slate-800">
-            Daftar Antrian <span className="text-emerald-600">({antrian.length})</span>
+            Daftar Antrian <span className="text-emerald-600">({queue.length})</span>
           </h2>
           <span className="text-xs text-slate-400">
-            {filterTanggal ? new Date(filterTanggal).toLocaleDateString("id-ID", { dateStyle: "long" }) : "Hari ini"}
+            {filterDate ? new Date(filterDate).toLocaleDateString("id-ID", { dateStyle: "long" }) : "Hari ini"}
           </span>
         </div>
 
@@ -179,7 +192,7 @@ export default function AntrianAdminPage() {
               <div key={i} className="h-14 bg-slate-100 rounded animate-pulse" />
             ))}
           </div>
-        ) : antrian.length === 0 ? (
+        ) : queue.length === 0 ? (
           <div className="p-16 text-center text-slate-400">
             <p className="text-4xl mb-3">📭</p>
             <p className="text-sm font-medium">Tidak ada antrian{filterPoli ? ` untuk Poli ${filterPoli}` : ""} pada tanggal ini.</p>
@@ -199,14 +212,14 @@ export default function AntrianAdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {antrian.map((item) => {
+                {queue.map((item) => {
                   const badge = STATUS_BADGE[item.status] ?? { label: item.status, cls: "bg-slate-100 text-slate-600 border border-slate-200" };
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-6 py-4 font-extrabold text-emerald-700 text-base">{item.nomor}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-800">{item.nama}</td>
+                      <td className="px-6 py-4 font-extrabold text-emerald-700 text-base">{item.number}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-800">{item.patient_name}</td>
                       <td className="px-6 py-4 text-slate-600">{item.poli}</td>
-                      <td className="px-6 py-4 text-slate-500 text-xs hidden md:table-cell">{item.dokter}</td>
+                      <td className="px-6 py-4 text-slate-500 text-xs hidden md:table-cell">{item.doctor_name}</td>
                       <td className="px-6 py-4 text-slate-400 text-xs hidden lg:table-cell">{item.created_at}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${badge.cls}`}>
@@ -218,13 +231,13 @@ export default function AntrianAdminPage() {
                           {item.status === "Waiting" && (
                             <>
                               <button
-                                onClick={() => setConfirm({ id: item.id, action: "call", nomor: item.nomor, nama: item.nama })}
+                                onClick={() => setConfirm({ id: item.id, action: "call", number: item.number, patient_name: item.patient_name })}
                                 className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
                               >
                                 Panggil
                               </button>
                               <button
-                                onClick={() => setConfirm({ id: item.id, action: "skip", nomor: item.nomor, nama: item.nama })}
+                                onClick={() => setConfirm({ id: item.id, action: "skip", number: item.number, patient_name: item.patient_name })}
                                 className="px-3 py-1.5 text-xs font-semibold text-white bg-red-500 hover:bg-red-400 rounded-lg transition-colors"
                               >
                                 Skip
@@ -260,8 +273,8 @@ export default function AntrianAdminPage() {
             {confirm.action === "call"
               ? `Memanggil pasien `
               : `Melewati pasien `}
-            <strong className="text-foreground">{confirm.nama}</strong>
-            {" "}(No. <strong className="text-emerald-600">{confirm.nomor}</strong>).
+            <strong className="text-foreground">{confirm.patient_name}</strong>
+            {" "}(No. <strong className="text-emerald-600">{confirm.number}</strong>).
             {confirm.action === "skip" && " Status akan berubah menjadi Dibatalkan."}
           </p>
         )}

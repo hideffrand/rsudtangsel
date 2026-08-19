@@ -9,6 +9,6 @@ export interface QueueItem {
 export const queueApi = {
   getByDepartment: (department: string, date?: string) =>
     api.get<QueueItem[]>(
-      `/antrian?department=${encodeURIComponent(department)}${date ? `&tanggal=${encodeURIComponent(date)}` : ''}`,
+      `/queue?department=${encodeURIComponent(department)}${date ? `&date=${encodeURIComponent(date)}` : ''}`,
     ),
 };

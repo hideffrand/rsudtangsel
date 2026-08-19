@@ -20,5 +20,5 @@ export interface RegistrationPayload {
 
 export const registrationApi = {
   register: (payload: RegistrationPayload) =>
-    api.post<RegistrationResult>('/daftar-online', payload),
+    api.post<RegistrationResult>('/online-registration', payload),
 };

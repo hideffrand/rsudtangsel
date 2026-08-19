@@ -19,31 +19,31 @@ type LoginResponse struct {
 
 // DashboardStatsResponse is the response for GET /api/admin/dashboard/stats.
 type DashboardStatsResponse struct {
-	PasienHariIni   int     `json:"pasien_hari_ini"`
-	RataWaktuTunggu float64 `json:"rata_waktu_tunggu"` // in minutes
-	BOR             float64 `json:"bor"`               // percentage
-	KeluhanBaru     int     `json:"keluhan_baru"`
-	TotalAntrian    int     `json:"total_antrian"`
+	PatientsToday   int     `json:"patients_today"`
+	AverageWaitTime float64 `json:"avg_wait_time"` // in minutes
+	BOR             float64 `json:"bor"`           // percentage
+	NewComplaints   int     `json:"new_complaints"`
+	TotalQueue      int     `json:"total_queue"`
 	UpdateTime      string  `json:"update_time"` // "HH:MM:SS"
 }
 
-// AdminAntrianItem represents a single queue entry for the admin dashboard.
-type AdminAntrianItem struct {
-	ID        int    `json:"id"`
-	Nomor     string `json:"nomor"`
-	Nama      string `json:"nama"`
-	Poli      string `json:"poli"`
-	Dokter    string `json:"dokter"`
-	Status    string `json:"status"`
-	CreatedAt string `json:"created_at"`
+// AdminQueueItem represents a single queue entry for the admin dashboard.
+type AdminQueueItem struct {
+	ID          int    `json:"id"`
+	Number      string `json:"number"`
+	PatientName string `json:"patient_name"`
+	Poli        string `json:"poli"`
+	DoctorName  string `json:"doctor_name"`
+	Status      string `json:"status"`
+	CreatedAt   string `json:"created_at"`
 }
 
-// CallAntrianResponse is the response for PATCH /api/admin/antrian/:id/call.
-type CallAntrianResponse struct {
-	ID       int    `json:"id"`
-	Nomor    string `json:"nomor"`
-	Nama     string `json:"nama"`
-	Poli     string `json:"poli"`
-	Status   string `json:"status"`
-	CalledAt string `json:"called_at"`
+// CallQueueResponse is the response for PATCH /api/admin/queue/:id/call.
+type CallQueueResponse struct {
+	ID          int    `json:"id"`
+	Number      string `json:"number"`
+	PatientName string `json:"patient_name"`
+	Poli        string `json:"poli"`
+	Status      string `json:"status"`
+	CalledAt    string `json:"called_at"`
 }

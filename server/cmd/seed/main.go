@@ -11,10 +11,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Seeder mengimpor jadwal dokter dari CSV ke tabel doctors dan doctor_schedules.
+// Seeder mengimpor jadwal dokter dari CSV ke tabel poliklinik, doctors, dan doctor_schedules.
 // Cara pakai: cd server && make seed (atau go run ./cmd/seed)
 // CSV diambil dari SCHEDULE_CSV env (default: ../jadwal dokter rsudtangsel.csv).
-// PERHATIAN: TRUNCATE doctors CASCADE — menghapus isi doctors, doctor_schedules, dan appointments.
+// PERHATIAN: TRUNCATE doctors & poliklinik CASCADE — menghapus isi doctors, doctor_schedules,
+// appointments, dan poliklinik (relasi dokter-ke-poli dibangun ulang dari CSV).
 
 const dayColumns = 6 // SENIN..SABTU
 
@@ -42,6 +43,9 @@ func main() {
 	if _, err := db.Exec("TRUNCATE doctors RESTART IDENTITY CASCADE"); err != nil {
 		log.Fatalf("truncate doctors: %v", err)
 	}
+	if _, err := db.Exec("TRUNCATE poliklinik RESTART IDENTITY CASCADE"); err != nil {
+		log.Fatalf("truncate poliklinik: %v", err)
+	}
 
 	f, err := os.Open(csvPath)
 	if err != nil {
@@ -56,6 +60,8 @@ func main() {
 
 	doctorCount := 0
 	scheduleCount := 0
+	poliCount := 0
+	poliIDs := make(map[string]int) // cache nama poliklinik -> id
 
 	for i, row := range rows {
 		if i == 0 {
@@ -75,11 +81,27 @@ func main() {
 
 		specialty := strings.TrimPrefix(clinic, "Klinik ")
 
+		// Pastikan poliklinik sudah ada di master data poli.
+		poliID, ok := poliIDs[specialty]
+		if !ok {
+			err := db.QueryRow(
+				`INSERT INTO poliklinik (name) VALUES ($1)
+				 ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+				 RETURNING id`,
+				specialty,
+			).Scan(&poliID)
+			if err != nil {
+				log.Fatalf("insert poliklinik %q: %v", specialty, err)
+			}
+			poliIDs[specialty] = poliID
+			poliCount++
+		}
+
 		var doctorID int
 		err := db.QueryRow(
-			`INSERT INTO doctors (name, specialty, license_number, email, phone_number, bio, status)
-			 VALUES ($1, $2, NULL, '', '', '', 'active') RETURNING id`,
-			doctorName, specialty,
+			`INSERT INTO doctors (name, specialty, poli_id, license_number, email, phone_number, bio, status)
+			 VALUES ($1, $2, $3, NULL, '', '', '', 'active') RETURNING id`,
+			doctorName, specialty, poliID,
 		).Scan(&doctorID)
 		if err != nil {
 			log.Fatalf("insert doctor %q: %v", doctorName, err)
@@ -106,7 +128,7 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Seeder selesai: %d dokter, %d jadwal.\n", doctorCount, scheduleCount)
+	fmt.Printf("Seeder selesai: %d poliklinik, %d dokter, %d jadwal.\n", poliCount, doctorCount, scheduleCount)
 }
 
 // clean menormalkan whitespace (termasuk non-breaking space) menjadi spasi tunggal.

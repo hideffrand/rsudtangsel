@@ -7,6 +7,7 @@ type Doctor struct {
 	ID            int       `db:"id"`
 	Name          string    `db:"name"`
 	Specialty     string    `db:"specialty"`
+	PoliID        *int      `db:"poli_id"`
 	LicenseNumber *string   `db:"license_number"`
 	Email         string    `db:"email"`
 	PhoneNumber   string    `db:"phone_number"`

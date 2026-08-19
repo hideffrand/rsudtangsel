@@ -5,6 +5,7 @@ export interface Doctor {
   id: number;
   name: string;
   specialty: string;
+  poli_id: number | null;
   license_number: string | null;
   email: string;
   phone_number: string;

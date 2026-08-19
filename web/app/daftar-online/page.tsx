@@ -16,6 +16,7 @@ import { Stepper } from "@/components/ui/stepper";
 import { Dialog } from "@/components/ui/dialog";
 import { Card, CardBody } from "@/components/ui/card";
 import { doctorsApi } from "@/services/doctors";
+import { poliApi, type Poli } from "@/services/poli";
 import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
 import { registrationApi } from "@/services/registration";
 
@@ -133,11 +134,11 @@ function Step2DokterJadwal({
   data: FormData;
   errors: FormErrors;
   onChange: (field: keyof FormData, value: string) => void;
-  doctors: { id: number; name: string; specialty: string }[];
+  doctors: { id: number; name: string; specialty: string; poli_id: number | null }[];
   schedules: DoctorSchedule[];
 }) {
   const { t } = useI18n();
-  const dokterList = doctors.filter((d) => d.specialty === data.poli);
+  const dokterList = doctors.filter((d) => d.poli_id === Number(data.poli));
   const jamList = data.dokter && data.tanggal
     ? Array.from(
         new Set(
@@ -271,7 +272,7 @@ function Step4Konfirmasi({
   poliOptions,
 }: {
   data: FormData;
-  doctors: { id: number; name: string; specialty: string }[];
+  doctors: { id: number; name: string; specialty: string; poli_id: number | null }[];
   poliOptions: { value: string; label: string }[];
 }) {
   const { t } = useI18n();
@@ -315,7 +316,7 @@ const INITIAL_FORM: FormData = {
 };
 
 interface SuccessResult {
-  nomor_antrian: string;
+  queue_number: string;
   qr_code?: string;
 }
 
@@ -330,7 +331,8 @@ export default function DaftarOnlinePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<SuccessResult | null>(null);
 
-  const [doctors, setDoctors] = useState<{ id: number; name: string; specialty: string }[]>([]);
+  const [doctors, setDoctors] = useState<{ id: number; name: string; specialty: string; poli_id: number | null }[]>([]);
+  const [polis, setPolis] = useState<Poli[]>([]);
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -339,14 +341,16 @@ export default function DaftarOnlinePage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [doctorList, scheduleList] = await Promise.all([
+      const [doctorList, scheduleList, poliList] = await Promise.all([
         doctorsApi.getAll(),
         schedulesApi.getAll(),
+        poliApi.getAll(),
       ]);
       setDoctors(doctorList.filter((d) => d.status === "active"));
       setSchedules(scheduleList);
+      setPolis(poliList);
     } catch (err: unknown) {
-      setLoadError(err instanceof Error ? err.message : "Gagal memuat data dokter.");
+      setLoadError(err instanceof Error ? err.message : "Gagal memuat data.");
     } finally {
       setLoading(false);
     }
@@ -357,9 +361,7 @@ export default function DaftarOnlinePage() {
     loadData();
   }, [loadData]);
 
-  const poliOptions = Array.from(new Set(doctors.map((d) => d.specialty).filter(Boolean)))
-    .sort()
-    .map((s) => ({ value: s, label: s }));
+  const poliOptions = polis.map((p) => ({ value: String(p.id), label: p.name }));
 
   const stepLabels = [
     t("booking.step1.label"),
@@ -417,7 +419,7 @@ export default function DaftarOnlinePage() {
         payment_type: PAYMENT_LABEL[formData.jenis_pembayaran] ?? "Umum",
       });
       setResult({
-        nomor_antrian: res.queue_number,
+        queue_number: res.queue_number,
         qr_code: res.qr_code,
       });
       showToast(t("booking.success.title"), "success");
@@ -448,7 +450,7 @@ export default function DaftarOnlinePage() {
         <p className="mt-2 text-muted-foreground">{t("booking.success.desc")}</p>
         <div className="mt-4 inline-block px-6 py-3 bg-muted border border-border rounded-md">
           <span className="text-3xl font-semibold text-primary tracking-widest">
-            {result.nomor_antrian}
+            {result.queue_number}
           </span>
         </div>
         <p className="mt-4 text-sm text-muted-foreground">
@@ -478,7 +480,7 @@ export default function DaftarOnlinePage() {
       </h1>
 
       {loading ? (
-        <div className="p-8 text-center text-sm text-muted-foreground">Memuat data dokter...</div>
+        <div className="p-8 text-center text-sm text-muted-foreground">Memuat data...</div>
       ) : loadError ? (
         <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           {loadError}{" "}

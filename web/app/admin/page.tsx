@@ -2,7 +2,7 @@
 
 /**
  * Dashboard Ringkasan Admin — RSU Tangsel Care
- * Koneksi ke GET /api/admin/dashboard/stats dan GET /api/admin/antrian
+ * Koneksi ke GET /api/admin/dashboard/stats dan GET /api/admin/queue
  * Auto-refresh tiap 30 detik.
  */
 
@@ -10,11 +10,11 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   getDashboardStats,
-  getAntrianAdmin,
+  getAdminQueue,
   callPatient,
   skipPatient,
   type DashboardStats,
-  type AntrianItem,
+  type QueueItem,
 } from "@/lib/admin-api";
 import { StatCard } from "@/components/admin/stat-card";
 
@@ -43,9 +43,9 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [antrian, setAntrian] = useState<AntrianItem[]>([]);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
-  const [loadingAntrian, setLoadingAntrian] = useState(true);
+  const [loadingQueue, setLoadingAntrian] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,10 +62,10 @@ export default function AdminDashboardPage() {
     try {
       const [s, a] = await Promise.all([
         getDashboardStats(),
-        getAntrianAdmin(),
+        getAdminQueue(),
       ]);
       setStats(s);
-      setAntrian(a.slice(0, 8));
+      setQueue(a.slice(0, 8));
       setLastUpdated(new Date());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat data.");
@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
     setActionLoading(id);
     try {
       const updated = await callPatient(id);
-      setAntrian((prev) =>
+      setQueue((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: updated.status } : a))
       );
     } catch {
@@ -101,7 +101,7 @@ export default function AdminDashboardPage() {
     setActionLoading(id);
     try {
       const updated = await skipPatient(id);
-      setAntrian((prev) =>
+      setQueue((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: updated.status } : a))
       );
     } catch {
@@ -159,7 +159,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Pasien Hari Ini"
-          value={stats?.pasien_hari_ini ?? "—"}
+          value={stats?.patients_today ?? "—"}
           subtitle="Total kunjungan hari ini"
           icon={<IconUsers />}
           color="green"
@@ -167,7 +167,7 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="Antrian Aktif"
-          value={stats?.total_antrian ?? "—"}
+          value={stats?.total_queue ?? "—"}
           subtitle="Masih menunggu dipanggil"
           icon={<IconQueue />}
           color="blue"
@@ -175,7 +175,7 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="Waktu Tunggu"
-          value={stats ? `${stats.rata_waktu_tunggu} mnt` : "—"}
+          value={stats ? `${stats.avg_wait_time} mnt` : "—"}
           subtitle="Rata-rata per pasien"
           icon={<IconClock />}
           color="amber"
@@ -183,7 +183,7 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="DOKTER AKTIF"
-          value={stats?.dokter_aktif.toString() ?? "—"}
+          value={stats?.active_doctors.toString() ?? "—"}
           subtitle="Total dokter jaga hari ini"
           icon={<IconDoctor />}
           color="slate"
@@ -222,13 +222,13 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
 
-        {loadingAntrian ? (
+        {loadingQueue ? (
           <div className="p-6 space-y-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-12 bg-slate-100 rounded animate-pulse" />
             ))}
           </div>
-        ) : antrian.length === 0 ? (
+        ) : queue.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-sm">
             <p className="text-3xl mb-2">📭</p>
             Belum ada antrian hari ini.
@@ -247,15 +247,15 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {antrian.map((item) => {
+                {queue.map((item) => {
                   const badge = STATUS_BADGE[item.status] ?? { label: item.status, cls: "bg-slate-100 text-slate-600" };
                   const isLoading = actionLoading === item.id;
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-6 py-3.5 font-bold text-emerald-700">{item.nomor}</td>
-                      <td className="px-6 py-3.5 font-medium text-slate-800">{item.nama}</td>
+                      <td className="px-6 py-3.5 font-bold text-emerald-700">{item.number}</td>
+                      <td className="px-6 py-3.5 font-medium text-slate-800">{item.patient_name}</td>
                       <td className="px-6 py-3.5 text-slate-600 hidden md:table-cell">{item.poli}</td>
-                      <td className="px-6 py-3.5 text-slate-500 text-xs hidden lg:table-cell">{item.dokter}</td>
+                      <td className="px-6 py-3.5 text-slate-500 text-xs hidden lg:table-cell">{item.doctor_name}</td>
                       <td className="px-6 py-3.5">
                         <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${badge.cls}`}>
                           {badge.label}

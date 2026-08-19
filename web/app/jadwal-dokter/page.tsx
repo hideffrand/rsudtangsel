@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { doctorsApi } from "@/services/doctors";
+import { poliApi, type Poli } from "@/services/poli";
 import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
 
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -30,7 +31,8 @@ function formatTime(t: string) {
 export default function JadwalDokterPage() {
   const [search, setSearch] = useState("");
   const [selectedPoli, setSelectedPoli] = useState("semua");
-  const [doctors, setDoctors] = useState<{ id: number; name: string; specialty: string }[]>([]);
+  const [doctors, setDoctors] = useState<{ id: number; name: string; specialty: string; poli_id: number | null }[]>([]);
+  const [polis, setPolis] = useState<Poli[]>([]);
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,12 +41,14 @@ export default function JadwalDokterPage() {
     setLoading(true);
     setError(null);
     try {
-      const [doctorList, scheduleList] = await Promise.all([
+      const [doctorList, scheduleList, poliList] = await Promise.all([
         doctorsApi.getAll(),
         schedulesApi.getAll(),
+        poliApi.getAll(),
       ]);
       setDoctors(doctorList.filter((d) => d.status === "active"));
       setSchedules(scheduleList);
+      setPolis(poliList);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat jadwal dokter.");
     } finally {
@@ -59,9 +63,7 @@ export default function JadwalDokterPage() {
 
   const poliOptions = [
     { value: "semua", label: "Semua Poli" },
-    ...Array.from(new Set(doctors.map((d) => d.specialty).filter(Boolean)))
-      .sort()
-      .map((s) => ({ value: s, label: s })),
+    ...polis.map((p) => ({ value: String(p.id), label: p.name })),
   ];
 
   const rows = doctors.map((d) => {
@@ -72,12 +74,12 @@ export default function JadwalDokterPage() {
     const hours = docSchedules
       .map((s) => `${formatTime(s.start_time)}${s.end_time ? ` – ${formatTime(s.end_time)}` : ""}`)
       .join(", ");
-    return { id: d.id, name: d.name, poli: d.specialty, days, hours };
+    return { id: d.id, name: d.name, poli: d.specialty, poliId: d.poli_id, days, hours };
   });
 
   const filteredDoctors = rows.filter((d) => {
     const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) || d.poli.toLowerCase().includes(search.toLowerCase());
-    const matchPoli = selectedPoli === "semua" || d.poli.toLowerCase() === selectedPoli.toLowerCase();
+    const matchPoli = selectedPoli === "semua" || (d.poliId != null && String(d.poliId) === selectedPoli);
     return matchSearch && matchPoli;
   });
 

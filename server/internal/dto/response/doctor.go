@@ -5,6 +5,7 @@ type DoctorResponse struct {
 	ID            int     `json:"id"`
 	Name          string  `json:"name"`
 	Specialty     string  `json:"specialty"`
+	PoliID        *int    `json:"poli_id"`
 	LicenseNumber *string `json:"license_number"`
 	Email         string  `json:"email"`
 	PhoneNumber   string  `json:"phone_number"`

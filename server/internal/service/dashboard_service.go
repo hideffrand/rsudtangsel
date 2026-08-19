@@ -49,11 +49,11 @@ func (s *DashboardService) GetStats() (*response.DashboardStatsResponse, error) 
 	newComplaints := 12
 
 	return &response.DashboardStatsResponse{
-		PasienHariIni:   patientCount,
-		RataWaktuTunggu: roundFloat(avgWaitingTime, 1),
+		PatientsToday:   patientCount,
+		AverageWaitTime: roundFloat(avgWaitingTime, 1),
 		BOR:             bor,
-		KeluhanBaru:     newComplaints,
-		TotalAntrian:    totalWaiting,
+		NewComplaints:   newComplaints,
+		TotalQueue:      totalWaiting,
 		UpdateTime:      time.Now().UTC().Format("15:04:05"),
 	}, nil
 }

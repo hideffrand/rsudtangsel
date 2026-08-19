@@ -34,16 +34,16 @@ func (r *AppointmentRepository) Create(a *model.Appointment) error {
 	return nil
 }
 
-// AntrianEntry is a joined row returned by the public queue endpoint.
-type AntrianEntry struct {
+// QueueEntry is a joined row returned by the public queue endpoint.
+type QueueEntry struct {
 	QueueNumber string `db:"queue_number"`
 	PatientName string `db:"patient_name"`
 	Status      string `db:"status"`
 }
 
 // FindByDepartmentAndDate retrieves the appointment queue filtered by specialty and date.
-func (r *AppointmentRepository) FindByDepartmentAndDate(specialty, scheduleDate string) ([]AntrianEntry, error) {
-	var list []AntrianEntry
+func (r *AppointmentRepository) FindByDepartmentAndDate(specialty, scheduleDate string) ([]QueueEntry, error) {
+	var list []QueueEntry
 	query := `SELECT a.queue_number, p.name AS patient_name, a.status
 	           FROM appointments a
 	           JOIN doctors d ON d.id = a.doctor_id
@@ -120,7 +120,7 @@ type AdminAppointmentItem struct {
 }
 
 // FindAllByDateWithPatient retrieves all appointments for a given date with patient and doctor details.
-func (r *AppointmentRepository) FindAllByDateWithPatient(date string) ([]response.AdminAntrianItem, error) {
+func (r *AppointmentRepository) FindAllByDateWithPatient(date string) ([]response.AdminQueueItem, error) {
 	var rows []AdminAppointmentItem
 	query := `SELECT a.id, a.queue_number, p.name AS patient_name, d.name AS doctor_name,
 	                 d.specialty, a.status,
@@ -134,23 +134,23 @@ func (r *AppointmentRepository) FindAllByDateWithPatient(date string) ([]respons
 	if err != nil {
 		return nil, fmt.Errorf("find all appointments with patient: %w", err)
 	}
-	items := make([]response.AdminAntrianItem, len(rows))
+	items := make([]response.AdminQueueItem, len(rows))
 	for i, row := range rows {
-		items[i] = response.AdminAntrianItem{
-			ID:        row.ID,
-			Nomor:     row.QueueNumber,
-			Nama:      row.PatientName,
-			Poli:      row.Specialty,
-			Dokter:    row.DoctorName,
-			Status:    capitalizeFirst(row.Status),
-			CreatedAt: row.CreatedAt,
+		items[i] = response.AdminQueueItem{
+			ID:          row.ID,
+			Number:      row.QueueNumber,
+			PatientName: row.PatientName,
+			Poli:        row.Specialty,
+			DoctorName:  row.DoctorName,
+			Status:      capitalizeFirst(row.Status),
+			CreatedAt:   row.CreatedAt,
 		}
 	}
 	return items, nil
 }
 
 // FindByDepartmentAndDateWithPatient retrieves appointments for a specific specialty and date, with patient details.
-func (r *AppointmentRepository) FindByDepartmentAndDateWithPatient(specialty, date string) ([]response.AdminAntrianItem, error) {
+func (r *AppointmentRepository) FindByDepartmentAndDateWithPatient(specialty, date string) ([]response.AdminQueueItem, error) {
 	var rows []AdminAppointmentItem
 	query := `SELECT a.id, a.queue_number, p.name AS patient_name, d.name AS doctor_name,
 	                 d.specialty, a.status,
@@ -164,23 +164,23 @@ func (r *AppointmentRepository) FindByDepartmentAndDateWithPatient(specialty, da
 	if err != nil {
 		return nil, fmt.Errorf("find appointments by department with patient: %w", err)
 	}
-	items := make([]response.AdminAntrianItem, len(rows))
+	items := make([]response.AdminQueueItem, len(rows))
 	for i, row := range rows {
-		items[i] = response.AdminAntrianItem{
-			ID:        row.ID,
-			Nomor:     row.QueueNumber,
-			Nama:      row.PatientName,
-			Poli:      row.Specialty,
-			Dokter:    row.DoctorName,
-			Status:    capitalizeFirst(row.Status),
-			CreatedAt: row.CreatedAt,
+		items[i] = response.AdminQueueItem{
+			ID:          row.ID,
+			Number:      row.QueueNumber,
+			PatientName: row.PatientName,
+			Poli:        row.Specialty,
+			DoctorName:  row.DoctorName,
+			Status:      capitalizeFirst(row.Status),
+			CreatedAt:   row.CreatedAt,
 		}
 	}
 	return items, nil
 }
 
 // UpdateAppointmentStatus updates the status of an appointment and returns the updated record.
-func (r *AppointmentRepository) UpdateAppointmentStatus(id int, status string) (*response.CallAntrianResponse, error) {
+func (r *AppointmentRepository) UpdateAppointmentStatus(id int, status string) (*response.CallQueueResponse, error) {
 	var partial struct {
 		ID          int    `db:"id"`
 		QueueNumber string `db:"queue_number"`
@@ -206,13 +206,13 @@ func (r *AppointmentRepository) UpdateAppointmentStatus(id int, status string) (
 	               WHERE a.id = $1`
 	_ = r.db.QueryRow(nameQuery, id).Scan(&patientName, &specialty, &doctorName)
 
-	return &response.CallAntrianResponse{
-		ID:       partial.ID,
-		Nomor:    partial.QueueNumber,
-		Nama:     patientName,
-		Poli:     specialty,
-		Status:   capitalizeFirst(partial.Status),
-		CalledAt: time.Now().UTC().Format("15:04:05"),
+	return &response.CallQueueResponse{
+		ID:          partial.ID,
+		Number:      partial.QueueNumber,
+		PatientName: patientName,
+		Poli:        specialty,
+		Status:      capitalizeFirst(partial.Status),
+		CalledAt:    time.Now().UTC().Format("15:04:05"),
 	}, nil
 }
 
