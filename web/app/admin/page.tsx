@@ -183,7 +183,7 @@ export default function AdminDashboardPage() {
           { href: "/admin/antrian", label: "Kelola Antrian", emoji: "📋" },
           { href: "/admin/mcu", label: "MCU Booking", emoji: "🏥" },
           { href: "/admin/jadwal-dokter", label: "Jadwal Dokter", emoji: "📅" },
-          { href: "/admin/hris", label: "HRIS Absensi", emoji: "👥" },
+          { href: "/admin/layanan-kesehatan", label: "Layanan Kesehatan", emoji: "🧪" },
         ].map((item) => (
           <Link
             key={item.href}

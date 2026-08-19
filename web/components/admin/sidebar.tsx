@@ -3,15 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { logoutAdmin, getUser } from "@/lib/admin-api";
+import { useAdminAuth } from "@/lib/admin-auth-context";
 import {
   LayoutDashboard,
   ListOrdered,
   Stethoscope,
   CalendarDays,
-  ScanLine,
+  HeartPulse,
   MessageSquare,
-  Fingerprint,
   Users,
   ShieldCheck,
   LogOut,
@@ -33,9 +32,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/antrian", label: "Manajemen Antrian", icon: <ListOrdered size={18} /> },
   { href: "/admin/mcu", label: "MCU Booking", icon: <Stethoscope size={18} /> },
   { href: "/admin/jadwal-dokter", label: "Jadwal Dokter", icon: <CalendarDays size={18} /> },
-  { href: "/admin/ocr", label: "OCR Review", icon: <ScanLine size={18} /> },
+  { href: "/admin/layanan-kesehatan", label: "Layanan Kesehatan", icon: <HeartPulse size={18} /> },
   { href: "/admin/chatbot", label: "Chatbot Internal", icon: <MessageSquare size={18} /> },
-  { href: "/admin/hris", label: "HRIS Absensi", icon: <Fingerprint size={18} /> },
   { href: "/admin/users", label: "Manajemen User", icon: <Users size={18} /> },
   { href: "/admin/audit-log", label: "Audit Log", icon: <ShieldCheck size={18} /> },
 ];
@@ -43,7 +41,7 @@ const NAV_ITEMS: NavItem[] = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const user = getUser();
+  const { user, logout } = useAdminAuth();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -64,7 +62,7 @@ export function AdminSidebar() {
   };
 
   const handleLogout = async () => {
-    await logoutAdmin();
+    await logout();
     router.push("/admin/login");
   };
 
