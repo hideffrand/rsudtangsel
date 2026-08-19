@@ -6,7 +6,7 @@
  * Design.md §6.2
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n-context";
 import { useToast } from "@/components/ui/toast";
@@ -15,54 +15,37 @@ import { Input, Select, Textarea } from "@/components/ui/input";
 import { Stepper } from "@/components/ui/stepper";
 import { Dialog } from "@/components/ui/dialog";
 import { Card, CardBody } from "@/components/ui/card";
+import { doctorsApi } from "@/services/doctors";
+import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
+import { registrationApi } from "@/services/registration";
 
-// ─── Mock data (nanti ganti fetch dari backend) ───────────────────────────────
+// ─── Hari ─────────────────────────────────────────────────────────────────────
 
-const POLI_LIST = [
-  { value: "umum", label: "Poli Umum" },
-  { value: "gigi", label: "Poli Gigi & Mulut" },
-  { value: "anak", label: "Poli Anak" },
-  { value: "kandungan", label: "Poli Kandungan & Kebidanan" },
-  { value: "penyakit-dalam", label: "Poli Penyakit Dalam" },
-  { value: "mata", label: "Poli Mata" },
-  { value: "jantung", label: "Poli Jantung" },
-  { value: "orthopedi", label: "Poli Orthopedi" },
-];
-
-const DOKTER_BY_POLI: Record<string, { value: string; label: string; jadwal: string[] }[]> = {
-  umum: [
-    { value: "dr-andi", label: "dr. Andi Saputra, Sp.U", jadwal: ["08:00", "09:00", "10:00", "11:00"] },
-    { value: "dr-sari", label: "dr. Sari Dewi", jadwal: ["13:00", "14:00", "15:00"] },
-  ],
-  gigi: [
-    { value: "drg-budi", label: "drg. Budi Santoso", jadwal: ["08:00", "09:00", "10:00"] },
-    { value: "drg-lisa", label: "drg. Lisa Permata, Sp.KG", jadwal: ["13:00", "14:00"] },
-  ],
-  anak: [
-    { value: "dr-mega", label: "dr. Mega Andini, Sp.A", jadwal: ["08:00", "09:00", "10:00", "11:00"] },
-  ],
-  kandungan: [
-    { value: "dr-ratna", label: "dr. Ratna Kusuma, Sp.OG", jadwal: ["08:00", "09:00", "10:00"] },
-  ],
-  "penyakit-dalam": [
-    { value: "dr-hendra", label: "dr. Hendra Wijaya, Sp.PD", jadwal: ["09:00", "10:00", "11:00"] },
-  ],
-  mata: [
-    { value: "dr-indah", label: "dr. Indah Fitriani, Sp.M", jadwal: ["08:00", "09:00"] },
-  ],
-  jantung: [
-    { value: "dr-bagas", label: "dr. Bagas Pratama, Sp.JP", jadwal: ["10:00", "11:00", "13:00"] },
-  ],
-  orthopedi: [
-    { value: "dr-tono", label: "dr. Sutono Raharjo, Sp.OT", jadwal: ["08:00", "09:00", "10:00"] },
-  ],
+const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const PAYMENT_LABEL: Record<string, string> = {
+  bpjs: "BPJS",
+  umum: "Umum / Mandiri",
+  asuransi: "Asuransi Swasta",
 };
 
-const PEMBAYARAN = [
-  { value: "bpjs", label: "BPJS" },
-  { value: "umum", label: "Umum / Mandiri" },
-  { value: "asuransi", label: "Asuransi Swasta" },
-];
+function weekdayOf(dateStr: string): string {
+  return WEEKDAY_NAMES[new Date(`${dateStr}T00:00:00`).getDay()];
+}
+
+/** Generate slot jam dari jadwal dokter (start → end, per jam). */
+function scheduleSlots(schedule: DoctorSchedule): string[] {
+  const start = schedule.start_time.slice(0, 5);
+  if (!schedule.end_time) return [start];
+  const slots: string[] = [];
+  let h = Number(start.split(":")[0]);
+  const m = Number(start.split(":")[1]);
+  const [eh, em] = schedule.end_time.slice(0, 5).split(":").map(Number);
+  while (h * 60 + m < eh * 60 + em) {
+    slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    h += 1;
+  }
+  return slots.length > 0 ? slots : [start];
+}
 
 // ─── Tipe form data ───────────────────────────────────────────────────────────
 
@@ -116,10 +99,12 @@ function Step1Poli({
   data,
   errors,
   onChange,
+  poliOptions,
 }: {
   data: FormData;
   errors: FormErrors;
   onChange: (field: keyof FormData, value: string) => void;
+  poliOptions: { value: string; label: string }[];
 }) {
   const { t } = useI18n();
   return (
@@ -129,7 +114,7 @@ function Step1Poli({
         label={t("booking.field.poli")}
         required
         placeholder="— Pilih Poli —"
-        options={POLI_LIST}
+        options={poliOptions}
         value={data.poli}
         onChange={(e) => onChange("poli", e.target.value)}
         error={errors.poli}
@@ -142,16 +127,25 @@ function Step2DokterJadwal({
   data,
   errors,
   onChange,
+  doctors,
+  schedules,
 }: {
   data: FormData;
   errors: FormErrors;
   onChange: (field: keyof FormData, value: string) => void;
+  doctors: { id: number; name: string; specialty: string }[];
+  schedules: DoctorSchedule[];
 }) {
   const { t } = useI18n();
-  const dokterList = DOKTER_BY_POLI[data.poli] ?? [];
-  const selectedDokter = dokterList.find((d) => d.value === data.dokter);
-  const jadwalList = selectedDokter
-    ? selectedDokter.jadwal.map((j) => ({ value: j, label: j }))
+  const dokterList = doctors.filter((d) => d.specialty === data.poli);
+  const jamList = data.dokter && data.tanggal
+    ? Array.from(
+        new Set(
+          schedules
+            .filter((s) => s.doctor_id === Number(data.dokter) && s.day_of_week === weekdayOf(data.tanggal))
+            .flatMap((s) => scheduleSlots(s)),
+        ),
+      )
     : [];
 
   return (
@@ -161,7 +155,7 @@ function Step2DokterJadwal({
         label={t("booking.field.dokter")}
         required
         placeholder="— Pilih Dokter —"
-        options={dokterList.map((d) => ({ value: d.value, label: d.label }))}
+        options={dokterList.map((d) => ({ value: String(d.id), label: d.name }))}
         value={data.dokter}
         onChange={(e) => {
           onChange("dokter", e.target.value);
@@ -175,7 +169,10 @@ function Step2DokterJadwal({
         type="date"
         required
         value={data.tanggal}
-        onChange={(e) => onChange("tanggal", e.target.value)}
+        onChange={(e) => {
+          onChange("tanggal", e.target.value);
+          onChange("jam", ""); // reset jam saat ganti tanggal
+        }}
         error={errors.tanggal}
         min={new Date().toISOString().split("T")[0]}
       />
@@ -184,7 +181,7 @@ function Step2DokterJadwal({
         label={t("booking.field.jam")}
         required
         placeholder={data.dokter ? "— Pilih Waktu —" : "Pilih dokter dulu"}
-        options={jadwalList}
+        options={jamList.map((j) => ({ value: j, label: j }))}
         value={data.jam}
         onChange={(e) => onChange("jam", e.target.value)}
         error={errors.jam}
@@ -259,7 +256,7 @@ function Step3DataDiri({
         label={t("booking.field.pembayaran")}
         required
         placeholder="— Pilih Jenis Pembayaran —"
-        options={PEMBAYARAN}
+        options={Object.entries(PAYMENT_LABEL).map(([value, label]) => ({ value, label }))}
         value={data.jenis_pembayaran}
         onChange={(e) => onChange("jenis_pembayaran", e.target.value)}
         error={errors.jenis_pembayaran}
@@ -268,12 +265,19 @@ function Step3DataDiri({
   );
 }
 
-function Step4Konfirmasi({ data }: { data: FormData }) {
+function Step4Konfirmasi({
+  data,
+  doctors,
+  poliOptions,
+}: {
+  data: FormData;
+  doctors: { id: number; name: string; specialty: string }[];
+  poliOptions: { value: string; label: string }[];
+}) {
   const { t } = useI18n();
-  const dokterList = DOKTER_BY_POLI[data.poli] ?? [];
-  const dokterLabel = dokterList.find((d) => d.value === data.dokter)?.label ?? data.dokter;
-  const poliLabel = POLI_LIST.find((p) => p.value === data.poli)?.label ?? data.poli;
-  const pembayaranLabel = PEMBAYARAN.find((p) => p.value === data.jenis_pembayaran)?.label ?? data.jenis_pembayaran;
+  const dokterLabel = doctors.find((d) => d.id === Number(data.dokter))?.name ?? data.dokter;
+  const poliLabel = poliOptions.find((p) => p.value === data.poli)?.label ?? data.poli;
+  const pembayaranLabel = PAYMENT_LABEL[data.jenis_pembayaran] ?? data.jenis_pembayaran;
 
   const rows = [
     { label: t("booking.field.poli"), value: poliLabel },
@@ -326,6 +330,37 @@ export default function DaftarOnlinePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<SuccessResult | null>(null);
 
+  const [doctors, setDoctors] = useState<{ id: number; name: string; specialty: string }[]>([]);
+  const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const [doctorList, scheduleList] = await Promise.all([
+        doctorsApi.getAll(),
+        schedulesApi.getAll(),
+      ]);
+      setDoctors(doctorList.filter((d) => d.status === "active"));
+      setSchedules(scheduleList);
+    } catch (err: unknown) {
+      setLoadError(err instanceof Error ? err.message : "Gagal memuat data dokter.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, [loadData]);
+
+  const poliOptions = Array.from(new Set(doctors.map((d) => d.specialty).filter(Boolean)))
+    .sort()
+    .map((s) => ({ value: s, label: s }));
+
   const stepLabels = [
     t("booking.step1.label"),
     t("booking.step2.label"),
@@ -370,40 +405,25 @@ export default function DaftarOnlinePage() {
     setShowConfirm(false);
     setIsSubmitting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-      const res = await fetch(`${apiUrl}/api/daftar-online`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nik: formData.nik,
-          nama: formData.nama,
-          tanggal_lahir: formData.tanggal_lahir,
-          no_hp: formData.no_hp,
-          alamat: formData.alamat,
-          poli: formData.poli,
-          dokter: DOKTER_BY_POLI[formData.poli]?.find((d) => d.value === formData.dokter)?.label ?? formData.dokter,
-          tanggal: formData.tanggal,
-          jam: formData.jam,
-          jenis_pembayaran: formData.jenis_pembayaran,
-        }),
+      const res = await registrationApi.register({
+        nik: formData.nik,
+        name: formData.nama,
+        birth_date: formData.tanggal_lahir || undefined,
+        address: formData.alamat || undefined,
+        phone_number: formData.no_hp,
+        doctor_id: Number(formData.dokter),
+        schedule_date: formData.tanggal,
+        time: formData.jam || undefined,
+        payment_type: PAYMENT_LABEL[formData.jenis_pembayaran] ?? "Umum",
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? t("error.generic"));
-      }
-
-      const json = await res.json();
       setResult({
-        nomor_antrian: json.data?.nomor_antrian ?? "A-001",
-        qr_code: json.data?.qr_code,
+        nomor_antrian: res.queue_number,
+        qr_code: res.qr_code,
       });
       showToast(t("booking.success.title"), "success");
     } catch (err) {
-      // Saat backend belum siap, tampilkan mock result
-      console.warn("API belum tersedia, pakai mock result:", err);
-      setResult({ nomor_antrian: "A-" + Math.floor(Math.random() * 99 + 1).toString().padStart(3, "0") });
-      showToast("Pendaftaran berhasil (mode demo)", "success");
+      const message = err instanceof Error ? err.message : t("error.generic");
+      showToast(message, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -457,60 +477,73 @@ export default function DaftarOnlinePage() {
         {t("booking.title")}
       </h1>
 
-      {/* Stepper */}
-      <Stepper steps={stepLabels} currentStep={currentStep} />
+      {loading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Memuat data dokter...</div>
+      ) : loadError ? (
+        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {loadError}{" "}
+          <button onClick={loadData} className="underline font-semibold ml-1">Coba lagi</button>
+        </div>
+      ) : poliOptions.length === 0 ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Belum ada poli yang tersedia.</div>
+      ) : (
+      <>
+        {/* Stepper */}
+        <Stepper steps={stepLabels} currentStep={currentStep} />
 
-      {/* Step content */}
-      <Card className="mt-8 shadow-sm border-border">
-        <CardBody className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">
-            {stepTitles[currentStep]}
-          </h2>
+        {/* Step content */}
+        <Card className="mt-8 shadow-sm border-border">
+          <CardBody className="space-y-4">
+            <h2 className="text-xl font-semibold text-foreground">
+              {stepTitles[currentStep]}
+            </h2>
 
-          <div className="pt-2">
-            {currentStep === 0 && <Step1Poli data={formData} errors={errors} onChange={handleChange} />}
-            {currentStep === 1 && <Step2DokterJadwal data={formData} errors={errors} onChange={handleChange} />}
-            {currentStep === 2 && <Step3DataDiri data={formData} errors={errors} onChange={handleChange} />}
-            {currentStep === 3 && <Step4Konfirmasi data={formData} />}
-          </div>
-        </CardBody>
-      </Card>
+            <div className="pt-2">
+              {currentStep === 0 && <Step1Poli data={formData} errors={errors} onChange={handleChange} poliOptions={poliOptions} />}
+              {currentStep === 1 && <Step2DokterJadwal data={formData} errors={errors} onChange={handleChange} doctors={doctors} schedules={schedules} />}
+              {currentStep === 2 && <Step3DataDiri data={formData} errors={errors} onChange={handleChange} />}
+              {currentStep === 3 && <Step4Konfirmasi data={formData} doctors={doctors} poliOptions={poliOptions} />}
+            </div>
+          </CardBody>
+        </Card>
 
-      {/* Sticky nav buttons — Design.md §6.2 */}
-      <div className="
-        sticky bottom-0 mt-6 py-4
-        flex flex-col-reverse sm:flex-row gap-3
-        bg-background/95 backdrop-blur-xs border-t border-border
-        -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 shadow-xs
-      ">
-        {currentStep > 0 && (
-          <Button variant="ghost" size="lg" className="w-full sm:w-auto" onClick={handleBack}>
-            {t("booking.btn_back")}
+        {/* Sticky nav buttons — Design.md §6.2 */}
+        <div className="
+          sticky bottom-0 mt-6 py-4
+          flex flex-col-reverse sm:flex-row gap-3
+          bg-background/95 backdrop-blur-xs border-t border-border
+          -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 shadow-xs
+        ">
+          {currentStep > 0 && (
+            <Button variant="ghost" size="lg" className="w-full sm:w-auto" onClick={handleBack}>
+              {t("booking.btn_back")}
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full sm:w-auto sm:ml-auto"
+            onClick={handleNext}
+            isLoading={isSubmitting}
+            id={currentStep === 3 ? "btn-submit-booking" : `btn-next-step-${currentStep + 1}`}
+          >
+            {currentStep === 3 ? t("booking.btn_submit") : t("booking.btn_next")}
           </Button>
-        )}
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full sm:w-auto sm:ml-auto"
-          onClick={handleNext}
-          isLoading={isSubmitting}
-          id={currentStep === 3 ? "btn-submit-booking" : `btn-next-step-${currentStep + 1}`}
-        >
-          {currentStep === 3 ? t("booking.btn_submit") : t("booking.btn_next")}
-        </Button>
-      </div>
+        </div>
 
-      {/* Confirm dialog */}
-      <Dialog
-        isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
-        title={t("booking.confirm_title")}
-        confirmLabel={t("booking.confirm_yes")}
-        cancelLabel={t("booking.confirm_cancel")}
-        onConfirm={handleSubmit}
-      >
-        <p>{t("booking.confirm_desc")}</p>
-      </Dialog>
+        {/* Confirm dialog */}
+        <Dialog
+          isOpen={showConfirm}
+          onClose={() => setShowConfirm(false)}
+          title={t("booking.confirm_title")}
+          confirmLabel={t("booking.confirm_yes")}
+          cancelLabel={t("booking.confirm_cancel")}
+          onConfirm={handleSubmit}
+        >
+          <p>{t("booking.confirm_desc")}</p>
+        </Dialog>
+      </>
+      )}
     </div>
   );
 }

@@ -4,40 +4,80 @@
  * Jadwal Dokter — RSU Tangsel Care
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useI18n } from "@/lib/i18n-context";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
+import { doctorsApi } from "@/services/doctors";
+import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
 
-const POLI_OPTIONS = [
-  { value: "semua", label: "Semua Poli" },
-  { value: "umum", label: "Poli Umum" },
-  { value: "gigi", label: "Poli Gigi & Mulut" },
-  { value: "anak", label: "Poli Anak" },
-  { value: "kandungan", label: "Poli Kandungan & Kebidanan" },
-  { value: "penyakit-dalam", label: "Poli Penyakit Dalam" },
-  { value: "jantung", label: "Poli Jantung" },
-];
+const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_LABEL: Record<string, string> = {
+  Monday: "Senin",
+  Tuesday: "Selasa",
+  Wednesday: "Rabu",
+  Thursday: "Kamis",
+  Friday: "Jumat",
+  Saturday: "Sabtu",
+  Sunday: "Minggu",
+};
 
-const DOCTORS = [
-  { id: 1, name: "dr. Andi Saputra, Sp.U", poli: "Poli Umum", days: "Senin – Jumat", hours: "08:00 – 12:00 WIB" },
-  { id: 2, name: "dr. Sari Dewi, Sp.PD", poli: "Poli Penyakit Dalam", days: "Senin, Rabu, Jumat", hours: "13:00 – 16:00 WIB" },
-  { id: 3, name: "drg. Budi Santoso", poli: "Poli Gigi & Mulut", days: "Selasa & Kamis", hours: "09:00 – 14:00 WIB" },
-  { id: 4, name: "dr. Mega Andini, Sp.A", poli: "Poli Anak", days: "Senin – Sabtu", hours: "08:00 – 11:00 WIB" },
-  { id: 5, name: "dr. Ratna Kusuma, Sp.OG", poli: "Poli Kandungan", days: "Rabu & Sabtu", hours: "10:00 – 15:00 WIB" },
-  { id: 6, name: "dr. Bagas Pratama, Sp.JP", poli: "Poli Jantung", days: "Selasa, Kamis, Sabtu", hours: "08:00 – 12:00 WIB" },
-];
+function formatTime(t: string) {
+  return t.slice(0, 5);
+}
 
 export default function JadwalDokterPage() {
-  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [selectedPoli, setSelectedPoli] = useState("semua");
+  const [doctors, setDoctors] = useState<{ id: number; name: string; specialty: string }[]>([]);
+  const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredDoctors = DOCTORS.filter((d) => {
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [doctorList, scheduleList] = await Promise.all([
+        doctorsApi.getAll(),
+        schedulesApi.getAll(),
+      ]);
+      setDoctors(doctorList.filter((d) => d.status === "active"));
+      setSchedules(scheduleList);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memuat jadwal dokter.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, [loadData]);
+
+  const poliOptions = [
+    { value: "semua", label: "Semua Poli" },
+    ...Array.from(new Set(doctors.map((d) => d.specialty).filter(Boolean)))
+      .sort()
+      .map((s) => ({ value: s, label: s })),
+  ];
+
+  const rows = doctors.map((d) => {
+    const docSchedules = schedules
+      .filter((s) => s.doctor_id === d.id)
+      .sort((a, b) => DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week));
+    const days = docSchedules.map((s) => DAY_LABEL[s.day_of_week] ?? s.day_of_week).join(", ");
+    const hours = docSchedules
+      .map((s) => `${formatTime(s.start_time)}${s.end_time ? ` – ${formatTime(s.end_time)}` : ""}`)
+      .join(", ");
+    return { id: d.id, name: d.name, poli: d.specialty, days, hours };
+  });
+
+  const filteredDoctors = rows.filter((d) => {
     const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) || d.poli.toLowerCase().includes(search.toLowerCase());
-    const matchPoli = selectedPoli === "semua" || d.poli.toLowerCase().includes(selectedPoli);
+    const matchPoli = selectedPoli === "semua" || d.poli.toLowerCase() === selectedPoli.toLowerCase();
     return matchSearch && matchPoli;
   });
 
@@ -70,7 +110,7 @@ export default function JadwalDokterPage() {
           <Select
             id="doctor-poli-filter"
             label="Filter Poli"
-            options={POLI_OPTIONS}
+            options={poliOptions}
             value={selectedPoli}
             onChange={(e) => setSelectedPoli(e.target.value)}
           />
@@ -78,13 +118,23 @@ export default function JadwalDokterPage() {
       </div>
 
       {/* Grid Dokter */}
+      {loading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Memuat jadwal dokter...</div>
+      ) : error ? (
+        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {error}{" "}
+          <button onClick={loadData} className="underline font-semibold ml-1">Coba lagi</button>
+        </div>
+      ) : filteredDoctors.length === 0 ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Tidak ada dokter yang cocok.</div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredDoctors.map((doc) => (
           <Card key={doc.id} className="hover:border-primary/40 hover:shadow-sm transition-all">
             <CardBody className="space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg border border-primary/20 shrink-0">
-                  {doc.name.charAt(4) || "D"}
+                  {doc.name.trim().charAt(0)?.toUpperCase() || "D"}
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground text-base leading-snug">{doc.name}</h3>
@@ -97,11 +147,11 @@ export default function JadwalDokterPage() {
               <div className="pt-2 border-t border-border/60 text-xs space-y-1.5 text-muted-foreground">
                 <div className="flex justify-between">
                   <span>Hari Praktek:</span>
-                  <span className="font-semibold text-foreground">{doc.days}</span>
+                  <span className="font-semibold text-foreground">{doc.days || "—"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Jam Praktek:</span>
-                  <span className="font-semibold text-foreground">{doc.hours}</span>
+                  <span className="font-semibold text-foreground">{doc.hours || "—"}</span>
                 </div>
               </div>
 
@@ -117,6 +167,7 @@ export default function JadwalDokterPage() {
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 }
