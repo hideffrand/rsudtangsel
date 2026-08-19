@@ -2,6 +2,14 @@
 
 /**
  * Jadwal Dokter — RSU Tangsel Care
+ *
+ * Perubahan: kartu tiap dokter tadinya menampilkan "Hari Praktek" dan
+ * "Jam Praktek" sebagai dua baris teks yang di-join koma, misalnya
+ * "Senin, Rabu, Jumat" dan "08:00 – Selesai, 08:00 – Selesai, 08:00 – Selesai".
+ * Susah dibaca karena orang harus mencocokkan index hari ke-n dengan jam ke-n
+ * secara manual. Sekarang tiap kartu punya mini-tabel Hari | Jam, satu baris
+ * per hari (Senin–Sabtu), dan hari tanpa jadwal tetap ditampilkan sebagai "-"
+ * supaya polanya kelihatan langsung, bukan hilang.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -13,7 +21,11 @@ import { doctorsApi } from "@/services/doctors";
 import { poliApi, type Poli } from "@/services/poli";
 import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
 
+// Hari operasional RS: Senin–Sabtu. "Sunday" sengaja tidak ditampilkan di
+// mini-tabel meskipun tetap ada di DAY_ORDER untuk keperluan sorting, karena
+// data lama tidak pernah punya jadwal hari Minggu.
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DISPLAY_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_LABEL: Record<string, string> = {
   Monday: "Senin",
   Tuesday: "Selasa",
@@ -26,6 +38,11 @@ const DAY_LABEL: Record<string, string> = {
 
 function formatTime(t: string) {
   return t.slice(0, 5);
+}
+
+function formatSlot(s: DoctorSchedule | undefined): string {
+  if (!s) return "-";
+  return `${formatTime(s.start_time)}${s.end_time ? ` – ${formatTime(s.end_time)}` : " – Selesai"}`;
 }
 
 export default function JadwalDokterPage() {
@@ -70,11 +87,9 @@ export default function JadwalDokterPage() {
     const docSchedules = schedules
       .filter((s) => s.doctor_id === d.id)
       .sort((a, b) => DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week));
-    const days = docSchedules.map((s) => DAY_LABEL[s.day_of_week] ?? s.day_of_week).join(", ");
-    const hours = docSchedules
-      .map((s) => `${formatTime(s.start_time)}${s.end_time ? ` – ${formatTime(s.end_time)}` : ""}`)
-      .join(", ");
-    return { id: d.id, name: d.name, poli: d.specialty, poliId: d.poli_id, days, hours };
+    const scheduleByDay: Partial<Record<string, DoctorSchedule>> = {};
+    for (const s of docSchedules) scheduleByDay[s.day_of_week] = s;
+    return { id: d.id, name: d.name, poli: d.specialty, poliId: d.poli_id, scheduleByDay };
   });
 
   const filteredDoctors = rows.filter((d) => {
@@ -146,16 +161,27 @@ export default function JadwalDokterPage() {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-border/60 text-xs space-y-1.5 text-muted-foreground">
-                <div className="flex justify-between">
-                  <span>Hari Praktek:</span>
-                  <span className="font-semibold text-foreground">{doc.days || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Jam Praktek:</span>
-                  <span className="font-semibold text-foreground">{doc.hours || "—"}</span>
-                </div>
-              </div>
+              <table className="w-full pt-2 border-t border-border/60 text-xs">
+                <thead>
+                  <tr className="text-muted-foreground">
+                    <th className="text-left font-medium py-1 pr-2 w-16">Hari</th>
+                    <th className="text-left font-medium py-1">Jam</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {DISPLAY_DAYS.map((day) => {
+                    const slot = doc.scheduleByDay[day];
+                    return (
+                      <tr key={day} className="border-t border-border/40 first:border-t-0">
+                        <td className="py-1 pr-2 text-muted-foreground">{DAY_LABEL[day]}</td>
+                        <td className={`py-1 font-semibold ${slot ? "text-foreground" : "text-muted-foreground/60"}`}>
+                          {formatSlot(slot)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
               <div className="pt-2">
                 <Link
