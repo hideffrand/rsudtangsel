@@ -15,7 +15,7 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
 - Poli is a first-class entity: `poliklinik` table + `GET /api/poli` (+ `/api/poli/{id}`). Do not derive the poli list from `doctors.specialty`.
 - `doctors.poli_id` FK → `poliklinik.id`; `specialty` is a denormalized copy of the poli name, kept in sync by `DoctorService` (find-or-create poli by name on doctor create/update).
 - Frontend poli dropdowns (daftar-online, jadwal-dokter, admin pages) all load from `web/services/poli.ts` (`poliApi.getAll()`).
-- `make seed` TRUNCATEs `doctors` + `poliklinik` CASCADE (wipes appointments too) and rebuilds from `../jadwal dokter rsudtangsel.csv` (`SCHEDULE_CSV` env).
+- `make seed` (`go run ./cmd/seed`) TRUNCATEs `doctors` + `poliklinik` CASCADE (wipes appointments too), rebuilds the schedule from `../jadwal_dokter.csv` (`SCHEDULE_CSV` env), and idempotently seeds the service catalog (`mcu_packages` + `diagnostic_services`). Doctors are linked to poli via `doctors.poli_id` (find-or-create poli by name).
 
 ## Modules
 
@@ -45,7 +45,7 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
   - `version` exits 1 with `no migration` when nothing is applied — normal, not an error.
   - Editing an already-applied migration will not re-run it. To reapply on dev: `TRUNCATE schema_migrations`, then migrate up.
 - **Response convention**: every HTTP response must go through `internal/utils` `SuccessResponse`/`ErrorResponse` (envelope `success`, `status_code`, `data`, `message`). Never write raw JSON in handlers.
-- **Catalog seed**: `go run ./cmd/seed-services` idempotently seeds `mcu_packages` (10) + `diagnostic_services` (4 lab, 3 radiologi) with items. It never deletes rows, so package IDs used by `mcu_bookings` stay stable. Run it after migrating to populate the catalog (`/api/mcu-packages`, `/api/diagnostic-services`).
+- **Catalog seed**: bundled into `go run ./cmd/seed` — idempotently seeds `mcu_packages` (10) + `diagnostic_services` (4 lab, 3 radiologi) with items. It never deletes rows, so package IDs used by `mcu_bookings` stay stable. Run `make seed` after migrating to populate the catalog (`/api/mcu-packages`, `/api/diagnostic-services`).
 - **API test**: `bash test_api.sh` (34 tests). Needs a running server + migrated DB; **hardcodes** `BASE_URL=http://localhost:8080` (line 3) — env override is ignored. On this dev box :8080 is often taken by an unrelated process; use `sed 's|:8080|:9090|' test_api.sh | tr -d '\r'` or free 8080.
 - `server/api` (8.4 MB) is a **stale committed binary** — don't rebuild or re-commit it. `make build` outputs `bin/server` (gitignored). `.gitignore` covers `/server` and `/bin/`, not `/api`.
 

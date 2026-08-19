@@ -16,7 +16,7 @@ run: ## run the server
 build: ## build binary to bin/
 	go build -o bin/server .
 
-seed: ## load doctor schedules from CSV (truncates doctors/appointments)
+seed: ## seed doctor schedules from CSV + service catalog (truncates doctors/poliklinik)
 	go run ./cmd/seed
 
 db-up: ## start postgres via compose

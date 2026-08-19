@@ -1,0 +1,66 @@
+No,Poliklinik,Nama Dokter,Senin,Selasa,Rabu,Kamis,Jumat,Sabtu
+1,Klinik Anak,"dr. Vollico Nenni S, Sp. A",08.00 - Selesai,-,08.00 - Selesai,-,08.00 - Selesai,-
+2,Klinik Anak,"dr. Primitasari, Sp. A",-,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-,-
+3,Klinik Anak,"dr. Runtika Dewi, Sp. A",08.00 - Selesai,08.00 - Selesai,-,08.00 - Selesai,08.00 - Selesai,-
+4,Klinik Anak,"dr. Siska Natalia S, Sp. A",08.00 - Selesai,08.00 - Selesai,-,-,08.00 - Selesai,-
+5,Klinik Anak Neonatologi,"dr. Arum Gunarsih, SpA(K)",-,08.00 - Selesai,-,08.00 - Selesai,-,-
+6,Klinik Anastesi,"dr. Danny M. Iqbal, Sp. An, M. Kes",-,08.00 - Selesai,-,-,08.00 - Selesai,-
+7,Klinik Anastesi,"dr. Hamdan, Sp. An",-,-,08.00 - Selesai,-,10.00 - Selesai,-
+8,Klinik Anastesi,"dr. Sherlina R Padidi, Sp. An, M.Kes",09.00 - Selesai,-,-,09.00 - Selesai,-,-
+9,Klinik Bedah Mulut,"drg. Dhanni Gustiana, Sp. BMM, Subsp. TMF-TMJ (K)",08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-,-
+10,Klinik Bedah Umum,"dr. M. Reza J.Zen, Sp. B",08.00 - Selesai,-,08.00 - Selesai,-,-,-
+11,Klinik Bedah Umum,"dr. Hesti L Tandy MSi.Med, Sp.B",-,-,-,10.00 - Selesai,08.00 - Selesai,-
+12,Klinik Diabetic Center,dr. Retno Widowati,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-
+13,Klinik Digestive,"dr. Syahfreadi, SpB, Subsp.BD(K), FICS",-,08.00 - Selesai,-,14.00 - Selesai,-,-
+14,Klinik Forensik,"dr. Kinanti Putri Utami, Sp. F",08.00 - Selesai,-,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-
+16,Klinik Gigi,drg. Valery Diana,10.00 - Selesai,-,-,10.00 - Selesai,10.00 - Selesai,-
+17,Klinik Gigi,drg. Mira fahmi,09.00 - Selesai,-,09.00 - Selesai,-,08.00 - Selesai,-
+18,Klinik Gigi,drg. Yosi Utami,-,09.00 - Selesai,-,09.00 - Selesai,09.00 - Selesai,-
+19,Klinik Gizi,"dr. Dian Permatasari, M. Gizi, Sp. GK",08.00 - Selesai,-,08.00 - Selesai,-,08.00 - Selesai,-
+20,Klinik Hemodialisa,dr. Ardi,06.00 - Selesai,06.00 - Selesai,06.00 - Selesai,06.00 - Selesai,06.00 - Selesai,06.00 - Selesai
+21,Klinik Jantung,"dr. Adhi Kurniawan, Sp.JP.FIHA",-,-,-,-,-,-
+22,Klinik Jantung,"dr. Luluk Dwi Yuni, Sp.JP.FIHA",-,08.00 - Selesai,-,08.00 - Selesai,08.00 - Selesai,-
+23,Klinik Jantung,"dr. Shafira Nadia, Sp.JP.FIHA",08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-,-,-
+24,Klinik Jantung,"dr. Nikhen Noverike, Sp.JP",08.00 - Selesai,-,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-
+25,Klinik Jiwa,"dr. Rudy Wijono, Sp. KJ",-,-,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-
+26,Klinik Jiwa,"dr. Azizah, Sp. KJ",08.00 - Selesai,08.00 - Selesai,-,-,08.00 - Selesai,-
+27,Klinik Jiwa,"dr. Agus Sofyan Syawaludin, Sp.KJ",08.00 - Selesai,-,08.00 - Selesai,08.00 - Selesai,-,-
+28,Klinik Kandungan,"dr. Wahyuningtyas, Sp.OG",-,08.00 - Selesai,-,10.00 - Selesai,-,-
+29,Klinik Kandungan,"dr. Abdul Samad, Sp.OG",-,-,08.00 - Selesai,-,08.00 - Selesai,-
+30,Klinik Kandungan,"dr. Yesy Marianna Nasution, Sp.OG",08.00 - Selesai,10.00 - Selesai,-,-,-,-
+31,Klinik Kulit & Kelamin,"dr. Putri R Lubis, Sp. DV",08.00 - Selesai,08.00 - Selesai,-,08.00 - Selesai,-,-
+32,Klinik Kulit & Kelamin,"dr. Bimo Aryo Tejo, Sp. DV",-,-,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-
+33,Klinik Mata,"dr. Arif Budiman, Sp. M",-,08.00 - Selesai,-,08.00 - Selesai,-,-
+34,Klinik Mata,"dr. Ika Citra Susanti, Sp. M",08.00 - Selesai,-,08.00 - Selesai,-,08.00 - Selesai,-
+35,Klinik MCU,dr. Desi Arisanti,07.30 - Selesai,-,-,-,-,Bergantian
+36,Klinik MCU,dr. Purborini Waluyo KK,-,-,07.30 - Selesai,-,-,Bergantian
+37,Klinik MCU,dr. Lasdo,-,07.30 - Selesai,-,-,-,Bergantian
+38,Klinik MCU,dr. Herlina,-,-,-,07.30 - Selesai,-,Bergantian
+39,Klinik MCU,dr. Ratna Herawati,-,-,-,-,07.30 - Selesai,Bergantian
+40,Klinik Orthopedi,"dr. Alphonsus Arya Abikara, Sp. OT, Sub Sp.CO(K), FICS, FISQUA, FIPP, AIFO-K, FICOT",11.00 - Selesai,11.00 - Selesai,11.00 - Selesai,11.00 - Selesai,11.00 - Selesai,-
+41,Klinik Paru,"dr. Dedi Novizar, Sp. P",11.00 - Selesai,-,11.00 - Selesai,-,09.00 - Selesai,-
+42,Klinik Paru,"dr. Fadlina Azmi, Sp. P",-,08.00 - Selesai,-,08.00 - Selesai,-,-
+43,Klinik Paru,"dr. Iin Rahmania Inayatillah, Sp. P",09.00 - Selesai,-,09.00 - Selesai,-,-,-
+44,Klinik Penyakit Dalam,"dr. Intan Juwita, Sp.PD",12.00 - Selesai,09.00 - Selesai,-,11.00 - Selesai,09.00 - Selesai,-
+45,Klinik Penyakit Dalam,"dr. Hadianti Adlani, Sp. PD, Subsp. P.T.I (K)",-,09.00 - Selesai,-,09.00 - Selesai,-,-
+46,Klinik Penyakit Dalam,"dr. Harry Andrean, Sp.PD",09.00 - Selesai,-,08.00 - Selesai,12.00 - Selesai,-,-
+47,Klinik Penyakit Dalam,"dr. Monita Lubis, Sp.PD",09.00 - Selesai,-,10.00 - Selesai,-,10.00 - Selesai,-
+48,Klinik Penyakit Mulut,"drg. Yohana Alfa Agustina, Sp. PM",-,10.00 - Selesai,10.00 - Selesai,-,-,-
+49,Klinik Orthodonti,"drg. Alfiyanti Saidah, Sp.Ort",08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-,-,-
+50,Klinik Periodonti,"drg. Nurul Adha Marzuki, Sp. Perio",-,-,08.00 - 12.00,08.00 - 12.00,08.00 - 12.00,-
+51,Klinik Prostodonti,"drg. Achmad Royhan, Sp. Prost",-,08.00 - Selesai,-,08.00 - Selesai,08.00 - Selesai,-
+52,Klinik Rehabilitasi Medik,"dr. Hikmah A. A, Sp. KFR",10.00 - Selesai,-,10.00 - Selesai,10.00 - Selesai,-,-
+53,Klinik Rehabilitasi Medik,"dr. Yuni Ekowati, Sp. KFR",10.00 - 12.00,10.00 - 12.00,10.00 - 12.00,10.00 - 12.00,10.00 - 12.00,-
+54,Klinik Saraf,"dr. Khristi Handayani, Sp. N",10.00 - Selesai,10.00 - Selesai,-,-,10.00 - Selesai,-
+55,Klinik Saraf,"dr. Ahmad Ichsan, Sp. N",08.00 - Selesai,-,10.00 - Selesai,10.00 - Selesai,-,-
+56,Klinik Saraf,"dr. Mochamad Kamal, Sp.N",-,08.00 - 10.00,08.00 - 10.00,08.00 - 10.00,08.00 - 10.00,-
+57,Klinik TB RO,dr. Hj. Elly Agustina,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-
+58,Klinik THT,"dr. Muhammad Akbar, Sp. T.H.T.K.L",08.00 - Selesai,-,08.00 - Selesai,-,08.00 - Selesai,-
+59,Klinik THT,"dr. Tomson S, Sp. THT-KL",-,08.00 - Selesai,-,08.00 - Selesai,-,-
+60,Klinik Urologi,"dr. Imam Nuryanto, Sp. U",08.00 - Selesai,-,-,10.00 - Selesai,08.00 - Selesai,-
+61,Klinik Wijaya Kusuma,dr. Ahmad Siri Lazuardi,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,08.00 - Selesai,-
+62,Klinik Psikologi,"Muflihah Azahra I H. Psi, Psikolog",08.00 - 14.00,08.00 - 14.00,08.00 - 14.00,08.00 - 14.00,08.00 - 14.00,-
+63,Klinik Bedah Onkologi,"dr. Randi Dwiyanto, Sp.B, Subsp.Onk (K)",-,09.00 - 14.00,-,09.00 - 14.00,-,-
+64,Radiologi,"dr. Deni Setiawan, Sp. Rad",09.00 - Selesai,09.00 - Selesai,09.00 - Selesai,-,-,-
+65,Radiologi,"dr. Shirley Eleonora, Sp. Rad, Subsp (K) RI",-,09.00 - Selesai,-,09.00 - Selesai,-,-
+66,Radiologi,"Dr. dr. Faisal Reza, Sp.Rad, Subsp.RI(K), AIFO-K",-,-,-,09.00 - Selesai,09.00 - Selesai,-
