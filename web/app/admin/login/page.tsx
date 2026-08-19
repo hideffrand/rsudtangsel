@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { loginAdmin, saveTokens, saveUser, isAuthenticated } from "@/lib/admin-api";
+import { isAuthenticated } from "@/lib/admin-api";
+import { useAdminAuth } from "@/lib/admin-auth-context";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { login } = useAdminAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,9 +32,7 @@ export default function AdminLoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const data = await loginAdmin(username, password);
-      saveTokens(data.access_token, data.refresh_token);
-      saveUser(data.user);
+      await login(username, password);
       router.push("/admin");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login gagal. Coba lagi.");

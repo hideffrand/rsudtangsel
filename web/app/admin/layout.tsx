@@ -3,12 +3,12 @@
 /**
  * Admin Layout — RSU Tangsel Care
  * Layout terpisah dari frontend publik.
- * Guard auth: redirect ke /admin/login jika tidak ada token.
+ * Guard auth via AdminAuthContext: redirect ke /admin/login jika tidak ada token.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { isAuthenticated } from "@/lib/admin-api";
+import { AdminAuthProvider, useAdminAuth } from "@/lib/admin-auth-context";
 import { AdminSidebar } from "@/components/admin/sidebar";
 
 export default function AdminLayout({
@@ -16,29 +16,31 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <AdminAuthProvider>
+      <AdminAuthGuard>{children}</AdminAuthGuard>
+    </AdminAuthProvider>
+  );
+}
+
+function AdminAuthGuard({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const { status, isAuthenticated } = useAdminAuth();
 
   const isLoginPage = pathname === "/admin/login";
 
+  // Redirect jika belum login
   useEffect(() => {
-    // Halaman login tidak perlu auth
-    if (isLoginPage) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setChecked(true);
-      return;
-    }
-
-    // Cek token, redirect jika tidak ada
-    if (!isAuthenticated()) {
+    if (isLoginPage) return;
+    if (!isAuthenticated) {
       router.replace("/admin/login");
-      return;
     }
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setChecked(true);
-  }, [pathname, isLoginPage, router]);
+  }, [pathname, isLoginPage, isAuthenticated, router]);
 
   // Tampilkan halaman login langsung tanpa sidebar
   if (isLoginPage) {
@@ -49,8 +51,8 @@ export default function AdminLayout({
     );
   }
 
-  // Tunggu pengecekan auth
-  if (!checked) {
+  // Tunggu pengecekan auth (atau redirect login berjalan)
+  if (status !== "authenticated") {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center space-y-3">
@@ -62,9 +64,9 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="h-screen bg-slate-50 flex overflow-hidden">
       <AdminSidebar />
-      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           {children}
