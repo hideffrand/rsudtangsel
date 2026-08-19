@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Dialog } from "@/components/ui/dialog";
+import { Modal } from "@/components/ui/modal";
 import { poliApi, type Poli } from "@/services/poli";
 import { doctorsApi, type Doctor } from "@/services/doctors";
 import { schedulesApi, type DoctorSchedule, type SchedulePayload } from "@/services/schedules";
 
-const DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_LABEL: Record<string, string> = {
+  Monday: "Senin",
+  Tuesday: "Selasa",
+  Wednesday: "Rabu",
+  Thursday: "Kamis",
+  Friday: "Jumat",
+  Saturday: "Sabtu",
+};
 
 type FormState = {
   doctorId: number | "";
@@ -18,7 +26,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   doctorId: "",
-  dayOfWeek: "Senin",
+  dayOfWeek: "Monday",
   startTime: "08:00",
   endTime: "12:00",
   quota: 20,
@@ -36,7 +44,6 @@ export default function AdminJadwalDokterPage() {
 
   const [filterPoliId, setFilterPoliId] = useState<number | "">("");
   const [searchDoc, setSearchDoc] = useState("");
-  const [viewMode, setViewMode] = useState<"grouped" | "table">("grouped");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<DoctorSchedule | null>(null);
@@ -68,12 +75,6 @@ export default function AdminJadwalDokterPage() {
     loadAll();
   }, []);
 
-  const doctorsById = useMemo(() => {
-    const map = new Map<number, Doctor>();
-    doctors.forEach((d) => map.set(d.id, d));
-    return map;
-  }, [doctors]);
-
   const polisById = useMemo(() => {
     const map = new Map<number, Poli>();
     polis.forEach((p) => map.set(p.id, p));
@@ -98,21 +99,12 @@ export default function AdminJadwalDokterPage() {
     return map;
   }, [schedules]);
 
-  const filteredSchedules = useMemo(() => {
-    return schedules.filter((s) => {
-      const doctor = doctorsById.get(s.doctor_id);
-      const matchPoli = !filterPoliId || doctor?.poli_id === filterPoliId;
-      const matchDoc = !searchDoc || s.doctor_name.toLowerCase().includes(searchDoc.toLowerCase());
-      return matchPoli && matchDoc;
-    });
-  }, [schedules, doctorsById, filterPoliId, searchDoc]);
-
   const openAddModal = (doctorId?: number, dayOfWeek?: string) => {
     setEditingSchedule(null);
     setForm({
       ...EMPTY_FORM,
       doctorId: doctorId ?? doctors[0]?.id ?? "",
-      dayOfWeek: dayOfWeek ?? "Senin",
+      dayOfWeek: dayOfWeek ?? "Monday",
     });
     setFormError(null);
     setIsFormOpen(true);
@@ -150,7 +142,7 @@ export default function AdminJadwalDokterPage() {
     });
 
     if (hasConflict) {
-      return `Dokter sudah memiliki jadwal bentrok pada hari ${form.dayOfWeek}.`;
+      return `Dokter sudah memiliki jadwal bentrok pada hari ${DAY_LABEL[form.dayOfWeek] ?? form.dayOfWeek}.`;
     }
 
     return null;
@@ -207,66 +199,47 @@ export default function AdminJadwalDokterPage() {
   };
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Manajemen Jadwal Dokter</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Kelola matriks ketersediaan mingguan, slot waktu praktik, dan alokasi kuota pasien.
-          </p>
+    <div className="p-6 lg:p-8 space-y-6 mx-auto">
+      <div className="sticky top-0 z-20 -mt-6 lg:-mt-8 pt-6 lg:pt-8 pb-4 space-y-4 bg-slate-50/95 backdrop-blur-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Manajemen Jadwal Dokter</h1>
+          </div>
+          <button
+            onClick={() => openAddModal()}
+            disabled={isLoading || doctors.length === 0}
+            className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors shadow-xs"
+          >
+            + Tambah Slot Praktik
+          </button>
         </div>
-        <button
-          onClick={() => openAddModal()}
-          disabled={isLoading || doctors.length === 0}
-          className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors shadow-xs"
-        >
-          + Tambah Slot Praktik
-        </button>
-      </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row items-end gap-3 shadow-xs">
-        <div className="flex-1 space-y-1 w-full">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cari Nama Dokter</label>
-          <input
-            type="search"
-            placeholder="Ketik nama dokter..."
-            value={searchDoc}
-            onChange={(e) => setSearchDoc(e.target.value)}
-            className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
-          />
-        </div>
-        <div className="w-full sm:w-60 space-y-1">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Poli / Spesialis</label>
-          <select
-            value={filterPoliId}
-            onChange={(e) => setFilterPoliId(e.target.value ? Number(e.target.value) : "")}
-            className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
-          >
-            <option value="">Semua Poli</option>
-            {polis.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex border border-slate-200 rounded-lg overflow-hidden h-9 bg-slate-50 self-end">
-          <button
-            onClick={() => setViewMode("grouped")}
-            className={`px-3 text-xs font-semibold transition-colors ${
-              viewMode === "grouped" ? "bg-slate-800 text-white" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            Kartu Dokter
-          </button>
-          <button
-            onClick={() => setViewMode("table")}
-            className={`px-3 text-xs font-semibold transition-colors ${
-              viewMode === "table" ? "bg-slate-800 text-white" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            Tabel Flat
-          </button>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row items-end gap-3 shadow-xs">
+          <div className="flex-1 space-y-1 w-full">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cari Nama Dokter</label>
+            <input
+              type="search"
+              placeholder="Ketik nama dokter..."
+              value={searchDoc}
+              onChange={(e) => setSearchDoc(e.target.value)}
+              className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div className="w-full sm:w-60 space-y-1">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Poli / Spesialis</label>
+            <select
+              value={filterPoliId}
+              onChange={(e) => setFilterPoliId(e.target.value ? Number(e.target.value) : "")}
+              className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500"
+            >
+              <option value="">Semua Poli</option>
+              {polis.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -283,7 +256,7 @@ export default function AdminJadwalDokterPage() {
         <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-400 text-sm">
           Memuat data jadwal dan dokter...
         </div>
-      ) : viewMode === "grouped" ? (
+      ) : (
         <div className="space-y-4">
           {filteredDoctors.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-400 text-sm">
@@ -323,10 +296,10 @@ export default function AdminJadwalDokterPage() {
                         <div key={day} className="p-3 bg-white flex flex-col justify-between space-y-2 min-h-[110px]">
                           <div>
                             <div className="flex items-center justify-between border-b border-slate-100 pb-1 mb-2">
-                              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{day}</span>
+                              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{DAY_LABEL[day]}</span>
                               <button
                                 onClick={() => openAddModal(doc.id, day)}
-                                title={`Tambah slot ${day}`}
+                                title={`Tambah slot ${DAY_LABEL[day]}`}
                                 className="text-slate-400 hover:text-emerald-600 font-semibold text-xs"
                               >
                                 +
@@ -375,172 +348,141 @@ export default function AdminJadwalDokterPage() {
               );
             }))}
         </div>
-      ) : (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-bold text-slate-800">
-              Daftar Slot Praktik <span className="text-emerald-600">({filteredSchedules.length})</span>
-            </h2>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider">
-                  <th className="px-6 py-3 text-left font-semibold">Dokter</th>
-                  <th className="px-6 py-3 text-left font-semibold">Poli</th>
-                  <th className="px-6 py-3 text-left font-semibold">Hari &amp; Jam</th>
-                  <th className="px-6 py-3 text-left font-semibold">Kuota</th>
-                  <th className="px-6 py-3 text-right font-semibold">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredSchedules.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
-                      Tidak ada slot praktik yang cocok.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredSchedules.map((slot) => {
-                    const doctor = doctorsById.get(slot.doctor_id);
-                    return (
-                      <tr key={slot.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-6 py-4 font-semibold text-slate-800">{slot.doctor_name}</td>
-                        <td className="px-6 py-4 text-slate-600">{doctor?.specialty ?? "-"}</td>
-                        <td className="px-6 py-4 text-slate-700">
-                          <span className="font-medium">{slot.day_of_week}</span> ({slot.start_time}
-                          {slot.end_time ? ` - ${slot.end_time}` : ""})
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-bold text-slate-800">{slot.quota}</span> Pasien
-                        </td>
-                        <td className="px-6 py-4 text-right space-x-2">
-                          <button
-                            onClick={() => openEditModal(slot)}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-slate-600 hover:bg-slate-500 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteItem(slot)}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-red-600 hover:bg-red-500 transition-colors"
-                          >
-                            Hapus
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
       )}
 
-      <Dialog
+      <Modal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        title={editingSchedule ? "Edit Slot Praktik" : "Tambah Slot Praktik Baru"}
-        confirmLabel={isSaving ? "Menyimpan..." : "Simpan Slot"}
-        cancelLabel="Batal"
-        onConfirm={handleSaveSchedule}
+        className="sm:max-w-md"
       >
-        <div className="space-y-3 text-sm">
-          {formError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-md px-3 py-2">
-              {formError}
-            </div>
-          )}
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase">Dokter</label>
-            <select
-              value={form.doctorId}
-              onChange={(e) => setForm((f) => ({ ...f, doctorId: e.target.value ? Number(e.target.value) : "" }))}
-              className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
-            >
-              <option value="">Pilih dokter...</option>
-              {doctors.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} — {d.specialty}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase">Hari Praktik</label>
-            <select
-              value={form.dayOfWeek}
-              onChange={(e) => setForm((f) => ({ ...f, dayOfWeek: e.target.value }))}
-              className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
-            >
-              {DAYS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase">Jam Mulai</label>
-              <input
-                type="time"
-                value={form.startTime}
-                onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
-                className="w-full h-9 px-2 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase">Jam Selesai</label>
-              <input
-                type="time"
-                value={form.endTime}
-                onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
-                className="w-full h-9 px-2 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase">Kuota Max</label>
-              <input
-                type="number"
-                min={0}
-                value={form.quota}
-                onChange={(e) => setForm((f) => ({ ...f, quota: Number(e.target.value) }))}
-                className="w-full h-9 px-2 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
-              />
-            </div>
-          </div>
-        </div>
-      </Dialog>
-
-      <Dialog
-        isOpen={deleteItem !== null}
-        onClose={() => setDeleteItem(null)}
-        title="Hapus Slot Praktik"
-        confirmLabel={isSaving ? "Menghapus..." : "Ya, Hapus"}
-        cancelLabel="Batal"
-        onConfirm={handleDeleteSchedule}
-        confirmVariant="destructive"
-      >
-        {deleteItem && (
-          <div className="space-y-2 text-sm">
+        <div className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-slate-800">
+            {editingSchedule ? "Edit Slot Praktik" : "Tambah Slot Praktik Baru"}
+          </h2>
+          <div className="space-y-3 text-sm">
             {formError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-md px-3 py-2">
                 {formError}
               </div>
             )}
-            <p className="text-slate-600">
-              Yakin ingin menghapus slot praktik{" "}
-              <strong className="text-slate-800">{deleteItem.doctor_name}</strong> pada{" "}
-              <strong className="text-slate-800">{deleteItem.day_of_week}</strong> (
-              {deleteItem.start_time}
-              {deleteItem.end_time ? ` - ${deleteItem.end_time}` : ""})? Tindakan ini tidak dapat dibatalkan.
-            </p>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase">Dokter</label>
+              <select
+                value={form.doctorId}
+                onChange={(e) => setForm((f) => ({ ...f, doctorId: e.target.value ? Number(e.target.value) : "" }))}
+                className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
+              >
+                <option value="">Pilih dokter...</option>
+                {doctors.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} — {d.specialty}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase">Hari Praktik</label>
+              <select
+                value={form.dayOfWeek}
+                onChange={(e) => setForm((f) => ({ ...f, dayOfWeek: e.target.value }))}
+                className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
+              >
+                {DAYS.map((d) => (
+                  <option key={d} value={d}>
+                    {DAY_LABEL[d]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Jam Mulai</label>
+                <input
+                  type="time"
+                  value={form.startTime}
+                  onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
+                  className="w-full h-9 px-2 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Jam Selesai</label>
+                <input
+                  type="time"
+                  value={form.endTime}
+                  onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
+                  className="w-full h-9 px-2 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Kuota Max</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.quota}
+                  onChange={(e) => setForm((f) => ({ ...f, quota: Number(e.target.value) }))}
+                  className="w-full h-9 px-2 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+            <button
+              onClick={() => setIsFormOpen(false)}
+              className="flex-1 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleSaveSchedule}
+              disabled={isSaving}
+              className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+            >
+              {isSaving ? "Menyimpan..." : "Simpan Slot"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteItem !== null}
+        onClose={() => setDeleteItem(null)}
+        className="sm:max-w-md"
+      >
+        {deleteItem && (
+          <div className="p-6 space-y-4">
+            <h2 className="text-xl font-semibold text-slate-800">Hapus Slot Praktik</h2>
+            <div className="space-y-2 text-sm">
+              {formError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-md px-3 py-2">
+                  {formError}
+                </div>
+              )}
+              <p className="text-slate-600">
+                Yakin ingin menghapus slot praktik{" "}
+                <strong className="text-slate-800">{deleteItem.doctor_name}</strong> pada{" "}
+                <strong className="text-slate-800">{deleteItem.day_of_week}</strong> (
+                {deleteItem.start_time}
+                {deleteItem.end_time ? ` - ${deleteItem.end_time}` : ""})? Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+              <button
+                onClick={() => setDeleteItem(null)}
+                className="flex-1 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDeleteSchedule}
+                disabled={isSaving}
+                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+              >
+                {isSaving ? "Menghapus..." : "Ya, Hapus"}
+              </button>
+            </div>
           </div>
         )}
-      </Dialog>
+      </Modal>
     </div>
   );
 }
