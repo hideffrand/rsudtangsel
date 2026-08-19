@@ -36,6 +36,18 @@ services:
       db:
         condition: service_healthy
 
+  ocr:
+    build:
+      context: ./ocr-service
+      dockerfile: Dockerfile
+    container_name: rsudtangsel-ocr
+    restart: unless-stopped
+    ports:
+      - "${OCR_PORT:-8000}:8000"
+    environment:
+      - PORT=8000
+      - REC_LANG_TYPE=en
+
 volumes:
   postgres-data:
   web-node-modules:

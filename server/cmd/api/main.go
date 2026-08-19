@@ -69,6 +69,10 @@ func main() {
 	diagnosticHandler := handler.NewDiagnosticServiceHandler(diagnosticSvc)
 	mcuBookingHandler := handler.NewMcuBookingHandler(mcuBookingSvc)
 
+	// OCR service layer (microservice proxy)
+	ocrSvc := service.NewOCRService()
+	ocrHandler := handler.NewOCRHandler(ocrSvc)
+
 	// --- Admin endpoints (auth, dashboard, queue management) ---
 	userRepo := repository.NewUserRepository(db)
 	authSvc := service.NewAuthService(userRepo)
@@ -94,6 +98,7 @@ func main() {
 	mux.HandleFunc("/api/mcu-packages/{id}", mcuPackageHandler.Item)
 	mux.HandleFunc("/api/diagnostic-services", diagnosticHandler.Collection)
 	mux.HandleFunc("/api/diagnostic-services/{id}", diagnosticHandler.Item)
+	mux.HandleFunc("/api/ocr/extract", ocrHandler.Extract)
 
 	// --- MCU booking public routes ---
 	mux.HandleFunc("/api/mcu/register", mcuBookingHandler.Register)
@@ -110,7 +115,7 @@ func main() {
 	)
 
 	// --- Admin protected routes (JWT auth + role check + audit logging) ---
-	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, userRepo)
+	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, ocrHandler, userRepo)
 	mux.Handle("/api/admin/", adminProtected)
 
 	// --- Apply CORS middleware, then request logger to all routes ---
@@ -134,9 +139,13 @@ func main() {
 func buildAdminProtectedRouter(
 	adminHandler *handler.AdminHandler,
 	mcuBookingHandler *handler.McuBookingHandler,
+	ocrHandler *handler.OCRHandler,
 	userRepo *repository.UserRepository,
 ) http.Handler {
 	protectedMux := http.NewServeMux()
+
+	// --- OCR extraction ---
+	protectedMux.HandleFunc("/api/admin/ocr/extract", ocrHandler.Extract)
 
 	// --- Queue management ---
 	protectedMux.HandleFunc("/api/admin/logout", adminHandler.Logout)
