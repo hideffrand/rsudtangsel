@@ -20,11 +20,12 @@ type LoginResponse struct {
 // DashboardStatsResponse is the response for GET /api/admin/dashboard/stats.
 type DashboardStatsResponse struct {
 	PatientsToday   int     `json:"patients_today"`
-	AverageWaitTime float64 `json:"avg_wait_time"` // in minutes
-	BOR             float64 `json:"bor"`           // percentage
+	AverageWaitTime float64 `json:"avg_wait_time"`  // in minutes
+	BOR             float64 `json:"bor"`            // percentage
 	NewComplaints   int     `json:"new_complaints"`
 	TotalQueue      int     `json:"total_queue"`
-	UpdateTime      string  `json:"update_time"` // "HH:MM:SS"
+	ActiveDoctors   int     `json:"active_doctors"` // count of active doctors today
+	UpdateTime      string  `json:"update_time"`    // "HH:MM:SS"
 }
 
 // AdminQueueItem represents a single queue entry for the admin dashboard.

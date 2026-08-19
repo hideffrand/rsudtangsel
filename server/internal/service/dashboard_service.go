@@ -48,12 +48,19 @@ func (s *DashboardService) GetStats() (*response.DashboardStatsResponse, error) 
 	// TODO: replace with a real query once the complaints table is added
 	newComplaints := 12
 
+	// 6. Count distinct active doctors today
+	activeDoctors, err := s.appointmentRepo.CountActiveDoctors(today)
+	if err != nil {
+		return nil, fmt.Errorf("count active doctors: %w", err)
+	}
+
 	return &response.DashboardStatsResponse{
 		PatientsToday:   patientCount,
 		AverageWaitTime: roundFloat(avgWaitingTime, 1),
 		BOR:             bor,
 		NewComplaints:   newComplaints,
 		TotalQueue:      totalWaiting,
+		ActiveDoctors:   activeDoctors,
 		UpdateTime:      time.Now().UTC().Format("15:04:05"),
 	}, nil
 }

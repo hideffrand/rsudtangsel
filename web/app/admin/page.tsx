@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="DOKTER AKTIF"
-          value={stats?.active_doctors.toString() ?? "—"}
+          value={stats?.active_doctors?.toString() ?? "—"}
           subtitle="Total dokter jaga hari ini"
           icon={<User className="w-5 h-5" />}
           color="slate"

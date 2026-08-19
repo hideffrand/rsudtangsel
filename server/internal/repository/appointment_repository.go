@@ -223,3 +223,17 @@ func capitalizeFirst(s string) string {
 	}
 	return string(s[0]-32) + s[1:]
 }
+
+// CountActiveDoctors returns the number of distinct doctors who have at least
+// one appointment scheduled for the given date.
+func (r *AppointmentRepository) CountActiveDoctors(date string) (int, error) {
+	var count int
+	err := r.db.QueryRow(
+		`SELECT COUNT(DISTINCT doctor_id) FROM appointments WHERE schedule_date = $1`,
+		date,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count active doctors: %w", err)
+	}
+	return count, nil
+}
