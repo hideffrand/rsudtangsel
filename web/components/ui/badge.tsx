@@ -4,6 +4,9 @@
  * Pakai warna status token, BUKAN warna brand (Design.md §3)
  */
 
+import type { ReactNode } from "react";
+import { Hourglass, RefreshCw, Check, X } from "lucide-react";
+
 export type BadgeStatus = "menunggu" | "diproses" | "selesai" | "batal" | "darurat";
 
 interface BadgeProps {
@@ -15,34 +18,34 @@ interface BadgeProps {
 
 const statusConfig: Record<
   BadgeStatus,
-  { label: string; colorClass: string; icon: string; ariaLabel: string }
+  { label: string; colorClass: string; icon: ReactNode; ariaLabel: string }
 > = {
   menunggu: {
     label: "Menunggu",
     colorClass:
       "bg-amber-50 text-amber-700 border-amber-200",
-    icon: "⏳",
+    icon: <Hourglass className="w-3.5 h-3.5" />,
     ariaLabel: "Status: Menunggu",
   },
   diproses: {
     label: "Diproses",
     colorClass:
       "bg-blue-50 text-blue-700 border-blue-200",
-    icon: "🔄",
+    icon: <RefreshCw className="w-3.5 h-3.5" />,
     ariaLabel: "Status: Diproses",
   },
   selesai: {
     label: "Selesai",
     colorClass:
       "bg-green-50 text-success border-green-200",
-    icon: "✓",
+    icon: <Check className="w-3.5 h-3.5" />,
     ariaLabel: "Status: Selesai",
   },
   batal: {
     label: "Dibatalkan",
     colorClass:
       "bg-red-50 text-destructive border-red-200",
-    icon: "✕",
+    icon: <X className="w-3.5 h-3.5" />,
     ariaLabel: "Status: Dibatalkan",
   },
   darurat: {
@@ -71,8 +74,8 @@ export function Badge({ status, label, className = "" }: BadgeProps) {
         ${className}
       `}
     >
-      {/* Ikon fungsional — bukan emoji dekoratif, aria-hidden agar screen reader skip */}
-      <span aria-hidden="true" className="text-[10px] leading-none">
+      {/* Ikon fungsional — aria-hidden agar screen reader skip */}
+      <span aria-hidden="true" className="leading-none">
         {config.icon}
       </span>
       {displayLabel}

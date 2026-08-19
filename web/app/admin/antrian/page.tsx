@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin-api";
 import { poliApi, type Poli } from "@/services/poli";
 import { Dialog } from "@/components/ui/dialog";
+import { Inbox } from "lucide-react";
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   Waiting: { label: "Menunggu", cls: "bg-amber-100 text-amber-700 border border-amber-200" },
@@ -194,7 +195,7 @@ export default function AntrianAdminPage() {
           </div>
         ) : queue.length === 0 ? (
           <div className="p-16 text-center text-slate-400">
-            <p className="text-4xl mb-3">📭</p>
+            <Inbox className="w-10 h-10 mx-auto mb-3" />
             <p className="text-sm font-medium">Tidak ada antrian{filterPoli ? ` untuk Poli ${filterPoli}` : ""} pada tanggal ini.</p>
           </div>
         ) : (

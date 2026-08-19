@@ -9,6 +9,11 @@ import {
   ListOrdered,
   RotateCw,
   AlertTriangle,
+  ClipboardList,
+  Hospital,
+  CalendarDays,
+  FlaskConical,
+  Inbox,
 } from "lucide-react";
 import {
   getDashboardStats,
@@ -180,17 +185,17 @@ export default function AdminDashboardPage() {
       {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { href: "/admin/antrian", label: "Kelola Antrian", emoji: "📋" },
-          { href: "/admin/mcu", label: "MCU Booking", emoji: "🏥" },
-          { href: "/admin/jadwal-dokter", label: "Jadwal Dokter", emoji: "📅" },
-          { href: "/admin/layanan-kesehatan", label: "Layanan Kesehatan", emoji: "🧪" },
+          { href: "/admin/antrian", label: "Kelola Antrian", icon: <ClipboardList className="w-5 h-5" /> },
+          { href: "/admin/mcu", label: "MCU Booking", icon: <Hospital className="w-5 h-5" /> },
+          { href: "/admin/jadwal-dokter", label: "Jadwal Dokter", icon: <CalendarDays className="w-5 h-5" /> },
+          { href: "/admin/layanan-kesehatan", label: "Layanan Kesehatan", icon: <FlaskConical className="w-5 h-5" /> },
         ].map((item) => (
           <Link
             key={item.href}
             href={item.href}
             className="flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-xl hover:border-emerald-300 hover:shadow-sm transition-all text-sm font-semibold text-slate-700 hover:text-emerald-700"
           >
-            <span className="text-xl">{item.emoji}</span>
+            <span className="text-emerald-600">{item.icon}</span>
             {item.label}
           </Link>
         ))}
@@ -216,7 +221,7 @@ export default function AdminDashboardPage() {
           </div>
         ) : queue.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-sm">
-            <p className="text-3xl mb-2">📭</p>
+            <Inbox className="w-10 h-10 mx-auto mb-2" />
             Belum ada antrian hari ini.
           </div>
         ) : (

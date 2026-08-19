@@ -14,6 +14,7 @@ import {
   type McuBookingItem,
 } from "@/lib/admin-api";
 import { Dialog } from "@/components/ui/dialog";
+import { ClipboardList } from "lucide-react";
 
 const BOOKING_STATUS: Record<string, { label: string; cls: string }> = {
   pending: { label: "Pending", cls: "bg-amber-100 text-amber-700 border border-amber-200" },
@@ -193,7 +194,7 @@ export default function McuAdminPage() {
           </div>
         ) : bookings.length === 0 ? (
           <div className="p-16 text-center text-slate-400">
-            <p className="text-4xl mb-3">📋</p>
+            <ClipboardList className="w-10 h-10 mx-auto mb-3" />
             <p className="text-sm font-medium">Tidak ada data booking{filterStatus ? ` dengan status "${filterStatus}"` : ""}.</p>
           </div>
         ) : (

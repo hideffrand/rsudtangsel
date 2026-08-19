@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { Hand } from "lucide-react";
 
 const WHATSAPP_NUMBER = "6282100000000";
 const WHATSAPP_MESSAGE = encodeURIComponent(
@@ -58,7 +59,7 @@ export function WhatsappFloat() {
 
           {/* Body message */}
           <div className="bg-emerald-50/60 border border-emerald-100 rounded-md p-3 text-xs text-emerald-900 leading-relaxed space-y-1">
-            <p className="font-semibold">Halo! Selamat datang di RSU Tangsel Care. 👋</p>
+            <p className="font-semibold">Halo! Selamat datang di RSU Tangsel Care. <Hand className="inline w-4 h-4" /></p>
             <p>Ada yang bisa kami bantu? Mulai konsultasi atau tanya info layanan kesehatan langsung melalui WhatsApp official kami.</p>
           </div>
 

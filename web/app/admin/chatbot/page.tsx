@@ -9,6 +9,7 @@
  */
 
 import { useState } from "react";
+import { Search, Sparkles } from "lucide-react";
 
 interface ChatThread {
   id: string;
@@ -121,7 +122,7 @@ export default function AdminChatbotPage() {
       {/* Main Grid: SOP Search (Top) + Inbox Chat (Bottom) */}
       <div className="bg-emerald-900 text-white p-5 rounded-xl space-y-3 shadow-md">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-sm text-emerald-200">🔍 Search Cepat SOP &amp; Basis Pengetahuan Medis RS</h3>
+          <h3 className="font-bold text-sm text-emerald-200 flex items-center gap-1.5"><Search className="w-4 h-4" /> Search Cepat SOP &amp; Basis Pengetahuan Medis RS</h3>
           <span className="text-[11px] text-emerald-300">Pencarian Pintar AI</span>
         </div>
         <input
@@ -216,7 +217,7 @@ export default function AdminChatbotPage() {
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2 mb-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                    ✨ Draft Balasan Otomatis AI (Rekomendasi)
+                    <Sparkles className="w-4 h-4" /> Draft Balasan Otomatis AI (Rekomendasi)
                   </span>
                   <button
                     onClick={handleUseAiDraft}
