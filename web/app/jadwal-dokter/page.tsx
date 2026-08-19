@@ -1,17 +1,5 @@
 "use client";
 
-/**
- * Jadwal Dokter — RSU Tangsel Care
- *
- * Perubahan: kartu tiap dokter tadinya menampilkan "Hari Praktek" dan
- * "Jam Praktek" sebagai dua baris teks yang di-join koma, misalnya
- * "Senin, Rabu, Jumat" dan "08:00 – Selesai, 08:00 – Selesai, 08:00 – Selesai".
- * Susah dibaca karena orang harus mencocokkan index hari ke-n dengan jam ke-n
- * secara manual. Sekarang tiap kartu punya mini-tabel Hari | Jam, satu baris
- * per hari (Senin–Sabtu), dan hari tanpa jadwal tetap ditampilkan sebagai "-"
- * supaya polanya kelihatan langsung, bukan hilang.
- */
-
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
@@ -21,9 +9,6 @@ import { doctorsApi } from "@/services/doctors";
 import { poliApi, type Poli } from "@/services/poli";
 import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
 
-// Hari operasional RS: Senin–Sabtu. "Sunday" sengaja tidak ditampilkan di
-// mini-tabel meskipun tetap ada di DAY_ORDER untuk keperluan sorting, karena
-// data lama tidak pernah punya jadwal hari Minggu.
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DISPLAY_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_LABEL: Record<string, string> = {
