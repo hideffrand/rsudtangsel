@@ -245,6 +245,26 @@ echo -e "${YELLOW}[TEST 27] GET /api/poli/999999 - Tidak ada${NC}"
 R27=$(curl -s "$BASE_URL/api/poli/999999")
 check "GET poli tidak ada → error" "$R27" "message"
 
+# ─── TEST 28: GET semua layanan diagnostik ───
+echo -e "${YELLOW}[TEST 28] GET /api/diagnostic-services${NC}"
+R28=$(curl -s "$BASE_URL/api/diagnostic-services")
+check "GET semua layanan diagnostik" "$R28" "category"
+
+# ─── TEST 29: GET layanan diagnostik filter lab ───
+echo -e "${YELLOW}[TEST 29] GET /api/diagnostic-services?category=lab${NC}"
+R29=$(curl -s "$BASE_URL/api/diagnostic-services?category=lab")
+check "GET layanan diagnostik kategori lab" "$R29" "success"
+
+# ─── TEST 30: GET satu layanan diagnostik ───
+echo -e "${YELLOW}[TEST 30] GET /api/diagnostic-services/1${NC}"
+R30=$(curl -s "$BASE_URL/api/diagnostic-services/1")
+check "GET satu layanan diagnostik" "$R30" "items"
+
+# ─── TEST 31: GET layanan diagnostik tidak ada → 404 ───
+echo -e "${YELLOW}[TEST 31] GET /api/diagnostic-services/999999 - Tidak ada${NC}"
+R31=$(curl -s "$BASE_URL/api/diagnostic-services/999999")
+check "GET layanan diagnostik tidak ada → error" "$R31" "message"
+
 # ─── Ringkasan ───
 echo -e "${CYAN}================================================${NC}"
 echo -e "${CYAN}   HASIL TEST${NC}"

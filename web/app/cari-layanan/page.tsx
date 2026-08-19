@@ -3,14 +3,62 @@
 /**
  * Halaman Cari & Daftar Layanan Kesehatan (/cari-layanan)
  * Tampilan UI presisi sesuai Gambar 4 (Siloam Hospitals style catalog page).
+ * Data MCU dari /api/mcu-packages, Lab & Radiologi dari /api/diagnostic-services.
  */
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { CATALOG_SERVICES, MedicalServiceItem } from "@/lib/services-catalog-data";
 import { Dialog } from "@/components/ui/dialog";
 import { buttonVariants } from "@/components/ui/button";
+import { mcuPackagesApi } from "@/services/mcuPackages";
+import { diagnosticServicesApi } from "@/services/diagnosticServices";
+
+type CatalogCategory = "mcu" | "lab" | "radiologi";
+
+interface CatalogItem {
+  id: string;
+  title: string;
+  category: CatalogCategory;
+  categoryLabel: string;
+  badge?: string;
+  itemsCount: string;
+  priceNumber: number;
+  priceFormatted: string;
+  description: string;
+  itemsIncluded: string[];
+}
+
+const CATEGORY_LABEL: Record<CatalogCategory, string> = {
+  mcu: "Medical Check-Up",
+  lab: "Cek Laboratorium",
+  radiologi: "Cek Radiologi",
+};
+
+function formatRupiah(n: number) {
+  return `Rp ${n.toLocaleString("id-ID")}`;
+}
+
+function toCatalogItem(
+  id: string,
+  category: CatalogCategory,
+  name: string,
+  description: string,
+  price: number,
+  items: { name: string }[],
+): CatalogItem {
+  return {
+    id,
+    title: name,
+    category,
+    categoryLabel: CATEGORY_LABEL[category],
+    itemsCount: `${items.length} Service/Item`,
+    priceNumber: price,
+    priceFormatted: formatRupiah(price),
+    description,
+    itemsIncluded: items.map((i) => i.name),
+  };
+}
 
 function CariLayananContent() {
   const searchParams = useSearchParams();
@@ -20,15 +68,60 @@ function CariLayananContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>(initialType);
   const [searchQuery, setSearchQuery] = useState<string>(initialPaket);
   const [priceSort, setPriceSort] = useState<"default" | "asc" | "desc">("default");
-  const [detailModalItem, setDetailModalItem] = useState<MedicalServiceItem | null>(null);
+  const [detailModalItem, setDetailModalItem] = useState<CatalogItem | null>(null);
+
+  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialType) setSelectedCategory(initialType);
     if (initialPaket) setSearchQuery(initialPaket);
   }, [initialType, initialPaket]);
 
+  const loadCatalog = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [mcu, diagnostics] = await Promise.all([
+        mcuPackagesApi.getAll(),
+        diagnosticServicesApi.getAll(),
+      ]);
+      const list: CatalogItem[] = [
+        ...mcu
+          .filter((p) => p.is_active)
+          .map((p) =>
+            toCatalogItem(`mcu-${p.id}`, "mcu", p.name, p.description, p.price, p.items),
+          ),
+        ...diagnostics
+          .filter((s) => s.is_active)
+          .map((s) =>
+            toCatalogItem(
+              `ds-${s.id}`,
+              s.category,
+              s.name,
+              s.description,
+              s.price,
+              s.items,
+            ),
+          ),
+      ];
+      setItems(list);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memuat katalog layanan.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadCatalog();
+  }, [loadCatalog]);
+
   // Filter & Sort Logic
-  const filteredServices = CATALOG_SERVICES.filter((item) => {
+  const filteredServices = items.filter((item) => {
     const matchCategory =
       selectedCategory === "semua" || item.category === selectedCategory;
     const matchQuery =
@@ -149,7 +242,23 @@ function CariLayananContent() {
             </span>
           </div>
 
-          {/* Service Cards Grid */}
+          {loading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              Memuat katalog layanan...
+            </div>
+          ) : error ? (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}{" "}
+              <button onClick={loadCatalog} className="underline font-semibold ml-1">
+                Coba lagi
+              </button>
+            </div>
+          ) : filteredServices.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              Tidak ada layanan yang cocok.
+            </div>
+          ) : (
+          /* Service Cards Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {filteredServices.map((item) => (
               <div
@@ -204,6 +313,7 @@ function CariLayananContent() {
               </div>
             ))}
           </div>
+          )}
         </div>
       </div>
 

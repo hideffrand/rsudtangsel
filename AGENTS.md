@@ -26,7 +26,6 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
 ## Web notes (run from `web/`)
 
 - Verify: `npm run lint` (eslint) + `npx tsc --noEmit`. There's no standalone typecheck script; `npm run build` is the typecheck but currently fails on this dev box (`lightningcss` native-module mismatch) — use `tsc` instead.
-- `lint` has one pre-existing error (`app/cari-layanan/page.tsx`, set-state-in-effect) — not from user changes.
 - Reuse the existing UI kit (`components/ui/*`: button, card, dialog, input, toast, stepper, …) instead of writing new components ad hoc.
 - All user-facing strings go through i18n: `lib/translations.ts` (id/en) + `lib/i18n-context.tsx` — never hardcode UI text.
 - Two divergent API clients: `services/api.ts` (axios) expects `NEXT_PUBLIC_API_URL` to include the `/api` suffix (web/.env: `http://localhost:8088/api`); `lib/admin-api.ts` (raw fetch) also appends `/api/...` itself — same env ⇒ double `/api` on admin calls. Don't "fix" one without the other.
@@ -46,7 +45,8 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
   - `version` exits 1 with `no migration` when nothing is applied — normal, not an error.
   - Editing an already-applied migration will not re-run it. To reapply on dev: `TRUNCATE schema_migrations`, then migrate up.
 - **Response convention**: every HTTP response must go through `internal/utils` `SuccessResponse`/`ErrorResponse` (envelope `success`, `status_code`, `data`, `message`). Never write raw JSON in handlers.
-- **API test**: `bash test_api.sh` (30 tests). Needs a running server + migrated DB; **hardcodes** `BASE_URL=http://localhost:8080` (line 3) — env override is ignored. On this dev box :8080 is often taken by an unrelated process; use `sed 's|:8080|:9090|' test_api.sh | tr -d '\r'` or free 8080.
+- **Catalog seed**: `go run ./cmd/seed-services` idempotently seeds `mcu_packages` (10) + `diagnostic_services` (4 lab, 3 radiologi) with items. It never deletes rows, so package IDs used by `mcu_bookings` stay stable. Run it after migrating to populate the catalog (`/api/mcu-packages`, `/api/diagnostic-services`).
+- **API test**: `bash test_api.sh` (34 tests). Needs a running server + migrated DB; **hardcodes** `BASE_URL=http://localhost:8080` (line 3) — env override is ignored. On this dev box :8080 is often taken by an unrelated process; use `sed 's|:8080|:9090|' test_api.sh | tr -d '\r'` or free 8080.
 - `server/api` (8.4 MB) is a **stale committed binary** — don't rebuild or re-commit it. `make build` outputs `bin/server` (gitignored). `.gitignore` covers `/server` and `/bin/`, not `/api`.
 
 ## Mobile gotchas

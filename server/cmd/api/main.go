@@ -53,6 +53,8 @@ func main() {
 	doctorSvc := service.NewDoctorService(doctorRepo, scheduleRepo, poliSvc)
 	mcuPackageRepo := repository.NewMcuPackageRepository(db)
 	mcuPackageSvc := service.NewMcuPackageService(mcuPackageRepo)
+	diagnosticRepo := repository.NewDiagnosticServiceRepository(db)
+	diagnosticSvc := service.NewDiagnosticServiceService(diagnosticRepo)
 
 	// MCU booking layer
 	mcuBookingRepo := repository.NewMcuBookingRepository(db)
@@ -64,6 +66,7 @@ func main() {
 	scheduleHandler := handler.NewScheduleHandler(doctorSvc)
 	poliHandler := handler.NewPoliklinikHandler(poliSvc)
 	mcuPackageHandler := handler.NewMcuPackageHandler(mcuPackageSvc)
+	diagnosticHandler := handler.NewDiagnosticServiceHandler(diagnosticSvc)
 	mcuBookingHandler := handler.NewMcuBookingHandler(mcuBookingSvc)
 
 	// --- Admin endpoints (auth, dashboard, queue management) ---
@@ -89,6 +92,8 @@ func main() {
 	mux.HandleFunc("/api/poli/{id}", poliHandler.Item)
 	mux.HandleFunc("/api/mcu-packages", mcuPackageHandler.Collection)
 	mux.HandleFunc("/api/mcu-packages/{id}", mcuPackageHandler.Item)
+	mux.HandleFunc("/api/diagnostic-services", diagnosticHandler.Collection)
+	mux.HandleFunc("/api/diagnostic-services/{id}", diagnosticHandler.Item)
 
 	// --- MCU booking public routes ---
 	mux.HandleFunc("/api/mcu/register", mcuBookingHandler.Register)
