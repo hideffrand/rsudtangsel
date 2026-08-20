@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Footer — RSU Tangsel Care
+ * Footer - RSU Tangsel Care
  * Info singkat: jam, kontak, copyright (Design.md §6.1)
  */
 
@@ -21,7 +21,7 @@ export function Footer() {
         style={{ maxWidth: "var(--container-max)" }}
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-sm text-muted-foreground">
-          {/* Kolom 1 — Brand */}
+          {/* Kolom 1 - Brand */}
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center gap-3 text-foreground font-bold text-base">
               <img
@@ -34,7 +34,7 @@ export function Footer() {
             <p className="text-xs leading-relaxed text-muted-foreground">{t("footer.tagline")}</p>
           </div>
 
-          {/* Kolom 2 — Jam Layanan */}
+          {/* Kolom 2 - Jam Layanan */}
           <div className="flex flex-col gap-1.5">
             <h3 className="font-semibold text-foreground text-xs uppercase tracking-wider">
               {t("home.info.hours")}
@@ -42,7 +42,7 @@ export function Footer() {
             <p className="text-xs leading-relaxed">{t("home.info.hours_value")}</p>
           </div>
 
-          {/* Kolom 3 — Kontak Darurat */}
+          {/* Kolom 3 - Kontak Darurat */}
           <div className="flex flex-col gap-1.5">
             <h3 className="font-semibold text-foreground text-xs uppercase tracking-wider">
               {t("home.info.emergency")}

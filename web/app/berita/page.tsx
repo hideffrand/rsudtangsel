@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Katalog Berita & Artikel — RSU Tangsel Care
+ * Katalog Berita & Artikel - RSU Tangsel Care
  */
 
 import { useState } from "react";

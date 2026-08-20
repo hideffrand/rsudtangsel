@@ -57,7 +57,7 @@ export default function AdminLoginPage() {
               Admin Portal
             </h1>
             <p className="text-slate-500 text-sm mt-1">
-              RSU Tangsel Care — Sistem Manajemen Internal
+              RSU Tangsel Care - Sistem Manajemen Internal
             </p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 /**
- * Input, Select, Textarea — RSU Tangsel Care
- * Label SELALU visible di atas input (bukan placeholder-only — Design.md §3)
+ * Input, Select, Textarea - RSU Tangsel Care
+ * Label SELALU visible di atas input (bukan placeholder-only - Design.md §3)
  * Error message terhubung via aria-describedby (Design.md §5.2)
  */
 
@@ -64,7 +64,7 @@ export function FormField({ id, label, required, error, children }: FormFieldPro
           role="alert"
           className="mt-1.5 text-xs text-destructive flex items-center gap-1 font-medium"
         >
-          {/* Ikon error — bukan hanya warna merah (Design.md §5.2) */}
+          {/* Ikon error - bukan hanya warna merah (Design.md §5.2) */}
           <svg
             className="w-3.5 h-3.5 shrink-0"
             fill="currentColor"

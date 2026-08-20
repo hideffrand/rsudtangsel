@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Manajemen User & Role Admin — RSU Tangsel Care (/admin/users)
+ * Manajemen User & Role Admin - RSU Tangsel Care (/admin/users)
  * Fitur:
  * 1. Kelola akun staff
  * 2. Role (admin, dokter, backoffice, HR)

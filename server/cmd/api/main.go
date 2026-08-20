@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hideffrand/rsudtangsel/server/internal/database"
+	"github.com/hideffrand/rsudtangsel/server/internal/docs"
 	"github.com/hideffrand/rsudtangsel/server/internal/handler"
 	"github.com/hideffrand/rsudtangsel/server/internal/middleware"
 	"github.com/hideffrand/rsudtangsel/server/internal/repository"
@@ -18,7 +19,7 @@ import (
 )
 
 func main() {
-	// Load .env file — optional, does not fail if the file is absent in production
+	// Load .env file - optional, does not fail if the file is absent in production
 	_ = godotenv.Load()
 
 	// Connect to the database
@@ -100,6 +101,9 @@ func main() {
 	mux.HandleFunc("/api/diagnostic-services/{id}", diagnosticHandler.Item)
 	mux.HandleFunc("/api/ocr/extract", ocrHandler.Extract)
 
+	// --- Interactive API documentation (public) ---
+	mux.Handle("/docs", docs.Handler())
+
 	// --- MCU booking public routes ---
 	mux.HandleFunc("/api/mcu/register", mcuBookingHandler.Register)
 	mux.HandleFunc("/api/mcu/my-bookings", mcuBookingHandler.GetMyBookings)
@@ -180,7 +184,7 @@ func buildAdminProtectedRouter(
 
 // seedAdminUser creates the default admin account on first startup.
 // Credentials are read from ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD environment variables.
-// The operation is idempotent — it does nothing if the username already exists.
+// The operation is idempotent - it does nothing if the username already exists.
 func seedAdminUser(db *sqlx.DB) {
 	username := os.Getenv("ADMIN_USERNAME")
 	email := os.Getenv("ADMIN_EMAIL")
@@ -188,7 +192,7 @@ func seedAdminUser(db *sqlx.DB) {
 
 	// Skip seeding if credentials are not configured
 	if username == "" || password == "" {
-		log.Println("⚠️  ADMIN_USERNAME or ADMIN_PASSWORD not set — skipping admin seed")
+		log.Println("⚠️  ADMIN_USERNAME or ADMIN_PASSWORD not set - skipping admin seed")
 		return
 	}
 	if email == "" {
@@ -202,7 +206,7 @@ func seedAdminUser(db *sqlx.DB) {
 		return
 	}
 
-	// Insert admin user — ON CONFLICT DO NOTHING makes this idempotent
+	// Insert admin user - ON CONFLICT DO NOTHING makes this idempotent
 	query := `INSERT INTO users (username, email, password_hash, role)
 	           VALUES ($1, $2, $3, 'admin')
 	           ON CONFLICT (username) DO NOTHING`
@@ -216,6 +220,6 @@ func seedAdminUser(db *sqlx.DB) {
 	if rows > 0 {
 		fmt.Printf(" Admin user '%s' seeded successfully\n", username)
 	} else {
-		fmt.Printf(" Admin user '%s' already exists — skipping seed\n", username)
+		fmt.Printf(" Admin user '%s' already exists - skipping seed\n", username)
 	}
 }

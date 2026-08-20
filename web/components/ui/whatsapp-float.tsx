@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * WhatsApp Floating Bubble Widget — RSU Tangsel Care
+ * WhatsApp Floating Bubble Widget - RSU Tangsel Care
  * Floating button + interactive quick popup card at bottom-right corner.
  */
 

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Admin Layout — RSU Tangsel Care
+ * Admin Layout - RSU Tangsel Care
  * Layout terpisah dari frontend publik.
  * Guard auth via AdminAuthContext: redirect ke /admin/login jika tidak ada token.
  */

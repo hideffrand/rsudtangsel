@@ -1,5 +1,5 @@
 /**
- * HealthAccessSection — RSU Tangsel Care
+ * HealthAccessSection - RSU Tangsel Care
  * Banner CTA: Akses Layanan Kesehatan Terpadu Kapan Saja.
  * Menampilkan fasilitas unggulan (rawat jalan, IGD, rawat inap) + CTA pendaftaran.
  */

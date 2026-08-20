@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OCR Review Queue — RSU Tangsel Care (/admin/ocr)
+ * OCR Review Queue - RSU Tangsel Care (/admin/ocr)
  * Fitur:
  * 1. Upload dokumen (KTP, BPJS, rujukan, resep)
  * 2. Ekstraksi langsung via CnOCR Microservice (atau Go API Proxy)

@@ -1,6 +1,6 @@
 /**
- * Badge — RSU Tangsel Care
- * Status booking + ikon (bukan hanya warna, penting untuk colorblind — Design.md §5.2)
+ * Badge - RSU Tangsel Care
+ * Status booking + ikon (bukan hanya warna, penting untuk colorblind - Design.md §5.2)
  * Pakai warna status token, BUKAN warna brand (Design.md §3)
  */
 
@@ -11,7 +11,7 @@ export type BadgeStatus = "menunggu" | "diproses" | "selesai" | "batal" | "darur
 
 interface BadgeProps {
   status: BadgeStatus;
-  /** Label override — jika tidak diisi, pakai label default per status */
+  /** Label override - jika tidak diisi, pakai label default per status */
   label?: string;
   className?: string;
 }
@@ -74,7 +74,7 @@ export function Badge({ status, label, className = "" }: BadgeProps) {
         ${className}
       `}
     >
-      {/* Ikon fungsional — aria-hidden agar screen reader skip */}
+      {/* Ikon fungsional - aria-hidden agar screen reader skip */}
       <span aria-hidden="true" className="leading-none">
         {config.icon}
       </span>

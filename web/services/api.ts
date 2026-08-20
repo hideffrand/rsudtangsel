@@ -30,7 +30,7 @@ client.interceptors.response.use(
   },
 );
 
-/** Typed client — resolves to the unwrapped payload (not AxiosResponse). */
+/** Typed client - resolves to the unwrapped payload (not AxiosResponse). */
 export const api = {
   get: <T>(url: string, config?: AxiosRequestConfig): Promise<T> =>
     client.get(url, config) as unknown as Promise<T>,

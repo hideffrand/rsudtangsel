@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Halaman Full Detail Informasi — RSU Tangsel Care (/informasi/[slug])
+ * Halaman Full Detail Informasi - RSU Tangsel Care (/informasi/[slug])
  * Menampilkan rincian penuh, persyaratan, dan alur pelayanan dalam 1 halaman full.
  */
 

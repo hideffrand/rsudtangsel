@@ -375,7 +375,7 @@ export default function AdminJadwalDokterPage() {
                 <option value="">Pilih dokter...</option>
                 {doctors.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name} — {d.specialty}
+                    {d.name} - {d.specialty}
                   </option>
                 ))}
               </select>

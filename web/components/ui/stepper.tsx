@@ -1,6 +1,6 @@
 /**
- * Stepper — RSU Tangsel Care
- * Angka langkah + label teks (bukan hanya ikon — Design.md §3)
+ * Stepper - RSU Tangsel Care
+ * Angka langkah + label teks (bukan hanya ikon - Design.md §3)
  * Aksesibel: aria-current untuk step aktif
  */
 

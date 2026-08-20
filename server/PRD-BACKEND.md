@@ -1,4 +1,4 @@
-# PRD: Backend API System — RSU Tangsel
+# PRD: Backend API System - RSU Tangsel
 
 > **Version**: 2.2.0
 > **Date**: 2026-08-16
@@ -10,7 +10,7 @@
 ## 1. Overview
 
 ### 1.1 Project Name
-**RSU Tangsel — Backend API**
+**RSU Tangsel - Backend API**
 Queue management and online registration system for RSU Tangerang Selatan.
 
 ### 1.2 Tech Stack
@@ -96,13 +96,13 @@ https://api.rsudtangsel.id     # Production (planned)
 server/
 ├── cmd/
 │   ├── api/
-│   │   └── main.go                      # Entry point — DI + routing
+│   │   └── main.go                      # Entry point - DI + routing
 │   └── seed/
 │       └── main.go                      # Database seeder
 ├── internal/
 │   ├── database/
 │   │   └── database.go                  # PostgreSQL connection (sqlx)
-│   ├── model/                           # Entities — DB table representations
+│   ├── model/                           # Entities - DB table representations
 │   │   ├── patient.go
 │   │   ├── appointment.go
 │   │   ├── doctor.go
@@ -393,7 +393,7 @@ All endpoints return a consistent JSON structure:
 | Attribute  | Detail                        |
 |------------|-------------------------------|
 | **URL**    | `POST /api/mcu-packages`      |
-| **Auth**   | None (public — to be secured) |
+| **Auth**   | None (public - to be secured) |
 
 **Request Body:**
 ```json
@@ -435,7 +435,7 @@ All endpoints return a consistent JSON structure:
 | Attribute  | Detail                        |
 |------------|-------------------------------|
 | **URL**    | `PUT /api/mcu-packages/{id}`  |
-| **Auth**   | None (public — to be secured) |
+| **Auth**   | None (public - to be secured) |
 
 **Request Body:** Same as Create. Replaces all items (cascade delete + re-insert).
 
@@ -450,7 +450,7 @@ All endpoints return a consistent JSON structure:
 | Attribute  | Detail                           |
 |------------|----------------------------------|
 | **URL**    | `DELETE /api/mcu-packages/{id}`  |
-| **Auth**   | None (public — to be secured)    |
+| **Auth**   | None (public - to be secured)    |
 
 Deletes the package and all its items (`ON DELETE CASCADE`).
 
@@ -610,12 +610,12 @@ Returns all MCU bookings for a patient identified by their NIK.
 
 ---
 
-### 3.5.3 Admin — List MCU Bookings
+### 3.5.3 Admin - List MCU Bookings
 
 | Attribute | Detail |
 |-----------|--------|
 | **URL**   | `GET /api/admin/mcu/bookings` |
-| **Auth**  | `Bearer <token>` — role: admin / staff |
+| **Auth**  | `Bearer <token>` - role: admin / staff |
 
 **Query Parameters:**
 
@@ -626,21 +626,21 @@ Returns all MCU bookings for a patient identified by their NIK.
 
 ---
 
-### 3.5.4 Admin — Get Booking Detail
+### 3.5.4 Admin - Get Booking Detail
 
 | Attribute | Detail |
 |-----------|--------|
 | **URL**   | `GET /api/admin/mcu/bookings/{id}` |
-| **Auth**  | `Bearer <token>` — role: admin / staff |
+| **Auth**  | `Bearer <token>` - role: admin / staff |
 
 ---
 
-### 3.5.5 Admin — Update Booking (Partial)
+### 3.5.5 Admin - Update Booking (Partial)
 
 | Attribute | Detail |
 |-----------|--------|
 | **URL**   | `PATCH /api/admin/mcu/bookings/{id}/update` |
-| **Auth**  | `Bearer <token>` — role: admin / staff |
+| **Auth**  | `Bearer <token>` - role: admin / staff |
 
 ```json
 { "status": "confirmed", "payment_status": "awaiting_confirmation", "notes": "" }
@@ -648,7 +648,7 @@ Returns all MCU bookings for a patient identified by their NIK.
 
 ---
 
-### 3.5.6 Admin — Confirm / Cancel / Payment Shortcuts
+### 3.5.6 Admin - Confirm / Cancel / Payment Shortcuts
 
 | Method  | URL | Action |
 |---------|-----|--------|
@@ -692,7 +692,7 @@ unpaid → awaiting_confirmation → paid
 | Attribute   | Detail                           |
 |-------------|----------------------------------|
 | **URL**     | `POST /api/admin/login`          |
-| **Auth**    | None — rate limited (100/min)    |
+| **Auth**    | None - rate limited (100/min)    |
 
 **Request Body:**
 ```json
@@ -746,7 +746,7 @@ unpaid → awaiting_confirmation → paid
 { "refresh_token": "a89eff30046ebc7b435000b006b37a76..." }
 ```
 
-**Response (200 OK):** Same structure as Login — new `access_token` + new `refresh_token` (rotation).
+**Response (200 OK):** Same structure as Login - new `access_token` + new `refresh_token` (rotation).
 
 ---
 
@@ -781,7 +781,7 @@ unpaid → awaiting_confirmation → paid
 | Attribute  | Detail                                  |
 |------------|-----------------------------------------|
 | **URL**    | `GET /api/admin/dashboard/stats`        |
-| **Auth**   | `Bearer <token>` — role: admin / staff  |
+| **Auth**   | `Bearer <token>` - role: admin / staff  |
 
 **Response (200 OK):**
 ```json
@@ -817,7 +817,7 @@ unpaid → awaiting_confirmation → paid
 | Attribute  | Detail                                  |
 |------------|-----------------------------------------|
 | **URL**    | `GET /api/admin/antrian`                |
-| **Auth**   | `Bearer <token>` — role: admin / staff  |
+| **Auth**   | `Bearer <token>` - role: admin / staff  |
 
 **Query Parameters:**
 
@@ -864,7 +864,7 @@ unpaid → awaiting_confirmation → paid
 | Attribute  | Detail                                              |
 |------------|-----------------------------------------------------|
 | **URL**    | `PATCH /api/admin/antrian/{id}/call`                |
-| **Auth**   | `Bearer <token>` — role: admin / staff              |
+| **Auth**   | `Bearer <token>` - role: admin / staff              |
 
 Sets appointment status to `processing` (patient is being served).
 
@@ -891,11 +891,11 @@ Sets appointment status to `processing` (patient is being served).
 | Attribute  | Detail                                              |
 |------------|-----------------------------------------------------|
 | **URL**    | `PATCH /api/admin/antrian/{id}/skip`                |
-| **Auth**   | `Bearer <token>` — role: admin / staff              |
+| **Auth**   | `Bearer <token>` - role: admin / staff              |
 
 Sets appointment status to `cancelled`.
 
-**Response (200 OK):** Same structure as call — `status: "Cancelled"`.
+**Response (200 OK):** Same structure as call - `status: "Cancelled"`.
 
 ---
 
@@ -987,7 +987,7 @@ Sets appointment status to `cancelled`.
 
 ### 4.2 MCU Package Tables
 
-**`mcu_packages`** — Master list of health screening packages:
+**`mcu_packages`** - Master list of health screening packages:
 
 | Column        | Type          | Description                     |
 |---------------|---------------|---------------------------------|
@@ -999,7 +999,7 @@ Sets appointment status to `cancelled`.
 | `created_at`  | TIMESTAMP     | Creation timestamp              |
 | `updated_at`  | TIMESTAMP     | Last update timestamp           |
 
-**`mcu_package_items`** — Check-up items within each package:
+**`mcu_package_items`** - Check-up items within each package:
 
 | Column        | Type          | Description                     |
 |---------------|---------------|---------------------------------|
@@ -1033,7 +1033,7 @@ Sets appointment status to `cancelled`.
 
 ## 5. Security
 
-### 5.1 Authentication — JWT (Implemented ✅)
+### 5.1 Authentication - JWT (Implemented ✅)
 
 ```
 POST /api/admin/login
@@ -1067,7 +1067,7 @@ Authorization header for protected endpoints:
 ### 5.4 Audit Logging (Implemented ✅)
 
 - Every protected admin request is recorded in `audit_logs`
-- Written **asynchronously** (non-blocking goroutine) — no latency impact
+- Written **asynchronously** (non-blocking goroutine) - no latency impact
 - Captures: `user_id`, `action`, `ip_address`, `user_agent`, `details (JSON)`
 
 ### 5.5 Input Validation
@@ -1090,7 +1090,7 @@ DATABASE_URL=postgresql://rsudtangsel:rsudtangsel@localhost:5432/rsudtangsel?ssl
 # Server
 SERVER_PORT=8080
 
-# Auth — IMPORTANT: set a strong 256-bit secret in production!
+# Auth - IMPORTANT: set a strong 256-bit secret in production!
 JWT_SECRET=your-256-bit-secret-here
 ACCESS_TOKEN_EXPIRY=3600         # seconds (default: 1 hour)
 REFRESH_TOKEN_EXPIRY=604800      # seconds (default: 7 days)
@@ -1123,32 +1123,32 @@ RATE_LIMIT_PER_MINUTE=100
 
 ## 8. Roadmap
 
-### Phase 1 — Public Queue MVP ✅ Complete
+### Phase 1 - Public Queue MVP ✅ Complete
 
 | Feature | Status |
 |---------|--------|
 | Clean Architecture (handler/service/repository/model/dto) | ✅ |
-| `POST /api/daftar-online` — registration + auto queue number | ✅ |
-| `GET /api/antrian` — queue check per specialty | ✅ |
+| `POST /api/daftar-online` - registration + auto queue number | ✅ |
+| `GET /api/antrian` - queue check per specialty | ✅ |
 | QR Code auto-generated via api.qrserver.com | ✅ |
 | Consistent response format (`success/error`) | ✅ |
 
-### Phase 2 — Admin Dashboard ✅ Complete
+### Phase 2 - Admin Dashboard ✅ Complete
 
 | Feature | Status |
 |---------|--------|
 | Database schema refactor (patients, doctors, appointments) | ✅ |
-| `GET /api/doctors` — doctor list | ✅ |
-| `GET /api/doctors/{id}` — doctor detail | ✅ |
-| `GET /api/doctors/{id}/schedules` — doctor schedules | ✅ |
-| `GET /api/schedules` — all schedules | ✅ |
-| `POST /api/admin/login` — JWT login (rate limited) | ✅ |
-| `POST /api/admin/refresh` — token rotation | ✅ |
-| `POST /api/admin/logout` — revoke refresh token | ✅ |
-| `GET /api/admin/dashboard/stats` — live statistics | ✅ |
-| `GET /api/admin/antrian` — admin queue view (with patient & doctor details) | ✅ |
-| `PATCH /api/admin/antrian/{id}/call` — call patient | ✅ |
-| `PATCH /api/admin/antrian/{id}/skip` — skip patient | ✅ |
+| `GET /api/doctors` - doctor list | ✅ |
+| `GET /api/doctors/{id}` - doctor detail | ✅ |
+| `GET /api/doctors/{id}/schedules` - doctor schedules | ✅ |
+| `GET /api/schedules` - all schedules | ✅ |
+| `POST /api/admin/login` - JWT login (rate limited) | ✅ |
+| `POST /api/admin/refresh` - token rotation | ✅ |
+| `POST /api/admin/logout` - revoke refresh token | ✅ |
+| `GET /api/admin/dashboard/stats` - live statistics | ✅ |
+| `GET /api/admin/antrian` - admin queue view (with patient & doctor details) | ✅ |
+| `PATCH /api/admin/antrian/{id}/call` - call patient | ✅ |
+| `PATCH /api/admin/antrian/{id}/skip` - skip patient | ✅ |
 | CORS middleware | ✅ |
 | JWT Auth middleware (HS256) | ✅ |
 | Role-based access (admin / staff) | ✅ |
@@ -1157,40 +1157,40 @@ RATE_LIMIT_PER_MINUTE=100
 | bcrypt password hashing (cost 10) | ✅ |
 | Admin seed credentials via `.env` (not hardcoded in SQL) | ✅ |
 
-### Phase 2.1 — MCU Packages ✅ Complete
+### Phase 2.1 - MCU Packages ✅ Complete
 
 | Feature | Status |
 |---------|--------|
-| `GET /api/mcu-packages` — list all packages (with nested items) | ✅ |
-| `GET /api/mcu-packages/{id}` — package detail | ✅ |
-| `POST /api/mcu-packages` — create package + items | ✅ |
-| `PUT /api/mcu-packages/{id}` — update package + items (full replace) | ✅ |
-| `DELETE /api/mcu-packages/{id}` — delete package + cascade items | ✅ |
+| `GET /api/mcu-packages` - list all packages (with nested items) | ✅ |
+| `GET /api/mcu-packages/{id}` - package detail | ✅ |
+| `POST /api/mcu-packages` - create package + items | ✅ |
+| `PUT /api/mcu-packages/{id}` - update package + items (full replace) | ✅ |
+| `DELETE /api/mcu-packages/{id}` - delete package + cascade items | ✅ |
 | `mcu_packages` + `mcu_package_items` DB tables | ✅ |
 
-### Phase 2.2 — MCU Booking Registration ✅ Complete
+### Phase 2.2 - MCU Booking Registration ✅ Complete
 
 | Feature | Status |
 |---------|--------|
-| `POST /api/mcu/register` — public MCU booking with package + add-on diagnostics | ✅ |
-| `GET /api/mcu/my-bookings?nik=` — patient booking history (by NIK) | ✅ |
-| `GET /api/admin/mcu/bookings` — admin list (filter by status/date) | ✅ |
-| `GET /api/admin/mcu/bookings/{id}` — booking detail | ✅ |
-| `PATCH /api/admin/mcu/bookings/{id}/update` — partial update (status/payment/notes) | ✅ |
-| `PATCH /api/admin/mcu/bookings/{id}/confirm` — confirm booking | ✅ |
-| `PATCH /api/admin/mcu/bookings/{id}/cancel` — cancel booking | ✅ |
-| `PATCH /api/admin/mcu/bookings/{id}/payment/confirm` — mark as paid | ✅ |
+| `POST /api/mcu/register` - public MCU booking with package + add-on diagnostics | ✅ |
+| `GET /api/mcu/my-bookings?nik=` - patient booking history (by NIK) | ✅ |
+| `GET /api/admin/mcu/bookings` - admin list (filter by status/date) | ✅ |
+| `GET /api/admin/mcu/bookings/{id}` - booking detail | ✅ |
+| `PATCH /api/admin/mcu/bookings/{id}/update` - partial update (status/payment/notes) | ✅ |
+| `PATCH /api/admin/mcu/bookings/{id}/confirm` - confirm booking | ✅ |
+| `PATCH /api/admin/mcu/bookings/{id}/cancel` - cancel booking | ✅ |
+| `PATCH /api/admin/mcu/bookings/{id}/payment/confirm` - mark as paid | ✅ |
 | `mcu_bookings` DB table (TEXT[] for lab/radiology arrays) | ✅ |
 | Add-on pricing: 10 lab tests + 7 radiology tests | ✅ |
 | Auto-link booking to `patients` by NIK (nullable) | ✅ |
 | Booking status flow: `pending → confirmed → completed / cancelled` | ✅ |
 | Payment status flow: `unpaid → awaiting_confirmation → paid / cancelled` | ✅ |
 
-### Phase 3 — Advanced Features *(Planned)*
+### Phase 3 - Advanced Features *(Planned)*
 
 | Feature | Status |
 |---------|--------|
-| `POST /api/admin/users` — create staff accounts | ⬜ |
+| `POST /api/admin/users` - create staff accounts | ⬜ |
 | BOR from real beds table | ⬜ |
 | Complaints table + keluhan_baru real query | ⬜ |
 | WhatsApp notification for queue number | ⬜ |
@@ -1202,7 +1202,7 @@ RATE_LIMIT_PER_MINUTE=100
 | Error tracking (Sentry) | ⬜ |
 | GitHub Actions CI/CD | ⬜ |
 
-### Phase 4 — Hospital Information System *(Long-term)*
+### Phase 4 - Hospital Information System *(Long-term)*
 
 | Feature | Status |
 |---------|--------|
@@ -1226,7 +1226,7 @@ cd rsudtangsel
 
 # 2. Configure environment
 cp server/.env.example server/.env
-# Edit server/.env — set DATABASE_URL and JWT_SECRET
+# Edit server/.env - set DATABASE_URL and JWT_SECRET
 
 # 3. Start PostgreSQL
 make -C server db-up

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Manajemen MCU Booking Admin — RSU Tangsel Care (/admin/mcu)
+ * Manajemen MCU Booking Admin - RSU Tangsel Care (/admin/mcu)
  * Filter status + tanggal, Confirm/Cancel/Konfirmasi Pembayaran.
  */
 
@@ -107,7 +107,7 @@ export default function McuAdminPage() {
       <div>
         <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">MCU Booking</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Kelola pendaftaran Medical Check Up pasien — konfirmasi, batalkan, dan catat pembayaran.
+          Kelola pendaftaran Medical Check Up pasien - konfirmasi, batalkan, dan catat pembayaran.
         </p>
       </div>
 
@@ -298,7 +298,7 @@ export default function McuAdminPage() {
             {confirm.action === "confirm" && "Anda akan mengkonfirmasi booking "}
             {confirm.action === "cancel" && "Anda akan membatalkan booking "}
             {confirm.action === "payment" && "Anda akan menandai pembayaran sebagai LUNAS untuk "}
-            <strong className="text-foreground">{confirm.name}</strong> — paket{" "}
+            <strong className="text-foreground">{confirm.name}</strong> - paket{" "}
             <strong className="text-foreground">{confirm.package_name}</strong>.
           </p>
           {actionLoading && (

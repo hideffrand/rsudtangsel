@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Dialog — RSU Tangsel Care
+ * Dialog - RSU Tangsel Care
  * Desktop: modal Dialog | Mobile: bottom Sheet (Design.md §3)
  * Konfirmasi eksplisit sebelum aksi penting (Design.md §5.1)
  * Trap focus + Escape to close (Design.md §5.2)

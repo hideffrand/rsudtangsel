@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Toast — RSU Tangsel Care
+ * Toast - RSU Tangsel Care
  * Notifikasi hasil aksi: auto-dismiss + close manual (Design.md §3)
  * Posisi bottom-center di mobile, bottom-right di desktop
  */

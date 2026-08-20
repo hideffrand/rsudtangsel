@@ -1,5 +1,5 @@
 /**
- * Admin API Client — RSU Tangsel Care
+ * Admin API Client - RSU Tangsel Care
  * Semua request ke backend admin dilakukan lewat helper ini.
  * Jika backend offline / error, otomatis menggunakan Mock Data (Frontend Standalone).
  * Token JWT/Session disimpan di localStorage (client-side only).

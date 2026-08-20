@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Beranda — RSU Tangsel Care
+ * Beranda - RSU Tangsel Care
  * - Hero Banner Carousel dengan Background Image photo1.png, photo2.png, photo3.png
  * - Judul Carousel KONSISTEN HANYA "RSU Tangsel Care"
  * - Section Layanan Kami
@@ -94,7 +94,7 @@ const HERO_SLIDES = [
     id: 2,
     badge: "Layanan Baru Eksekutif",
     title: "RSU Tangsel Care",
-    subtitle: "Poliklinik Eksekutif Malam Hari — Konsultasi Spesialis Pukul 17.00 – 21.00 WIB Tanpa Mengganggu Jam Kerja Siang",
+    subtitle: "Poliklinik Eksekutif Malam Hari - Konsultasi Spesialis Pukul 17.00 – 21.00 WIB Tanpa Mengganggu Jam Kerja Siang",
     primaryCtaText: "Daftar Poli Malam",
     primaryCtaLink: "/daftar-online",
     secondaryCtaText: "Tanya via Chatbot",
@@ -106,7 +106,7 @@ const HERO_SLIDES = [
     id: 3,
     badge: "Fasilitas Medis Canggih",
     title: "RSU Tangsel Care",
-    subtitle: "Fasilitas Radiologi & MRI 1.5 Tesla Dosis Radiasi Rendah — Diagnostik Presisi Tinggi 24 Jam Nonstop",
+    subtitle: "Fasilitas Radiologi & MRI 1.5 Tesla Dosis Radiasi Rendah - Diagnostik Presisi Tinggi 24 Jam Nonstop",
     primaryCtaText: "Lihat Layanan Medis",
     primaryCtaLink: "/layanan-kesehatan",
     secondaryCtaText: "Jadwal Spesialis",
@@ -340,7 +340,7 @@ export default function HomePage() {
                 transition-all duration-200
                 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2
               "
-              aria-label={`${service.label} — ${service.desc}`}
+              aria-label={`${service.label} - ${service.desc}`}
             >
               <div className="w-11 h-11 flex items-center justify-center rounded-sm bg-muted group-hover:bg-primary/10 transition-colors">
                 {service.icon}

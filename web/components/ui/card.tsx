@@ -1,5 +1,5 @@
 /**
- * Card — RSU Tangsel Care
+ * Card - RSU Tangsel Care
  * Border tipis + shadow minimal (Design.md §2.3, §3)
  * Radius 12px untuk card, bukan rounded-3xl yang berlebihan
  */

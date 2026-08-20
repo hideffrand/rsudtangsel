@@ -1,4 +1,4 @@
-# 🔍 OCR Microservice — RSU Tangsel Care
+# 🔍 OCR Microservice - RSU Tangsel Care
 
 Microservice OCR berbasis **FastAPI** dan library **[CnOCR (Breezedeus)](https://github.com/breezedeus/cnocr)** untuk ekstraksi dokumen identitas dan medis (KTP, BPJS, Surat Rujukan, Resep Dokter).
 
@@ -95,7 +95,7 @@ Buka file [`doc_parser.py`](file:///d:/Project%20Pribadi/rsudtangsel/ocr-service
 
 ```python
 # ==============================================================================
-# [TODO: EKSTRAKSI KTP] — SESUAIKAN REGEX / FIELD KTP DI SINI
+# [TODO: EKSTRAKSI KTP] - SESUAIKAN REGEX / FIELD KTP DI SINI
 # ==============================================================================
 def parse_ktp(raw_text: str, blocks: List[Dict[str, Any]] = None):
     ...

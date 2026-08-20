@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Daftar Online — RSU Tangsel Care
+ * Daftar Online - RSU Tangsel Care
  * Multi-step form: ①Poli → ②Dokter & Jadwal → ③Data Diri → ④Konfirmasi
  * Design.md §6.2
  */
@@ -114,7 +114,7 @@ function Step1Poli({
         id="poli"
         label={t("booking.field.poli")}
         required
-        placeholder="— Pilih Poli —"
+        placeholder="- Pilih Poli -"
         options={poliOptions}
         value={data.poli}
         onChange={(e) => onChange("poli", e.target.value)}
@@ -155,7 +155,7 @@ function Step2DokterJadwal({
         id="dokter"
         label={t("booking.field.dokter")}
         required
-        placeholder="— Pilih Dokter —"
+        placeholder="- Pilih Dokter -"
         options={dokterList.map((d) => ({ value: String(d.id), label: d.name }))}
         value={data.dokter}
         onChange={(e) => {
@@ -181,7 +181,7 @@ function Step2DokterJadwal({
         id="jam"
         label={t("booking.field.jam")}
         required
-        placeholder={data.dokter ? "— Pilih Waktu —" : "Pilih dokter dulu"}
+        placeholder={data.dokter ? "- Pilih Waktu -" : "Pilih dokter dulu"}
         options={jamList.map((j) => ({ value: j, label: j }))}
         value={data.jam}
         onChange={(e) => onChange("jam", e.target.value)}
@@ -256,7 +256,7 @@ function Step3DataDiri({
         id="jenis_pembayaran"
         label={t("booking.field.pembayaran")}
         required
-        placeholder="— Pilih Jenis Pembayaran —"
+        placeholder="- Pilih Jenis Pembayaran -"
         options={Object.entries(PAYMENT_LABEL).map(([value, label]) => ({ value, label }))}
         value={data.jenis_pembayaran}
         onChange={(e) => onChange("jenis_pembayaran", e.target.value)}
@@ -289,7 +289,7 @@ function Step4Konfirmasi({
     { label: t("booking.field.nama"), value: data.nama },
     { label: t("booking.field.tanggal_lahir"), value: data.tanggal_lahir },
     { label: t("booking.field.no_hp"), value: data.no_hp },
-    { label: t("booking.field.alamat"), value: data.alamat || "—" },
+    { label: t("booking.field.alamat"), value: data.alamat || "-" },
     { label: t("booking.field.pembayaran"), value: pembayaranLabel },
   ];
 
@@ -509,7 +509,7 @@ export default function DaftarOnlinePage() {
           </CardBody>
         </Card>
 
-        {/* Sticky nav buttons — Design.md §6.2 */}
+        {/* Sticky nav buttons - Design.md §6.2 */}
         <div className="
           sticky bottom-0 mt-6 py-4
           flex flex-col-reverse sm:flex-row gap-3

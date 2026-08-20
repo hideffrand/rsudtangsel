@@ -1,6 +1,6 @@
 /**
- * Skeleton — RSU Tangsel Care
- * Bukan spinner generik — lebih informatif untuk konten list (Design.md §3)
+ * Skeleton - RSU Tangsel Care
+ * Bukan spinner generik - lebih informatif untuk konten list (Design.md §3)
  */
 
 interface SkeletonProps {

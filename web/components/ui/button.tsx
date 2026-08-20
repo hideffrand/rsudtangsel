@@ -1,5 +1,5 @@
 /**
- * Button — RSU Tangsel Care
+ * Button - RSU Tangsel Care
  * Pola shadcn/ui: variant + size, min 44×44px (Design.md §5.1)
  */
 
@@ -35,7 +35,7 @@ const variantStyles: Record<ButtonVariant, string> = {
     "rounded-sm font-semibold",
 };
 
-// min-height 44px untuk semua ukuran (Design.md §5.1 — tap target)
+// min-height 44px untuk semua ukuran (Design.md §5.1 - tap target)
 const sizeStyles: Record<ButtonSize, string> = {
   sm: "h-11 px-4 text-sm",     // 44px height
   md: "h-11 px-5 text-base",

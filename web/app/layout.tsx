@@ -7,7 +7,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WhatsappFloat } from "@/components/ui/whatsapp-float";
 
-// Inter — font utama sesuai Design.md §2.2
+// Inter - font utama sesuai Design.md §2.2
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
@@ -16,7 +16,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "RSU Tangsel Care — Layanan Kesehatan Kota Tangerang Selatan",
+  title: "RSU Tangsel Care - Layanan Kesehatan Kota Tangerang Selatan",
   description:
     "Daftar online, cek status antrian, dan informasi layanan kesehatan RSU Tangsel Care. Tersedia dalam Bahasa Indonesia dan Inggris.",
   keywords: ["RSU Tangsel", "Rumah Sakit Tangerang Selatan", "daftar online", "antrian RS"],

@@ -78,7 +78,7 @@ func (s *McuBookingService) Register(req request.McuBookingRequest) (*response.M
 		return nil, ErrMcuBookingPkgNotFound
 	}
 
-	// 2. Look up existing patient by NIK (optional link — non-blocking)
+	// 2. Look up existing patient by NIK (optional link - non-blocking)
 	var patientID *int
 	patient, _ := s.patientRepo.FindByNIK(req.NIK)
 	if patient != nil {

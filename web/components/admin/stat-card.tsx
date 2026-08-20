@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * StatCard — Kartu statistik untuk dashboard admin
+ * StatCard - Kartu statistik untuk dashboard admin
  */
 
 interface StatCardProps {

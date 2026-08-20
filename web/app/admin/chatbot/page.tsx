@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Chatbot Internal & Inbox Support — RSU Tangsel Care (/admin/chatbot)
+ * Chatbot Internal & Inbox Support - RSU Tangsel Care (/admin/chatbot)
  * Fitur:
  * 1. Search cepat data pasien / SOP RS
  * 2. Inbox chat pasien publik (routing pertanyaan medis/layanan)

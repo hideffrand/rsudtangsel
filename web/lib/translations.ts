@@ -1,5 +1,5 @@
 /**
- * Translations — RSU Tangsel Care
+ * Translations - RSU Tangsel Care
  * Sesuai Design.md §4 (Multi-Bahasa)
  * Struktur key per fitur, semua string UI di-eksternalisasi
  */
@@ -101,7 +101,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     // --- Chatbot ---
     "chat.title": "Chatbot RSU Tangsel Care",
-    "chat.disclaimer_title": "Penting — Baca Sebelum Melanjutkan",
+    "chat.disclaimer_title": "Penting - Baca Sebelum Melanjutkan",
     "chat.disclaimer_body":
       "Layanan chat ini bukan pengganti konsultasi medis langsung. Informasi yang diberikan dokter melalui chat bersifat umum dan tidak menggantikan diagnosis atau resep dari dokter yang memeriksa Anda secara langsung. Untuk kondisi darurat, hubungi IGD (Instalasi Gawat Darurat) segera.",
     "chat.disclaimer_confirm": "Saya Mengerti",
@@ -212,7 +212,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     // --- Doctor Chat ---
     "chat.title": "Doctor Chat",
-    "chat.disclaimer_title": "Important — Read Before Continuing",
+    "chat.disclaimer_title": "Important - Read Before Continuing",
     "chat.disclaimer_body":
       "This chat service is not a substitute for direct medical consultation. Information provided by the doctor through chat is general in nature and does not replace a diagnosis or prescription from a doctor who examines you in person. For emergencies, contact the Emergency Room (ER) immediately.",
     "chat.disclaimer_confirm": "I Understand",

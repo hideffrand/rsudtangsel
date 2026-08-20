@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
       {error && (
         <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
-          {error} —{" "}
+          {error} -{" "}
           <button onClick={() => fetchData()} className="underline font-semibold">Coba lagi</button>
         </div>
       )}
@@ -150,7 +150,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Pasien Hari Ini"
-          value={stats?.patients_today ?? "—"}
+          value={stats?.patients_today ?? "-"}
           subtitle="Total kunjungan hari ini"
           icon={<Users className="w-5 h-5" />}
           color="green"
@@ -158,7 +158,7 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="Antrian Aktif"
-          value={stats?.total_queue ?? "—"}
+          value={stats?.total_queue ?? "-"}
           subtitle="Masih menunggu dipanggil"
           icon={<ListOrdered className="w-5 h-5" />}
           color="blue"
@@ -166,7 +166,7 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="Waktu Tunggu"
-          value={stats ? `${stats.avg_wait_time} mnt` : "—"}
+          value={stats ? `${stats.avg_wait_time} mnt` : "-"}
           subtitle="Rata-rata per pasien"
           icon={<Clock className="w-5 h-5" />}
           color="amber"
@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="DOKTER AKTIF"
-          value={stats?.active_doctors?.toString() ?? "—"}
+          value={stats?.active_doctors?.toString() ?? "-"}
           subtitle="Total dokter jaga hari ini"
           icon={<User className="w-5 h-5" />}
           color="slate"

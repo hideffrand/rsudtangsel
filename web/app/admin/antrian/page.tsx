@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Manajemen Antrian Admin — RSU Tangsel Care (/admin/antrian)
+ * Manajemen Antrian Admin - RSU Tangsel Care (/admin/antrian)
  * Filter poli + tanggal, Call/Skip pasien, tampil status real-time.
  */
 

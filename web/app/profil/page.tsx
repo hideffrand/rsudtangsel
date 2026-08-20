@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Profil Pasien — RSU Tangsel Care
+ * Profil Pasien - RSU Tangsel Care
  */
 
 import { useState } from "react";

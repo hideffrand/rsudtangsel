@@ -5,7 +5,7 @@ import "time"
 // McuBooking represents a row in the mcu_bookings table.
 type McuBooking struct {
 	ID          int       `db:"id"`
-	PatientID   *int      `db:"patient_id"`   // nullable — walk-in patients have no account
+	PatientID   *int      `db:"patient_id"`   // nullable - walk-in patients have no account
 	PackageID   int       `db:"package_id"`
 	BookingDate string    `db:"booking_date"` // "YYYY-MM-DD"
 	BookingTime string    `db:"booking_time"` // "HH:MM"

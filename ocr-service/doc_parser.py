@@ -1,5 +1,5 @@
 """
-Document Parser — RSU Tangsel Care
+Document Parser - RSU Tangsel Care
 Memproses teks mentah hasil OCR menjadi field terstruktur (NIK, Nama, dll).
 Dilengkapi penanda TODO agar mudah disesuaikan ketika format dokumen sudah ditentukan.
 """
@@ -27,7 +27,7 @@ def parse_document(raw_text: str, doc_type: str = "generic", blocks: List[Dict[s
 
 
 # ==============================================================================
-# [TODO: EKSTRAKSI KTP] — SESUAIKAN REGEX / FIELD KTP DI SINI
+# [TODO: EKSTRAKSI KTP] - SESUAIKAN REGEX / FIELD KTP DI SINI
 # ==============================================================================
 def parse_ktp(raw_text: str, blocks: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """
@@ -92,7 +92,7 @@ def parse_ktp(raw_text: str, blocks: List[Dict[str, Any]] = None) -> List[Dict[s
 
 
 # ==============================================================================
-# [TODO: EKSTRAKSI KARTU BPJS] — SESUAIKAN REGEX / FIELD BPJS DI SINI
+# [TODO: EKSTRAKSI KARTU BPJS] - SESUAIKAN REGEX / FIELD BPJS DI SINI
 # ==============================================================================
 def parse_bpjs(raw_text: str, blocks: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """
@@ -136,7 +136,7 @@ def parse_bpjs(raw_text: str, blocks: List[Dict[str, Any]] = None) -> List[Dict[
 
 
 # ==============================================================================
-# [TODO: EKSTRAKSI SURAT RUJUKAN] — SESUAIKAN FIELD SURAT RUJUKAN DI SINI
+# [TODO: EKSTRAKSI SURAT RUJUKAN] - SESUAIKAN FIELD SURAT RUJUKAN DI SINI
 # ==============================================================================
 def parse_surat_rujukan(raw_text: str, blocks: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """
@@ -179,7 +179,7 @@ def parse_surat_rujukan(raw_text: str, blocks: List[Dict[str, Any]] = None) -> L
 
 
 # ==============================================================================
-# [TODO: EKSTRAKSI RESEP DOKTER] — SESUAIKAN FIELD RESEP DI SINI
+# [TODO: EKSTRAKSI RESEP DOKTER] - SESUAIKAN FIELD RESEP DI SINI
 # ==============================================================================
 def parse_resep_dokter(raw_text: str, blocks: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """

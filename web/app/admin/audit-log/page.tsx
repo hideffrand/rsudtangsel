@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Audit Log System — RSU Tangsel Care (/admin/audit-log)
+ * Audit Log System - RSU Tangsel Care (/admin/audit-log)
  * Fitur:
  * 1. Log jejak aktivitas staf/admin
  * 2. Siapa akses data apa, kapan, alamat IP
@@ -51,7 +51,7 @@ export default function AdminAuditLogPage() {
       <div>
         <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Audit Log &amp; Compliance Audit</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Catatan riwayat aktivitas keamanan — melacak siapa mengakses data apa, kapan, dan dari alamat IP mana.
+          Catatan riwayat aktivitas keamanan - melacak siapa mengakses data apa, kapan, dan dari alamat IP mana.
         </p>
       </div>
 

@@ -1,5 +1,5 @@
 """
-OCR Engine Wrapper — RSU Tangsel Care
+OCR Engine Wrapper - RSU Tangsel Care
 Menggunakan library CnOCR (https://github.com/breezedeus/cnocr)
 Mendukung ekstraksi teks multi-baris, confidence score, dan posisi bounding box.
 """

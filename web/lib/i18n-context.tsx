@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * i18n Context — RSU Tangsel Care
+ * i18n Context - RSU Tangsel Care
  * Toggle bahasa ID/EN via Context API (Design.md §4)
- * Simpel tanpa library eksternal — cukup untuk kebutuhan saat ini.
+ * Simpel tanpa library eksternal - cukup untuk kebutuhan saat ini.
  */
 
 import {

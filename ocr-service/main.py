@@ -1,5 +1,5 @@
 """
-FastAPI OCR Microservice — RSU Tangsel Care
+FastAPI OCR Microservice - RSU Tangsel Care
 Endpoint untuk menerima upload file gambar/dokumen dan mengekstrak teks menggunakan CnOCR.
 """
 
@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger("ocr_service")
 
 app = FastAPI(
-    title="RSU Tangsel Care — OCR Microservice",
+    title="RSU Tangsel Care - OCR Microservice",
     description="Microservice Optical Character Recognition (OCR) berbasis CnOCR untuk ekstraksi dokumen medis & identitas pasien.",
     version="1.0.0",
 )

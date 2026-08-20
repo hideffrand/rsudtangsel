@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Detail Baca Berita & Artikel — RSU Tangsel Care
+ * Detail Baca Berita & Artikel - RSU Tangsel Care
  * Dilengkapi Sidebar Kanan untuk membaca berita lainnya.
  */
 

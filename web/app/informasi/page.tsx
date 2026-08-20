@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Halaman Utama Informasi — RSU Tangsel Care
+ * Halaman Utama Informasi - RSU Tangsel Care
  * Menampilkan 4 Kartu Informasi Utama. Klik pada kartu akan membuka Halaman Full Detail (/informasi/[slug]).
  */
 

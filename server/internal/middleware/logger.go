@@ -18,7 +18,7 @@ func (rec *statusRecorder) WriteHeader(code int) {
 }
 
 // RequestLoggerMiddleware logs every incoming request: method, path,
-// status code, duration, and client IP — similar to Gin's default logger.
+// status code, duration, and client IP - similar to Gin's default logger.
 func RequestLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

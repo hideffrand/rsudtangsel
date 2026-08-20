@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Header — RSU Tangsel Care
+ * Header - RSU Tangsel Care
  * Sticky, putih, border-bottom tipis (Design.md §6.1)
  * Informasi: Link Langsung ke /informasi (Tanpa Dropdown Overlay)
  * Layanan Kesehatan: Mega Dropdown Menu (MCU 10 Paket & Diagnostik)
@@ -21,7 +21,7 @@ export function Header() {
   const [activeDropdown, setActiveDropdown] = useState<"layanan" | "profil-rsu" | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Kontrol A-/A+ — set data-font-size di <html>
+  // Kontrol A-/A+ - set data-font-size di <html>
   useEffect(() => {
     document.documentElement.setAttribute(
       "data-font-size",
@@ -78,7 +78,7 @@ export function Header() {
         <Link
           href="/"
           className="flex items-center gap-3 text-foreground font-semibold text-base group shrink-0"
-          aria-label="RSU Tangsel Care — Kembali ke beranda"
+          aria-label="RSU Tangsel Care - Kembali ke beranda"
         >
           <img
             src="/logo-icon.png"
@@ -115,7 +115,7 @@ export function Header() {
             {t("nav.registration")}
           </Link>
 
-          {/* Informasi (LANGSUNG LINK KE /informasi — TANPA DROPDOWN) */}
+          {/* Informasi (LANGSUNG LINK KE /informasi - TANPA DROPDOWN) */}
           <Link
             href="/informasi"
             className={`

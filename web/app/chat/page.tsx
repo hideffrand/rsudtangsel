@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Chat Dokter — RSU Tangsel Care
+ * Chat Dokter - RSU Tangsel Care
  * Design.md §6.4:
  * - Disclaimer wajib Dialog (butuh klik "Saya Mengerti", bukan auto-dismiss)
  * - Redirect ke WhatsApp RS
@@ -106,7 +106,7 @@ export default function ChatbotPage() {
             />
           </svg>
           <p className="text-sm text-red-700 leading-relaxed">
-            <strong>Kondisi darurat?</strong> Jangan gunakan chat — segera hubungi IGD (Instalasi Gawat Darurat) di <a href="tel:02155551234" className="underline font-semibold text-red-800">(021) 5555-1234</a> atau datang langsung.
+            <strong>Kondisi darurat?</strong> Jangan gunakan chat - segera hubungi IGD (Instalasi Gawat Darurat) di <a href="tel:02155551234" className="underline font-semibold text-red-800">(021) 5555-1234</a> atau datang langsung.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ export default function ChatbotPage() {
         </Button>
       </div>
 
-      {/* Disclaimer Dialog — wajib klik, tidak auto-dismiss (Design.md §6.4) */}
+      {/* Disclaimer Dialog - wajib klik, tidak auto-dismiss (Design.md §6.4) */}
       <Dialog
         isOpen={disclaimerShown}
         onClose={() => setDisclaimerShown(false)}
