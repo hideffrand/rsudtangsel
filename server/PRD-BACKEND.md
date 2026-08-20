@@ -1,8 +1,8 @@
 # PRD: Backend API System - RSU Tangsel
 
-> **Version**: 2.3.0
+> **Version**: 2.4.0
 > **Date**: 2026-08-20
-> **Status**: Phase 1 ✅ | Phase 2 ✅ (Admin Dashboard) | Phase 2.1 ✅ (MCU Packages) | Phase 2.2 ✅ (MCU Booking) | Phase 2.3 ✅ (OCR + Poli + Diagnostic Services)
+> **Status**: Phase 1 ✅ | Phase 2 ✅ | Phase 2.1 ✅ (MCU Packages) | Phase 2.2 ✅ (MCU Booking) | Phase 2.3 ✅ (OCR + Poli + Diagnostic) | Phase 2.4 ✅ (MCU Booking Number)
 > **Maintainer**: RSU Tangsel Backend Team
 
 ---
@@ -1368,4 +1368,95 @@ Chain: `CORSMiddleware` → `RequestLoggerMiddleware` → handler/admin middlewa
 - [x] Swagger/OpenAPI docs (`/docs`)
 - [ ] `POST /api/admin/ocr/extract` — pending frontend integration
 - [ ] OCR service wired into admin protected router
+
+---
+
+## 11. Phase 2.4 — MCU Booking Number (2026-08-20)
+
+### 11.1 Overview
+
+Added unique booking number generation to the MCU registration flow. Each MCU booking now receives a human-readable identifier tied to the booking date.
+
+### 11.2 Changes
+
+| Component | Change |
+|-----------|--------|
+| `migrations/20260820000000_add_mcu_booking_number` | `ALTER TABLE mcu_bookings ADD COLUMN booking_number VARCHAR(20) UNIQUE` |
+| `model/mcu_booking.go` | Add `BookingNumber string` field (`db:"booking_number"`) |
+| `service/mcu_booking_service.go` | `generateMcuBookingNumber(date, seq)` called before `Create` |
+| `repository/mcu_booking_repository.go` | `Create` includes `$17 booking_number`; `FindByID` + `findList` SELECT + Scan updated |
+| `dto/response/mcu_booking.go` | `BookingNumber` added to `McuBookingResponse` + `McuBookingListItem` |
+
+### 11.3 Booking Number Format
+
+```
+MCU{DD}{MM}{YY}-{seq:03d}
+```
+
+- `DD` = day of booking date
+- `MM` = month
+- `YY` = last 2 digits of year
+- `seq` = daily sequential counter (resets each day, zero-padded to 3 digits)
+
+**Examples:**
+```
+MCU250826-001   ← 1st booking on 2026-08-25
+MCU250826-002   ← 2nd booking on 2026-08-25
+MCU260826-001   ← 1st booking on 2026-08-26 (resets)
+```
+
+### 11.4 Verified Test Output (2026-08-20)
+
+```bash
+curl -X POST http://localhost:8080/api/mcu/register \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "package_id": 1, "booking_date": "2026-08-25", "booking_time": "09:00",
+    "nik": "3674051708980001", "full_name": "Budi Santoso",
+    "birth_date": "1998-08-17", "phone_number": "08123456789",
+    "payment_method": "transfer",
+    "lab_tests": ["hematologi", "gula_darah"]
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "status_code": 201,
+  "data": {
+    "id": 1,
+    "booking_number": "MCU250826-001",
+    "package_id": 1,
+    "package_name": "Paket MCU Hemat",
+    "nik": "3674051708980001",
+    "full_name": "Budi Santoso",
+    "booking_date": "2026-08-25",
+    "booking_time": "09:00:00",
+    "lab_tests": ["hematologi", "gula_darah"],
+    "radiology_tests": [],
+    "status": "pending",
+    "total_price": 325000,
+    "payment_status": "unpaid",
+    "payment_method": "transfer",
+    "created_at": "2026-08-20 06:39:05"
+  },
+  "message": "MCU booking registered successfully"
+}
+```
+
+**Price breakdown:**
+- Paket MCU Hemat base: Rp 250.000
+- Hematologi add-on: Rp 50.000
+- Gula Darah add-on: Rp 25.000
+- **Total: Rp 325.000** ✅
+
+### 11.5 Phase 2.4 Checklist
+
+- [x] Migration: `booking_number VARCHAR(20) UNIQUE` column added
+- [x] Model: `BookingNumber` field
+- [x] Service: generate `MCU{DDMMYY}-{seq:03d}` before booking create
+- [x] Repository: `Create`, `FindByID`, `findList` all include `booking_number`
+- [x] Response DTO: `booking_number` in detail + list responses
+- [x] Live test: `MCU250826-001` returned with correct price calculation ✅
 
