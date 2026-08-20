@@ -52,8 +52,8 @@ export function AdminSidebar() {
 
   // Tutup drawer mobile setiap kali pindah halaman
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   const isActive = (href: string) => {

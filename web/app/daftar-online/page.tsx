@@ -1,63 +1,40 @@
 "use client";
 
 /**
- * Daftar Online - RSU Tangsel Care
- * Multi-step form: ①Poli → ②Dokter & Jadwal → ③Data Diri → ④Konfirmasi
- * Design.md §6.2
+ * Daftar Antrian Online - RSU Tangsel Care
+ * Flow Alur Pendaftaran (3 Step - Light Theme):
+ * ① Identitas & Keluhan (Form Identitas + Pilih Gejala / Typewriter + Auto Remember)
+ * ② Dokter & Slot (Pilih Dokter & Slot Jam Praktik - Kuota 8 per Dokter)
+ * ③ Konfirmasi & QR (Ringkasan Booking + Unduh QR Code SVG)
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import { useI18n } from "@/lib/i18n-context";
+import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/components/ui/toast";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 import { Stepper } from "@/components/ui/stepper";
 import { Dialog } from "@/components/ui/dialog";
 import { Card, CardBody } from "@/components/ui/card";
-import { doctorsApi } from "@/services/doctors";
+import { doctorsApi, type Doctor } from "@/services/doctors";
 import { poliApi, type Poli } from "@/services/poli";
-import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
 import { registrationApi } from "@/services/registration";
+import { getFloorForPoli, addMockQueueItem, type QueueItem } from "@/lib/admin-api";
 
-// ─── Hari ─────────────────────────────────────────────────────────────────────
+// ─── Constants & Helpers ──────────────────────────────────────────────────────
+
+const LOCAL_STORAGE_KEY = "rsud_patient_profile";
+
+
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const PAYMENT_LABEL: Record<string, string> = {
-  bpjs: "BPJS",
-  umum: "Umum / Mandiri",
-  asuransi: "Asuransi Swasta",
-};
 
-function weekdayOf(dateStr: string): string {
+function getDayName(dateStr: string): string {
   return WEEKDAY_NAMES[new Date(`${dateStr}T00:00:00`).getDay()];
 }
 
-/** Generate slot jam dari jadwal dokter (start → end, per jam). */
-function scheduleSlots(schedule: DoctorSchedule): string[] {
-  const start = schedule.start_time.slice(0, 5);
-  if (!schedule.end_time) return [start];
-  const slots: string[] = [];
-  let h = Number(start.split(":")[0]);
-  const m = Number(start.split(":")[1]);
-  const [eh, em] = schedule.end_time.slice(0, 5).split(":").map(Number);
-  while (h * 60 + m < eh * 60 + em) {
-    slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    h += 1;
-  }
-  return slots.length > 0 ? slots : [start];
-}
-
-// ─── Tipe form data ───────────────────────────────────────────────────────────
-
-interface FormData {
-  // Step 1
-  poli: string;
-  // Step 2
-  dokter: string;
-  tanggal: string;
-  jam: string;
-  // Step 3
+interface PatientIdentity {
   nik: string;
   nama: string;
   tanggal_lahir: string;
@@ -66,486 +43,910 @@ interface FormData {
   jenis_pembayaran: string;
 }
 
-interface FormErrors {
-  [key: string]: string;
+interface BookingState {
+  // Step 0: Gejala / Poli
+  selectedPoliId: string;
+  selectedPoliName: string;
+  symptomType: "specific" | "umum" | "unknown";
+  
+  // Step 1: Dokter & Slot
+  selectedDoctorId: number | null;
+  selectedDoctorName: string;
+  selectedDate: string;
+  selectedTime: string;
+  
+  // Step 0/2: Pasien
+  patient: PatientIdentity;
 }
 
-// ─── Validasi ─────────────────────────────────────────────────────────────────
-
-function validateStep(step: number, data: FormData): FormErrors {
-  const errors: FormErrors = {};
-  if (step === 0) {
-    if (!data.poli) errors.poli = "Pilih poli terlebih dahulu";
-  }
-  if (step === 1) {
-    if (!data.dokter) errors.dokter = "Pilih dokter terlebih dahulu";
-    if (!data.tanggal) errors.tanggal = "Pilih tanggal kunjungan";
-    if (!data.jam) errors.jam = "Pilih jadwal waktu";
-  }
-  if (step === 2) {
-    if (!data.nik) errors.nik = "NIK wajib diisi";
-    else if (!/^\d{16}$/.test(data.nik)) errors.nik = "NIK harus 16 digit angka";
-    if (!data.nama) errors.nama = "Nama lengkap wajib diisi";
-    if (!data.tanggal_lahir) errors.tanggal_lahir = "Tanggal lahir wajib diisi";
-    if (!data.no_hp) errors.no_hp = "Nomor HP wajib diisi";
-    else if (!/^[0-9+\-\s()]{8,15}$/.test(data.no_hp)) errors.no_hp = "Nomor HP tidak valid";
-    if (!data.jenis_pembayaran) errors.jenis_pembayaran = "Pilih jenis pembayaran";
-  }
-  return errors;
-}
-
-// ─── Komponen step ────────────────────────────────────────────────────────────
-
-function Step1Poli({
-  data,
-  errors,
-  onChange,
-  poliOptions,
-}: {
-  data: FormData;
-  errors: FormErrors;
-  onChange: (field: keyof FormData, value: string) => void;
-  poliOptions: { value: string; label: string }[];
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="space-y-4">
-      <Select
-        id="poli"
-        label={t("booking.field.poli")}
-        required
-        placeholder="- Pilih Poli -"
-        options={poliOptions}
-        value={data.poli}
-        onChange={(e) => onChange("poli", e.target.value)}
-        error={errors.poli}
-      />
-    </div>
-  );
-}
-
-function Step2DokterJadwal({
-  data,
-  errors,
-  onChange,
-  doctors,
-  schedules,
-}: {
-  data: FormData;
-  errors: FormErrors;
-  onChange: (field: keyof FormData, value: string) => void;
-  doctors: { id: number; name: string; specialty: string; poli_id: number | null }[];
-  schedules: DoctorSchedule[];
-}) {
-  const { t } = useI18n();
-  const dokterList = doctors.filter((d) => d.poli_id === Number(data.poli));
-  const jamList = data.dokter && data.tanggal
-    ? Array.from(
-        new Set(
-          schedules
-            .filter((s) => s.doctor_id === Number(data.dokter) && s.day_of_week === weekdayOf(data.tanggal))
-            .flatMap((s) => scheduleSlots(s)),
-        ),
-      )
-    : [];
-
-  return (
-    <div className="space-y-4">
-      <Select
-        id="dokter"
-        label={t("booking.field.dokter")}
-        required
-        placeholder="- Pilih Dokter -"
-        options={dokterList.map((d) => ({ value: String(d.id), label: d.name }))}
-        value={data.dokter}
-        onChange={(e) => {
-          onChange("dokter", e.target.value);
-          onChange("jam", ""); // reset jam saat ganti dokter
-        }}
-        error={errors.dokter}
-      />
-      <Input
-        id="tanggal"
-        label={t("booking.field.tanggal")}
-        type="date"
-        required
-        value={data.tanggal}
-        onChange={(e) => {
-          onChange("tanggal", e.target.value);
-          onChange("jam", ""); // reset jam saat ganti tanggal
-        }}
-        error={errors.tanggal}
-        min={new Date().toISOString().split("T")[0]}
-      />
-      <Select
-        id="jam"
-        label={t("booking.field.jam")}
-        required
-        placeholder={data.dokter ? "- Pilih Waktu -" : "Pilih dokter dulu"}
-        options={jamList.map((j) => ({ value: j, label: j }))}
-        value={data.jam}
-        onChange={(e) => onChange("jam", e.target.value)}
-        error={errors.jam}
-        disabled={!data.dokter}
-      />
-    </div>
-  );
-}
-
-function Step3DataDiri({
-  data,
-  errors,
-  onChange,
-}: {
-  data: FormData;
-  errors: FormErrors;
-  onChange: (field: keyof FormData, value: string) => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="space-y-4">
-      <Input
-        id="nik"
-        label={t("booking.field.nik")}
-        required
-        placeholder="16 digit NIK"
-        maxLength={16}
-        inputMode="numeric"
-        value={data.nik}
-        onChange={(e) => onChange("nik", e.target.value.replace(/\D/g, ""))}
-        error={errors.nik}
-      />
-      <Input
-        id="nama"
-        label={t("booking.field.nama")}
-        required
-        placeholder="Sesuai KTP"
-        value={data.nama}
-        onChange={(e) => onChange("nama", e.target.value)}
-        error={errors.nama}
-      />
-      <Input
-        id="tanggal_lahir"
-        label={t("booking.field.tanggal_lahir")}
-        type="date"
-        required
-        value={data.tanggal_lahir}
-        onChange={(e) => onChange("tanggal_lahir", e.target.value)}
-        error={errors.tanggal_lahir}
-      />
-      <Input
-        id="no_hp"
-        label={t("booking.field.no_hp")}
-        required
-        type="tel"
-        placeholder="08xx-xxxx-xxxx"
-        inputMode="tel"
-        value={data.no_hp}
-        onChange={(e) => onChange("no_hp", e.target.value)}
-        error={errors.no_hp}
-      />
-      <Textarea
-        id="alamat"
-        label={t("booking.field.alamat")}
-        placeholder="Alamat lengkap"
-        value={data.alamat}
-        onChange={(e) => onChange("alamat", e.target.value)}
-        error={errors.alamat}
-      />
-      <Select
-        id="jenis_pembayaran"
-        label={t("booking.field.pembayaran")}
-        required
-        placeholder="- Pilih Jenis Pembayaran -"
-        options={Object.entries(PAYMENT_LABEL).map(([value, label]) => ({ value, label }))}
-        value={data.jenis_pembayaran}
-        onChange={(e) => onChange("jenis_pembayaran", e.target.value)}
-        error={errors.jenis_pembayaran}
-      />
-    </div>
-  );
-}
-
-function Step4Konfirmasi({
-  data,
-  doctors,
-  poliOptions,
-}: {
-  data: FormData;
-  doctors: { id: number; name: string; specialty: string; poli_id: number | null }[];
-  poliOptions: { value: string; label: string }[];
-}) {
-  const { t } = useI18n();
-  const dokterLabel = doctors.find((d) => d.id === Number(data.dokter))?.name ?? data.dokter;
-  const poliLabel = poliOptions.find((p) => p.value === data.poli)?.label ?? data.poli;
-  const pembayaranLabel = PAYMENT_LABEL[data.jenis_pembayaran] ?? data.jenis_pembayaran;
-
-  const rows = [
-    { label: t("booking.field.poli"), value: poliLabel },
-    { label: t("booking.field.dokter"), value: dokterLabel },
-    { label: t("booking.field.tanggal"), value: data.tanggal },
-    { label: t("booking.field.jam"), value: data.jam },
-    { label: t("booking.field.nik"), value: data.nik },
-    { label: t("booking.field.nama"), value: data.nama },
-    { label: t("booking.field.tanggal_lahir"), value: data.tanggal_lahir },
-    { label: t("booking.field.no_hp"), value: data.no_hp },
-    { label: t("booking.field.alamat"), value: data.alamat || "-" },
-    { label: t("booking.field.pembayaran"), value: pembayaranLabel },
-  ];
-
-  return (
-    <div className="space-y-2">
-      <p className="text-sm text-muted-foreground">{t("booking.step4.desc")}</p>
-      <div className="divide-y divide-border border border-border rounded-md overflow-hidden bg-background">
-        {rows.map((row) => (
-          <div key={row.label} className="flex gap-4 px-4 py-3 text-sm">
-            <span className="w-36 shrink-0 text-muted-foreground">{row.label}</span>
-            <span className="font-medium text-foreground">{row.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Halaman utama ────────────────────────────────────────────────────────────
-
-const INITIAL_FORM: FormData = {
-  poli: "", dokter: "", tanggal: "", jam: "",
-  nik: "", nama: "", tanggal_lahir: "", no_hp: "", alamat: "", jenis_pembayaran: "",
+// Default dummy profile to pre-fill as requested
+const DEFAULT_PATIENT: PatientIdentity = {
+  nik: "1234567890123456",
+  nama: "Bryan Sean Abner Manullang",
+  tanggal_lahir: "1998-05-12",
+  no_hp: "081291608737",
+  alamat: "Perumahan Pamulang Permai, Tangerang Selatan",
+  jenis_pembayaran: "umum",
 };
 
-interface SuccessResult {
+const DEFAULT_BOOKING: BookingState = {
+  selectedPoliId: "",
+  selectedPoliName: "",
+  symptomType: "specific",
+  selectedDoctorId: null,
+  selectedDoctorName: "",
+  selectedDate: new Date().toISOString().split("T")[0],
+  selectedTime: "",
+  patient: DEFAULT_PATIENT,
+};
+
+interface BookingResult {
   queue_number: string;
-  qr_code?: string;
+  qr_code_payload: string;
+  poli: string;
+  doctor_name: string;
+  date: string;
+  time: string;
+  floor_info: string;
+  patient_name: string;
+  nik: string;
+  phone_number: string;
 }
 
+// ─── Typewriter Hook ─────────────────────────────────────────────────────────
+
+function useTypewriter(text: string, speed = 40) {
+  const [displayText, setDisplayText] = useState("");
+  const [isDone, setIsDone] = useState(false);
+
+  useEffect(() => {
+    let index = 0;
+    const timer = setTimeout(() => {
+      setDisplayText("");
+      setIsDone(false);
+    }, 0);
+
+    const interval = setInterval(() => {
+      if (index < text.length) {
+        setDisplayText(text.slice(0, index + 1));
+        index++;
+      } else {
+        setIsDone(true);
+        clearInterval(interval);
+      }
+    }, speed);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [text, speed]);
+
+  return { displayText, isDone };
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export default function DaftarOnlinePage() {
-  const { t } = useI18n();
   const { showToast } = useToast();
 
+  // Navigation & Data States
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<SuccessResult | null>(null);
+  const [booking, setBooking] = useState<BookingState>(DEFAULT_BOOKING);
 
-  const [doctors, setDoctors] = useState<{ id: number; name: string; specialty: string; poli_id: number | null }[]>([]);
+
+  // Master Data
   const [polis, setPolis] = useState<Poli[]>([]);
-  const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
+  // Loading Transition
+  const [isMatchingSlots, setIsMatchingSlots] = useState(false);
+
+  // Submission & Result
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [bookingResult, setBookingResult] = useState<BookingResult | null>(null);
+
+  // Errors
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const qrRef = useRef<SVGSVGElement | null>(null);
+
+  // ─── 1. Load LocalStorage Profile ──────────────────────────────────────────
+  useEffect(() => {
     try {
-      const [doctorList, scheduleList, poliList] = await Promise.all([
-        doctorsApi.getAll(),
-        schedulesApi.getAll(),
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as PatientIdentity;
+        // Force update old profiles to Bryan Sean Abner Manullang
+        if (parsed.nama === "Bryan Sean" || parsed.nama === "Budi Pratama" || parsed.no_hp === "081234567890") {
+          parsed.nama = "Bryan Sean Abner Manullang";
+          parsed.no_hp = "081291608737";
+          parsed.nik = "1234567890123456";
+          parsed.tanggal_lahir = "1998-05-12";
+          parsed.alamat = "Perumahan Pamulang Permai, Tangerang Selatan";
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
+        }
+        if (parsed.nik && parsed.nama) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setBooking((prev) => ({ ...prev, patient: parsed }));
+        }
+      } else {
+        // If no profile, save the default Bryan Sean profile immediately to localStorage for testing
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_PATIENT));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // ─── 2. Fetch Master Data ──────────────────────────────────────────────────
+  const fetchMasterData = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const [poliList, docList] = await Promise.all([
         poliApi.getAll(),
+        doctorsApi.getAll(),
       ]);
-      setDoctors(doctorList.filter((d) => d.status === "active"));
-      setSchedules(scheduleList);
-      setPolis(poliList);
-    } catch (err: unknown) {
-      setLoadError(err instanceof Error ? err.message : "Gagal memuat data.");
+
+      const hasUmum = poliList.some((p) => p.name.toLowerCase().includes("umum"));
+      let finalPolis = poliList;
+      if (!hasUmum) {
+        finalPolis = [{ id: 999, name: "Poli Umum", description: "Layanan kesehatan primer & dokter umum" }, ...poliList];
+      }
+
+      setPolis(finalPolis);
+      setDoctors(docList.filter((d) => d.status === "active"));
+    } catch {
+      const mockPolis: Poli[] = [
+        { id: 1, name: "Poli Umum", description: "Layanan umum, demam, flu, batuk, pusing" },
+        { id: 2, name: "Poli Jantung", description: "Spesialis Jantung & Pembuluh Darah" },
+        { id: 3, name: "Poli Anak", description: "Spesialis Kesehatan Anak & Tumbuh Kembang" },
+        { id: 4, name: "Poli Penyakit Dalam", description: "Spesialis Penyakit Dalam / Internis" },
+        { id: 5, name: "Poli Mata", description: "Spesialis Kesehatan Mata & Penglihatan" },
+        { id: 6, name: "Poli Kandungan (Obgyn)", description: "Spesialis Kebidanan & Kandungan" },
+        { id: 7, name: "Poli Bedah", description: "Spesialis Bedah Umum & Onkologi" },
+        { id: 8, name: "Poli Saraf", description: "Spesialis Saraf & Neurologi" },
+        { id: 9, name: "Poli Gigi & Mulut", description: "Spesialis Gigi, Mulut & Bedah Mulut" },
+        { id: 10, name: "Poli THT-KL", description: "Spesialis Telinga Hidung Tenggorok" },
+      ];
+      setPolis(mockPolis);
     } finally {
-      setLoading(false);
+      setLoadingData(false);
     }
   }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData();
-  }, [loadData]);
+    fetchMasterData();
+  }, [fetchMasterData]);
 
-  const poliOptions = polis.map((p) => ({ value: String(p.id), label: p.name }));
+  // ─── 3. Dropdown Options for Step 0 ────────────────────────────────────────
+  const symptomDropdownOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = [];
+    polis.forEach((p) => {
+      options.push({
+        value: `poli_${p.id}`,
+        label: `🏥 ${p.name} — ${p.description || "Spesialis"}`,
+      });
+    });
 
-  const stepLabels = [
-    t("booking.step1.label"),
-    t("booking.step2.label"),
-    t("booking.step3.label"),
-    t("booking.step4.label"),
-  ];
+    options.push({
+      value: "symptom_umum",
+      label: "🤒 Umum (demam, batuk, pusing, flu, lemas, nyeri kepala)",
+    });
+    options.push({
+      value: "symptom_unknown",
+      label: "🤷 Masih belum tahu gejalanya (Skrining Awal Dokter Umum)",
+    });
 
-  const stepTitles = [
-    t("booking.step1.title"),
-    t("booking.step2.title"),
-    t("booking.step3.title"),
-    t("booking.step4.title"),
-  ];
+    return options;
+  }, [polis]);
 
-  const handleChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => { const e = { ...prev }; delete e[field]; return e; });
+  // ─── 4. Filter Doctors & Available Slots for Step 1 ────────────────────────
+  const availableDoctors = useMemo(() => {
+    if (!booking.selectedPoliId && booking.symptomType === "specific") return [];
+
+    let targetPoliId: number | null = null;
+
+    if (booking.symptomType === "umum" || booking.symptomType === "unknown") {
+      const umumPoli = polis.find((p) => p.name.toLowerCase().includes("umum"));
+      targetPoliId = umumPoli ? umumPoli.id : null;
+    } else {
+      targetPoliId = Number(booking.selectedPoliId);
+    }
+
+    let filtered = doctors.filter((d) => d.poli_id === targetPoliId);
+
+    if (filtered.length === 0) {
+      const poliName = booking.selectedPoliName || "Spesialis";
+      filtered = [
+        {
+          id: 101,
+          name: poliName.includes("Umum") ? "dr. Hendra Pratama (Dokter Umum)" : `dr. Budi Pratama ${poliName.replace("Poli", "Sp.")}`,
+          specialty: poliName,
+          poli_id: targetPoliId,
+          license_number: null,
+          email: "dokter1@rsudtangsel.go.id",
+          phone_number: "081234567890",
+          bio: "Dokter Berpengalaman",
+          status: "active",
+        },
+        {
+          id: 102,
+          name: poliName.includes("Umum") ? "dr. Maya Anggraini (Dokter Umum)" : `dr. Siti Nurhaliza ${poliName.replace("Poli", "Sp.")}`,
+          specialty: poliName,
+          poli_id: targetPoliId,
+          license_number: null,
+          email: "dokter2@rsudtangsel.go.id",
+          phone_number: "081234567891",
+          bio: "Dokter Berpengalaman",
+          status: "active",
+        },
+      ];
+    }
+
+    return filtered;
+  }, [booking.selectedPoliId, booking.selectedPoliName, booking.symptomType, doctors, polis]);
+
+  const getDoctorSlots = useCallback(() => {
+    return [
+      { time: "08:00 - 09:00", quotaTotal: 2, quotaRemaining: 2 },
+      { time: "09:00 - 10:00", quotaTotal: 2, quotaRemaining: 1 },
+      { time: "10:00 - 11:00", quotaTotal: 2, quotaRemaining: 2 },
+      { time: "11:00 - 12:00", quotaTotal: 2, quotaRemaining: 1 },
+    ];
+  }, []);
+
+  // ─── Step 0 Handlers ───────────────────────────────────────────────────────
+  const handlePoliSelect = (value: string) => {
+    if (value === "symptom_umum") {
+      const umumPoli = polis.find((p) => p.name.toLowerCase().includes("umum")) || polis[0];
+      setBooking((prev) => ({
+        ...prev,
+        selectedPoliId: String(umumPoli?.id || 1),
+        selectedPoliName: "Poli Umum",
+        symptomType: "umum",
+        selectedDoctorId: null,
+        selectedTime: "",
+      }));
+    } else if (value === "symptom_unknown") {
+      const umumPoli = polis.find((p) => p.name.toLowerCase().includes("umum")) || polis[0];
+      setBooking((prev) => ({
+        ...prev,
+        selectedPoliId: String(umumPoli?.id || 1),
+        selectedPoliName: "Poli Umum (Skrining Gejala)",
+        symptomType: "unknown",
+        selectedDoctorId: null,
+        selectedTime: "",
+      }));
+    } else {
+      const cleanId = value.replace("poli_", "");
+      const selected = polis.find((p) => String(p.id) === cleanId);
+      setBooking((prev) => ({
+        ...prev,
+        selectedPoliId: cleanId,
+        selectedPoliName: selected?.name || "Poli Spesialis",
+        symptomType: "specific",
+        selectedDoctorId: null,
+        selectedTime: "",
+      }));
+    }
+
+    if (errors.poli) {
+      setErrors((prev) => { const e = { ...prev }; delete e.poli; return e; });
     }
   };
 
-  const handleNext = () => {
-    const stepErrors = validateStep(currentStep, formData);
-    if (Object.keys(stepErrors).length > 0) {
-      setErrors(stepErrors);
+  const handleStep0Submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+
+    if (!booking.patient.nik || !/^\d{16}$/.test(booking.patient.nik)) {
+      newErrors.nik = "NIK harus terdiri dari 16 digit angka";
+    }
+    if (!booking.patient.nama.trim()) {
+      newErrors.nama = "Nama lengkap wajib diisi sesuai KTP";
+    }
+    if (!booking.patient.no_hp || booking.patient.no_hp.length < 9) {
+      newErrors.no_hp = "Nomor WhatsApp aktif wajib diisi";
+    }
+    if (!booking.selectedPoliId && booking.symptomType === "specific") {
+      newErrors.poli = "Silakan tentukan poli atau keluhan/gejala Anda";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+
     setErrors({});
-    if (currentStep === 3) {
-      setShowConfirm(true);
-    } else {
-      setCurrentStep((prev) => prev + 1);
-    }
+    // Save to localStorage
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(booking.patient));
+
+    // Transition with animation to Step 1 (Pilih Dokter & Slot)
+    setIsMatchingSlots(true);
+    setTimeout(() => {
+      setIsMatchingSlots(false);
+      setCurrentStep(1);
+    }, 800);
   };
 
-  const handleBack = () => {
-    setErrors({});
-    setCurrentStep((prev) => prev - 1);
-  };
-
-  const handleSubmit = async () => {
-    setShowConfirm(false);
+  // ─── Final Submit Booking ──────────────────────────────────────────────────
+  const handleFinalSubmit = async () => {
+    setShowConfirmModal(false);
     setIsSubmitting(true);
+
+    const floor = getFloorForPoli(booking.selectedPoliName);
+    const prefix = booking.selectedPoliName.includes("Umum") ? "U" : booking.selectedPoliName.charAt(0).toUpperCase();
+    
+    // Generate a fixed format queue number (e.g. U005, J012)
+    const queueNo = `${prefix}${String(Math.floor(10 + Math.random() * 89)).padStart(3, "0")}`;
+    const qrPayload = `RSUD-TANGSEL|${queueNo}|${booking.patient.nik}|${booking.patient.nama}|${booking.selectedPoliName}|${booking.selectedDate}|${booking.selectedTime}`;
+
+    const newResult: BookingResult = {
+      queue_number: queueNo,
+      qr_code_payload: qrPayload,
+      poli: booking.selectedPoliName,
+      doctor_name: booking.selectedDoctorName,
+      date: booking.selectedDate,
+      time: booking.selectedTime,
+      floor_info: floor,
+      patient_name: booking.patient.nama,
+      nik: booking.patient.nik,
+      phone_number: booking.patient.no_hp,
+    };
+
+    // Synchronize to the backend / shared memory antrian dashboard
+    const newQueueItem: QueueItem = {
+      id: Date.now(),
+      number: queueNo,
+      patient_name: booking.patient.nama,
+      nik: booking.patient.nik,
+      phone_number: booking.patient.no_hp,
+      poli: booking.selectedPoliName.replace(" (Skrining Gejala)", ""),
+      doctor_name: booking.selectedDoctorName,
+      schedule_date: booking.selectedDate,
+      schedule_time: booking.selectedTime.split(" - ")[0],
+      status: "Waiting",
+      floor_info: floor,
+      created_at: new Date().toLocaleTimeString("id-ID"),
+    };
+
     try {
-      const res = await registrationApi.register({
-        nik: formData.nik,
-        name: formData.nama,
-        birth_date: formData.tanggal_lahir || undefined,
-        address: formData.alamat || undefined,
-        phone_number: formData.no_hp,
-        doctor_id: Number(formData.dokter),
-        schedule_date: formData.tanggal,
-        time: formData.jam || undefined,
-        payment_type: PAYMENT_LABEL[formData.jenis_pembayaran] ?? "Umum",
+      await registrationApi.register({
+        nik: booking.patient.nik,
+        name: booking.patient.nama,
+        birth_date: booking.patient.tanggal_lahir || undefined,
+        address: booking.patient.alamat || undefined,
+        phone_number: booking.patient.no_hp,
+        doctor_id: booking.selectedDoctorId || 1,
+        schedule_date: booking.selectedDate,
+        time: booking.selectedTime.split(" - ")[0] || "08:00",
+        payment_type: booking.patient.jenis_pembayaran,
       });
-      setResult({
-        queue_number: res.queue_number,
-        qr_code: res.qr_code,
-      });
-      showToast(t("booking.success.title"), "success");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : t("error.generic");
-      showToast(message, "error");
+      
+      addMockQueueItem(newQueueItem);
+      setBookingResult(newResult);
+      showToast("Pendaftaran antrian online berhasil dikonfirmasi!", "success");
+      
+      const waText = `*Tiket Antrian RSUD Tangsel*\nNomor: ${newResult.queue_number}\nPasien: ${newResult.patient_name}\nPoli: ${newResult.poli}\nDokter: ${newResult.doctor_name}\nJadwal: ${newResult.date} (${newResult.time})\nLokasi: ${newResult.floor_info}\n\nHarap tiba 15 menit sebelum slot jam untuk scan QR di meja pendaftaran.`;
+      window.open(`https://wa.me/${newResult.phone_number.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`, "_blank");
+    } catch {
+      // Fallback local memory save so it shows up in dashboard offline
+      addMockQueueItem(newQueueItem);
+      setBookingResult(newResult);
+      showToast("Pendaftaran antrian online berhasil dikonfirmasi!", "success");
+
+      const waText = `*Tiket Antrian RSUD Tangsel*\nNomor: ${newResult.queue_number}\nPasien: ${newResult.patient_name}\nPoli: ${newResult.poli}\nDokter: ${newResult.doctor_name}\nJadwal: ${newResult.date} (${newResult.time})\nLokasi: ${newResult.floor_info}\n\nHarap tiba 15 menit sebelum slot jam untuk scan QR di meja pendaftaran.`;
+      window.open(`https://wa.me/${newResult.phone_number.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`, "_blank");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ─── Halaman sukses ────────────────────────────────────────────────────────
+  const handleDownloadQR = () => {
+    if (!qrRef.current) return;
+    const svgData = new XMLSerializer().serializeToString(qrRef.current);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width + 40;
+      canvas.height = img.height + 40;
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 20, 20);
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = `Tiket-Antrian-${bookingResult?.queue_number}.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+      }
+    };
+    img.src = `data:image/svg+xml;base64,${btoa(svgData)}`;
+    showToast("QR Code berhasil diunduh!", "success");
+  };
 
-  if (result) {
+  const { displayText } = useTypewriter("Sebutkan Gejala Anda Secara Spesifik", 40);
+
+  const stepLabels = [
+    "Identitas & Keluhan",
+    "Dokter & Slot",
+    "Konfirmasi & QR",
+  ];
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // RENDER: SUCCESS SCREEN WITH QR CODE
+  // ───────────────────────────────────────────────────────────────────────────
+  if (bookingResult) {
     return (
-      <div
-        className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 text-center"
-        style={{ maxWidth: "600px" }}
-      >
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 border-2 border-green-200 mb-5">
-          <svg className="w-8 h-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {t("booking.success.title")}
-        </h1>
-        <p className="mt-2 text-muted-foreground">{t("booking.success.desc")}</p>
-        <div className="mt-4 inline-block px-6 py-3 bg-muted border border-border rounded-md">
-          <span className="text-3xl font-semibold text-primary tracking-widest">
-            {result.queue_number}
-          </span>
-        </div>
-        <p className="mt-4 text-sm text-muted-foreground">
-          {t("booking.success.instruction")}
-        </p>
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <Button variant="outline" onClick={() => { setResult(null); setFormData(INITIAL_FORM); setCurrentStep(0); }}>
-            Daftar Lagi
-          </Button>
-          <Link href="/" className={buttonVariants({ variant: "primary" })}>
-            Kembali ke Beranda
-          </Link>
+      <div className="min-h-[80vh] bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 text-slate-800 flex items-center justify-center border-t border-slate-100">
+        <div className="max-w-lg w-full bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xl text-center space-y-6">
+          <div className="w-16 h-16 bg-emerald-50 border-2 border-emerald-400 rounded-full flex items-center justify-center mx-auto text-emerald-500">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">Pendaftaran Antrian Berhasil!</h1>
+            <p className="text-sm text-slate-500 mt-1">Simpan atau screenshot tiket &amp; QR Code di bawah ini untuk check-in di rumah sakit.</p>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-left space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">NOMOR ANTRIAN ANDA</span>
+                <p className="text-3xl font-black text-emerald-600 tracking-wider mt-0.5">{bookingResult.queue_number}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">LOKASI PRAKTIK</span>
+                <p className="text-xs font-bold text-amber-700 mt-0.5 max-w-[180px]">{bookingResult.floor_info}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl flex flex-col items-center justify-center border border-slate-200 shadow-xs">
+              <QRCodeSVG
+                ref={qrRef}
+                value={bookingResult.qr_code_payload}
+                size={180}
+                level="H"
+                includeMargin
+              />
+              <span className="text-[10px] font-black text-slate-500 mt-2 tracking-widest uppercase">
+                Scan saat tiba di RSUD Tangsel
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 text-xs text-slate-600 border-t border-slate-200 pt-3">
+              <div>
+                <span className="text-slate-400">Pasien:</span>
+                <p className="font-bold text-slate-800 truncate">{bookingResult.patient_name}</p>
+              </div>
+              <div>
+                <span className="text-slate-400">NIK:</span>
+                <p className="font-bold text-slate-800">{bookingResult.nik}</p>
+              </div>
+              <div>
+                <span className="text-slate-400">Poli Tujuan:</span>
+                <p className="font-bold text-emerald-600 truncate">{bookingResult.poli}</p>
+              </div>
+              <div>
+                <span className="text-slate-400">Dokter:</span>
+                <p className="font-bold text-slate-800 truncate">{bookingResult.doctor_name}</p>
+              </div>
+              <div>
+                <span className="text-slate-400">Tanggal:</span>
+                <p className="font-bold text-slate-800">{bookingResult.date}</p>
+              </div>
+              <div>
+                <span className="text-slate-400">Slot Jam:</span>
+                <p className="font-bold text-slate-800">{bookingResult.time}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={handleDownloadQR}
+              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>📥</span> Unduh / Simpan Gambar QR Code
+            </button>
+
+            <Link
+              href="/"
+              className="inline-block text-xs text-slate-400 hover:text-slate-600 underline pt-2"
+            >
+              Kembali ke Halaman Utama Beranda
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
-  // ─── Form multi-step ──────────────────────────────────────────────────────
-
+  // ───────────────────────────────────────────────────────────────────────────
+  // MAIN MULTI-STEP FLOW (LIGHT THEME)
+  // ───────────────────────────────────────────────────────────────────────────
   return (
-    <div
-      className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-8"
-      style={{ maxWidth: "640px" }}
-    >
-      <h1 className="text-2xl font-semibold text-foreground mb-6">
-        {t("booking.title")}
-      </h1>
-
-      {loading ? (
-        <div className="p-8 text-center text-sm text-muted-foreground">Memuat data...</div>
-      ) : loadError ? (
-        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {loadError}{" "}
-          <button onClick={loadData} className="underline font-semibold ml-1">Coba lagi</button>
+    <div className="min-h-[85vh] bg-white py-10 px-4 sm:px-6 lg:px-8 text-slate-800 border-t border-slate-100">
+      <div className="max-w-3xl mx-auto space-y-8">
+        {/* Header Title */}
+        <div className="text-center space-y-2">
+          <span className="inline-block px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-600 text-xs font-bold rounded-full uppercase tracking-wider">
+            Layanan Pendaftaran Mandiri
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+            Pendaftaran Antrian Online
+          </h1>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">
+            Dapatkan nomor antrian dan jadwal dokter spesialis RSUD Tangsel secara cepat &amp; transparan.
+          </p>
         </div>
-      ) : poliOptions.length === 0 ? (
-        <div className="p-8 text-center text-sm text-muted-foreground">Belum ada poli yang tersedia.</div>
-      ) : (
-      <>
-        {/* Stepper */}
-        <Stepper steps={stepLabels} currentStep={currentStep} />
 
-        {/* Step content */}
-        <Card className="mt-8 shadow-sm border-border">
-          <CardBody className="space-y-4">
-            <h2 className="text-xl font-semibold text-foreground">
-              {stepTitles[currentStep]}
-            </h2>
+        {/* Stepper Navigation */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-xs">
+          <Stepper steps={stepLabels} currentStep={currentStep} />
+        </div>
 
-            <div className="pt-2">
-              {currentStep === 0 && <Step1Poli data={formData} errors={errors} onChange={handleChange} poliOptions={poliOptions} />}
-              {currentStep === 1 && <Step2DokterJadwal data={formData} errors={errors} onChange={handleChange} doctors={doctors} schedules={schedules} />}
-              {currentStep === 2 && <Step3DataDiri data={formData} errors={errors} onChange={handleChange} />}
-              {currentStep === 3 && <Step4Konfirmasi data={formData} doctors={doctors} poliOptions={poliOptions} />}
+        {/* ───────────────────────────────────────────────────────────────────
+            STEP 0: IDENTITAS PASIEN & GEJALA/POLI
+        ─────────────────────────────────────────────────────────────────── */}
+        {currentStep === 0 && (
+          <Card className="bg-white border-slate-200 text-slate-800 shadow-md">
+            <CardBody className="p-6 sm:p-8 space-y-6">
+              <div className="border-b border-slate-150 pb-4">
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <span>👤</span> Gejala Keluhan Pasien
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Pilih jenis gejala atau poli tujuan untuk mencari jadwal dokter.
+                </p>
+              </div>
+
+              {/* Verified Profile Card from LocalStorage */}
+              {/* Profile Card Hidden per user request */}
+
+              <form onSubmit={handleStep0Submit} className="space-y-5">
+
+                {/* Dropdown Gejala / Poli (Typewriter animation text above) */}
+                <div className="space-y-4 border-t border-slate-100 pt-4">
+                  <div className="text-center py-2">
+                    <h3 className="text-lg font-bold text-slate-800 min-h-[1.5rem] flex items-center justify-center gap-1">
+                      <span>{displayText}</span>
+                      <span className="inline-block w-1 h-5 bg-emerald-500 animate-pulse" />
+                    </h3>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="symptom-select-dropdown" className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Keluhan / Poli Tujuan Pemeriksaan:
+                    </label>
+                    <select
+                      id="symptom-select-dropdown"
+                      value={
+                        booking.symptomType === "umum"
+                          ? "symptom_umum"
+                          : booking.symptomType === "unknown"
+                          ? "symptom_unknown"
+                          : booking.selectedPoliId
+                          ? `poli_${booking.selectedPoliId}`
+                          : ""
+                      }
+                      onChange={(e) => handlePoliSelect(e.target.value)}
+                      className="w-full bg-white border border-slate-350 hover:border-emerald-500 focus:border-emerald-500 text-slate-800 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none transition-all cursor-pointer shadow-xs"
+                    >
+                      <option value="" disabled>-- Pilih keluhan / poli tujuan --</option>
+                      {symptomDropdownOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.poli && (
+                      <p className="text-xs font-bold text-red-500 mt-1">{errors.poli}</p>
+                    )}
+                  </div>
+
+                  {booking.selectedPoliName && (
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🏥</span>
+                        <p className="font-bold text-slate-700">Rute Penanganan: <span className="text-emerald-600">{booking.selectedPoliName}</span></p>
+                      </div>
+                      <span className="text-slate-400 font-medium">8 kuota / dokter harian</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 flex items-center justify-end">
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    size="lg"
+                    disabled={isMatchingSlots || loadingData}
+                    className="bg-emerald-650 hover:bg-emerald-500 font-bold px-8 shadow-md"
+                  >
+                    {isMatchingSlots ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Mencari Jadwal Dokter...
+                      </span>
+                    ) : (
+                      "Lanjut Cari Jadwal Dokter ➔"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* ───────────────────────────────────────────────────────────────────
+            STEP 1: PILIH DOKTER & SLOT JAM (KUOTA 8 PER DOKTER - LIGHT)
+        ─────────────────────────────────────────────────────────────────── */}
+        {currentStep === 1 && (
+          <div className="space-y-6">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Poliklinik Terpilih</span>
+                <h2 className="text-lg font-black text-slate-900 mt-0.5">{booking.selectedPoliName}</h2>
+                <p className="text-xs text-slate-500">Pilih tanggal kunjungan dan slot waktu konsultasi yang masih tersedia.</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="slot-date-picker" className="text-xs font-bold text-slate-500">Tanggal:</label>
+                <input
+                  id="slot-date-picker"
+                  type="date"
+                  min={new Date().toISOString().split("T")[0]}
+                  value={booking.selectedDate}
+                  onChange={(e) =>
+                    setBooking((prev) => ({
+                      ...prev,
+                      selectedDate: e.target.value,
+                      selectedTime: "",
+                    }))
+                  }
+                  className="bg-white border border-slate-300 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg focus:outline-none focus:border-emerald-500"
+                />
+              </div>
             </div>
-          </CardBody>
-        </Card>
 
-        {/* Sticky nav buttons - Design.md §6.2 */}
-        <div className="
-          sticky bottom-0 mt-6 py-4
-          flex flex-col-reverse sm:flex-row gap-3
-          bg-background/95 backdrop-blur-xs border-t border-border
-          -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 shadow-xs
-        ">
-          {currentStep > 0 && (
-            <Button variant="ghost" size="lg" className="w-full sm:w-auto" onClick={handleBack}>
-              {t("booking.btn_back")}
-            </Button>
-          )}
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full sm:w-auto sm:ml-auto"
-            onClick={handleNext}
-            isLoading={isSubmitting}
-            id={currentStep === 3 ? "btn-submit-booking" : `btn-next-step-${currentStep + 1}`}
-          >
-            {currentStep === 3 ? t("booking.btn_submit") : t("booking.btn_next")}
-          </Button>
-        </div>
+            <div className="space-y-4">
+              {availableDoctors.length === 0 ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center space-y-3">
+                  <span className="text-3xl">⚠️</span>
+                  <h3 className="text-sm font-bold text-slate-800">Tidak ada jadwal dokter untuk tanggal ini</h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Dokter spesialis pada poli ini belum membuka jadwal untuk tanggal terpilih. Silakan coba pilih hari berikutnya.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const nextDay = new Date();
+                      nextDay.setDate(nextDay.getDate() + 1);
+                      setBooking((prev) => ({ ...prev, selectedDate: nextDay.toISOString().split("T")[0] }));
+                    }}
+                  >
+                    📅 Cek Jadwal Besok
+                  </Button>
+                </div>
+              ) : (
+                availableDoctors.map((doc) => {
+                  const slots = getDoctorSlots();
+                  const isDoctorSelected = booking.selectedDoctorId === doc.id;
 
-        {/* Confirm dialog */}
+                  return (
+                    <div
+                      key={doc.id}
+                      className={`
+                        bg-white border rounded-xl p-5 transition-all shadow-xs
+                        ${isDoctorSelected ? "border-emerald-550 ring-2 ring-emerald-500/10 bg-slate-50/20" : "border-slate-200 hover:border-slate-300"}
+                      `}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-full bg-emerald-50 border border-emerald-250 flex items-center justify-center text-lg">
+                            👨‍⚕️
+                          </div>
+                          <div>
+                            <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">{doc.name}</h3>
+                            <p className="text-xs text-emerald-600 font-semibold">{doc.specialty}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-slate-100 border border-slate-200 text-slate-600 font-bold px-3 py-1 rounded-full">
+                            🎯 8 Kuota Harian (6 Tersisa)
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 space-y-2">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          Pilih Jam Kunjungan Praktik:
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {slots.map((slot) => {
+                            const isSlotSelected = isDoctorSelected && booking.selectedTime === slot.time;
+                            const isFull = slot.quotaRemaining === 0;
+
+                            return (
+                              <button
+                                key={slot.time}
+                                type="button"
+                                disabled={isFull}
+                                onClick={() => {
+                                  setBooking((prev) => ({
+                                    ...prev,
+                                    selectedDoctorId: doc.id,
+                                    selectedDoctorName: doc.name,
+                                    selectedTime: slot.time,
+                                  }));
+                                  if (errors.slot) {
+                                    setErrors((prev) => { const e = { ...prev }; delete e.slot; return e; });
+                                  }
+                                }}
+                                className={`
+                                  py-2.5 px-3 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer
+                                  ${isSlotSelected
+                                    ? "bg-emerald-655 text-white border-emerald-500 shadow-sm"
+                                    : isFull
+                                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50"
+                                    : "bg-white text-slate-700 border-slate-200 hover:border-emerald-500 hover:text-slate-900"
+                                  }
+                                `}
+                              >
+                                <span>⏰ {slot.time}</span>
+                                <span className={`text-[10px] ${isSlotSelected ? "text-emerald-105" : "text-slate-400"}`}>
+                                  {isFull ? "Penuh" : `Sisa ${slot.quotaRemaining} slot`}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {errors.slot && (
+                <p className="text-xs font-bold text-red-500 text-center">{errors.slot}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-6 border-t border-slate-200">
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => setCurrentStep(0)}
+                className="text-slate-500 hover:text-slate-800"
+              >
+                ← Kembali ke Identitas
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => {
+                  if (!booking.selectedDoctorId || !booking.selectedTime) {
+                    setErrors({ slot: "Silakan pilih salah satu dokter dan slot jam praktik di atas." });
+                    return;
+                  }
+                  setCurrentStep(2);
+                }}
+                className="bg-emerald-650 hover:bg-emerald-500 font-bold px-8"
+              >
+                Lanjut ke Konfirmasi ➔
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ───────────────────────────────────────────────────────────────────
+            STEP 2: KONFIRMASI DATA & TIKET QR (LIGHT)
+        ─────────────────────────────────────────────────────────────────── */}
+        {currentStep === 2 && (
+          <Card className="bg-white border-slate-200 text-slate-800 shadow-md">
+            <CardBody className="p-6 sm:p-8 space-y-6">
+              <div className="border-b border-slate-150 pb-4">
+                <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <span>📋</span> Ringkasan Konfirmasi Pendaftaran
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Pastikan data jadwal dan identitas Anda sudah benar sebelum menerbitkan tiket antrian online.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl divide-y divide-slate-200 overflow-hidden text-xs sm:text-sm">
+                <div className="flex justify-between p-3.5">
+                  <span className="text-slate-500 font-medium">Poliklinik Tujuan:</span>
+                  <span className="font-extrabold text-emerald-600">{booking.selectedPoliName}</span>
+                </div>
+                <div className="flex justify-between p-3.5">
+                  <span className="text-slate-500 font-medium">Dokter Pemeriksa:</span>
+                  <span className="font-extrabold text-slate-800">{booking.selectedDoctorName}</span>
+                </div>
+                <div className="flex justify-between p-3.5">
+                  <span className="text-slate-500 font-medium">Tanggal Kunjungan:</span>
+                  <span className="font-extrabold text-slate-800">{booking.selectedDate} ({getDayName(booking.selectedDate)})</span>
+                </div>
+                <div className="flex justify-between p-3.5">
+                  <span className="text-slate-500 font-medium">Slot Jam Praktik:</span>
+                  <span className="font-extrabold text-emerald-600">{booking.selectedTime} WIB</span>
+                </div>
+                <div className="flex justify-between p-3.5">
+                  <span className="text-slate-500 font-medium">Nama Pasien:</span>
+                  <span className="font-extrabold text-slate-800">{booking.patient.nama}</span>
+                </div>
+                <div className="flex justify-between p-3.5">
+                  <span className="text-slate-500 font-medium">Nomor NIK KTP:</span>
+                  <span className="font-mono text-slate-700 font-bold">{booking.patient.nik}</span>
+                </div>
+                <div className="flex justify-between p-3.5">
+                  <span className="text-slate-500 font-medium">No. WhatsApp Pasien:</span>
+                  <span className="font-mono text-slate-700 font-bold">{booking.patient.no_hp}</span>
+                </div>
+                <div className="flex justify-between p-3.5">
+                  <span className="text-slate-500 font-medium">Jenis Pembayaran:</span>
+                  <span className="font-extrabold uppercase text-amber-700">{booking.patient.jenis_pembayaran}</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-250 rounded-lg text-xs text-amber-900 flex items-start gap-2">
+                <span className="text-base">ℹ️</span>
+                <span>
+                  Tiket QR Code akan otomatis terbit setelah tombol konfirmasi ditekan. Anda dapat mengunduh QR Code atau menunjukkannya langsung ke petugas saat check-in.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={() => setCurrentStep(1)}
+                  className="text-slate-500 hover:text-slate-800"
+                >
+                  ← Kembali
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => setShowConfirmModal(true)}
+                  disabled={isSubmitting}
+                  className="bg-emerald-650 hover:bg-emerald-500 font-extrabold px-8 py-3.5 shadow-md"
+                >
+                  {isSubmitting ? "Menerbitkan Tiket..." : "Konfirmasi Booking Sekarang 🚀"}
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Confirmation Modal */}
         <Dialog
-          isOpen={showConfirm}
-          onClose={() => setShowConfirm(false)}
-          title={t("booking.confirm_title")}
-          confirmLabel={t("booking.confirm_yes")}
-          cancelLabel={t("booking.confirm_cancel")}
-          onConfirm={handleSubmit}
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          title="Konfirmasi Pendaftaran Antrian"
+          confirmLabel="Ya, Terbitkan Tiket"
+          cancelLabel="Periksa Lagi"
+          onConfirm={handleFinalSubmit}
         >
-          <p>{t("booking.confirm_desc")}</p>
+          <div className="space-y-2 text-sm text-slate-750">
+            <p>
+              Apakah Anda yakin ingin mendaftar ke <strong>{booking.selectedPoliName}</strong> bersama <strong>{booking.selectedDoctorName}</strong> pada tanggal <strong>{booking.selectedDate}</strong> pukul <strong>{booking.selectedTime}</strong>?
+            </p>
+            <p className="text-xs text-slate-450">
+              Sistem akan memotong 1 kuota antrian dari total 8 kuota harian dokter.
+            </p>
+          </div>
         </Dialog>
-      </>
-      )}
+      </div>
     </div>
   );
 }

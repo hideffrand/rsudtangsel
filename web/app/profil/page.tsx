@@ -4,7 +4,7 @@
  * Profil Pasien - RSU Tangsel Care
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n-context";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -15,13 +15,54 @@ export default function ProfilPasienPage() {
   const { t } = useI18n();
 
   const [patientData, setPatientData] = useState({
-    nik: "3674012345670001",
-    nama: "Budi Pratama",
-    tanggalLahir: "1990-05-14",
-    noHp: "081234567890",
-    alamat: "Jl. BSD Raya Utama No. 12, Serpong, Tangsel",
+    nik: "1234567890123456",
+    nama: "Bryan Sean Abner Manullang",
+    tanggalLahir: "1998-05-12",
+    noHp: "081291608737",
+    alamat: "Perumahan Pamulang Permai, Tangerang Selatan",
     bpjsNumber: "0001234567891",
   });
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("rsud_patient_profile");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Force update old Bryan Sean / Budi Pratama names to the new requested name
+        if (parsed.nama === "Bryan Sean" || parsed.nama === "Budi Pratama" || parsed.no_hp === "081234567890") {
+          parsed.nama = "Bryan Sean Abner Manullang";
+          parsed.no_hp = "081291608737";
+          parsed.nik = "1234567890123456";
+          parsed.tanggal_lahir = "1998-05-12";
+          parsed.alamat = "Perumahan Pamulang Permai, Tangerang Selatan";
+          localStorage.setItem("rsud_patient_profile", JSON.stringify(parsed));
+        }
+
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPatientData({
+          nik: parsed.nik || "1234567890123456",
+          nama: parsed.nama || "Bryan Sean Abner Manullang",
+          tanggalLahir: parsed.tanggal_lahir || "1998-05-12",
+          noHp: parsed.no_hp || "081291608737",
+          alamat: parsed.alamat || "Perumahan Pamulang Permai, Tangerang Selatan",
+          bpjsNumber: parsed.bpjs_number || "0001234567891",
+        });
+      } else {
+        const defaultProfile = {
+          nik: "1234567890123456",
+          nama: "Bryan Sean Abner Manullang",
+          tanggal_lahir: "1998-05-12",
+          no_hp: "081291608737",
+          alamat: "Perumahan Pamulang Permai, Tangerang Selatan",
+          bpjs_number: "0001234567891",
+          jenis_pembayaran: "umum",
+        };
+        localStorage.setItem("rsud_patient_profile", JSON.stringify(defaultProfile));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   return (
     <div

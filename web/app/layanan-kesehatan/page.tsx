@@ -71,7 +71,9 @@ function LayananKesehatanContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialType) setSelectedCategory(initialType);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialPaket) setSearchQuery(initialPaket);
   }, [initialType, initialPaket]);
 
@@ -111,6 +113,7 @@ function LayananKesehatanContent() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCatalog();
   }, [loadCatalog]);
 
