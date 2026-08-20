@@ -1,6 +1,6 @@
 # rsudtangsel
 
-Monorepo, 3 independent modules (no workspaces/hoisting; npm only). Root holds only `docker-compose.yaml` (Postgres + web), `.gitignore`, `.env.example`. Each module has its own `.gitignore`/`.env`.
+Monorepo, 3 independent modules (no workspaces/hoisting; npm only). Root holds only `docker-compose.yaml` (db + server + web + ocr), `.gitignore`, `.env.example`. Each module has its own `.gitignore`/`.env`.
 
 Code comments, logs, and API messages are in Indonesian; git commits mix conventional prefixes (`feat:`, `refactor:`) with plain sentences.
 
@@ -57,5 +57,5 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
 
 ## Root
 
-- `docker-compose.yaml` (services: `db` + `web` + `ocr`) + root `.env.example` are the source of truth for DB credentials; `server/.env.example` mirrors `DATABASE_URL`.
+- `docker-compose.yaml` (services: `db` + `server` + `web` + `ocr`) + root `.env.example` are the source of truth for DB credentials; `server/.env.example` mirrors `DATABASE_URL`.
 - `server/README.md` is the upstream golang-migrate README, not project docs - ignore it.
