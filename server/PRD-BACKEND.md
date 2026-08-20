@@ -1,8 +1,8 @@
 # PRD: Backend API System - RSU Tangsel
 
-> **Version**: 2.2.0
-> **Date**: 2026-08-16
-> **Status**: Phase 1 ✅ | Phase 2 ✅ (Admin Dashboard) | Phase 2.1 ✅ (MCU Packages) | Phase 2.2 ✅ (MCU Booking)
+> **Version**: 2.3.0
+> **Date**: 2026-08-20
+> **Status**: Phase 1 ✅ | Phase 2 ✅ (Admin Dashboard) | Phase 2.1 ✅ (MCU Packages) | Phase 2.2 ✅ (MCU Booking) | Phase 2.3 ✅ (OCR + Poli + Diagnostic Services)
 > **Maintainer**: RSU Tangsel Backend Team
 
 ---
@@ -140,17 +140,23 @@ server/
 │   │   ├── mcu_package_repository.go    # MCU package CRUD
 │   │   └── mcu_booking_repository.go    # MCU booking CRUD + filters + revenue
 │   ├── service/                         # Business logic
-│   │   ├── antrian_service.go
+│   │   ├── queue_service.go
 │   │   ├── doctor_service.go
+│   │   ├── poliklinik_service.go        # Poli CRUD
+│   │   ├── diagnostic_service_service.go
+│   │   ├── ocr_service.go               # OCR proxy + response parsing
 │   │   ├── auth_service.go              # Login, token rotation, logout
-│   │   ├── dashboard_service.go         # Stats aggregation
+│   │   ├── dashboard_service.go         # Stats aggregation incl. active_doctors
 │   │   ├── mcu_package_service.go       # MCU package business logic
 │   │   └── mcu_booking_service.go       # MCU booking: pkg validation, price calc, NIK link
 │   └── handler/                         # HTTP handlers
 │       ├── online_registration.go
-│       ├── antrian.go
+│       ├── queue.go
 │       ├── doctor.go
 │       ├── schedule.go
+│       ├── poliklinik.go                # GET /api/poli, GET /api/poli/{id}
+│       ├── diagnostic_service.go        # GET /api/diagnostic-services, /{id}
+│       ├── ocr.go                       # POST /api/admin/ocr/extract (proxy)
 │       ├── admin.go                     # All admin auth + queue endpoints
 │       ├── mcu_package.go               # MCU package CRUD endpoints
 │       └── mcu_booking.go               # MCU booking: 2 public + 6 admin endpoints
@@ -162,8 +168,14 @@ server/
 │   ├── 20260816150452_mcu_packages.up.sql         # mcu_packages, mcu_package_items
 │   ├── 20260816150452_mcu_packages.down.sql
 │   ├── 20260817000000_add_mcu_bookings.up.sql     # mcu_bookings (TEXT[] diagnostics)
-│   └── 20260817000000_add_mcu_bookings.down.sql
+│   ├── 20260817000000_add_mcu_bookings.down.sql
+│   ├── 20260819000000_add_poliklinik.up.sql       # poliklinik table + doctors.poli_id FK
+│   ├── 20260819000000_add_poliklinik.down.sql
+│   ├── 20260819010000_add_diagnostic_services.up.sql  # diagnostic_services, diagnostic_service_items
+│   └── 20260819010000_add_diagnostic_services.down.sql
 ├── Makefile
+├── Dockerfile                                    # Multi-stage Docker build
+├── entrypoint.sh                                 # Docker entrypoint (migrate + run)
 ├── .env
 └── go.mod / go.sum
 ```
@@ -172,9 +184,12 @@ server/
 
 ```
 All routes:
-  CORS middleware
+  CORSMiddleware
+  → RequestLoggerMiddleware  # structured [HTTP] METHOD PATH → STATUS latency (IP)
 
-Public routes (/api/daftar-online, /api/antrian, /api/doctors, /api/schedules):
+Public routes (/api/online-registration, /api/queue, /api/doctors, /api/schedules,
+               /api/poli, /api/mcu-packages, /api/diagnostic-services,
+               /api/mcu/register, /api/mcu/my-bookings):
   → Handler (no auth required)
 
 Login:
@@ -1281,3 +1296,76 @@ curl -X PATCH http://localhost:8080/api/admin/antrian/1/call \
 
 > **Note**: This document is updated as the project evolves.
 > For questions or contributions, open an issue on the GitHub repository.
+
+---
+
+## 10. Phase 2.3 — OCR Service, Poliklinik & Diagnostic Services (2026-08-20)
+
+### 10.1 New Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/poli` | Public | List all poliklinik |
+| `GET` | `/api/poli/{id}` | Public | Get single poli |
+| `GET` | `/api/diagnostic-services` | Public | List lab + radiology services |
+| `GET` | `/api/diagnostic-services/{id}` | Public | Get single service |
+| `POST` | `/api/admin/ocr/extract` | Admin | Extract data from uploaded document (Python OCR service proxy) |
+
+### 10.2 New Files (from teammate)
+
+| File | Purpose |
+|------|---------|
+| `handler/ocr.go` | Proxy handler — forwards multipart/form-data to Python OCR microservice |
+| `service/ocr_service.go` | OCR business logic: calls `ocr-service` Python API, parses response |
+| `internal/docs/docs.go` | Swagger/OpenAPI docs entry |
+| `internal/docs/index.html` | Swagger UI served at `/docs` |
+| `ocr-service/` | Python FastAPI OCR microservice (Tesseract + OpenCV) |
+| `Dockerfile` | Multi-stage Docker build for Go server |
+| `entrypoint.sh` | Docker entrypoint: runs `migrate up` then starts server |
+
+### 10.3 Dashboard Stats — `active_doctors` Field Added
+
+`GET /api/admin/dashboard/stats` response now includes:
+
+```json
+{
+  "patients_today": 12,
+  "avg_wait_time": 14.5,
+  "bor": 75.0,
+  "new_complaints": 12,
+  "total_queue": 5,
+  "active_doctors": 8,
+  "update_time": "06:25:00"
+}
+```
+
+`active_doctors` = `COUNT(DISTINCT doctor_id)` from appointments where `schedule_date = today`.
+
+### 10.4 Middleware — Request Logger Added
+
+All requests now logged in format:
+```
+[HTTP] GET /api/poli -> 200 1.068s ([::1])
+```
+
+Chain: `CORSMiddleware` → `RequestLoggerMiddleware` → handler/admin middleware
+
+### 10.5 Database Schema Updates
+
+| Migration | Tables |
+|-----------|--------|
+| `20260819000000_add_poliklinik` | `poliklinik` + `doctors.poli_id FK` |
+| `20260819010000_add_diagnostic_services` | `diagnostic_services`, `diagnostic_service_items` |
+
+### 10.6 Phase 2.3 Checklist
+
+- [x] `GET /api/poli` + `GET /api/poli/{id}`
+- [x] `GET /api/diagnostic-services` + `GET /api/diagnostic-services/{id}`
+- [x] OCR handler + service (proxy to Python microservice)
+- [x] `active_doctors` in dashboard stats response
+- [x] Request logger middleware
+- [x] Docker + entrypoint.sh for containerized deployment
+- [x] Swagger/OpenAPI docs (`/docs`)
+- [ ] `POST /api/admin/ocr/extract` — pending frontend integration
+- [ ] OCR service wired into admin protected router
+
