@@ -45,7 +45,7 @@ func (s *QueueService) RegisterOnline(req request.OnlineRegistrationRequest) (*r
 
 	var patientID int
 	if patient == nil {
-		// 2. Pasien belum ada - buat baru
+		// 2. Pasien belum ada — buat baru
 		birthDate, err := parseDate(req.BirthDate)
 		if err != nil {
 			birthDate = time.Now() // fallback jika tidak diisi

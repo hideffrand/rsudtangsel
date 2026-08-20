@@ -40,11 +40,11 @@ func (s *DashboardService) GetStats() (*response.DashboardStatsResponse, error) 
 		return nil, fmt.Errorf("count waiting appointments: %w", err)
 	}
 
-	// 4. BOR (Bed Occupancy Rate) - mocked until a beds table is available
+	// 4. BOR (Bed Occupancy Rate) — mocked until a beds table is available
 	// TODO: replace with a real query once the beds table is added
 	bor := 75.0
 
-	// 5. New complaints - mocked until a complaints table is available
+	// 5. New complaints — mocked until a complaints table is available
 	// TODO: replace with a real query once the complaints table is added
 	newComplaints := 12
 

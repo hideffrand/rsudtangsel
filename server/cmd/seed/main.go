@@ -16,9 +16,9 @@ import (
 // (2) katalog layanan (mcu_packages + diagnostic_services).
 // Cara pakai: cd server && make seed (atau go run ./cmd/seed)
 // CSV jadwal diambil dari SCHEDULE_CSV env (default: ../jadwal_dokter.csv).
-// PERHATIAN: bagian jadwal dokter TRUNCATE doctors & poliklinik CASCADE - menghapus isi doctors,
+// PERHATIAN: bagian jadwal dokter TRUNCATE doctors & poliklinik CASCADE — menghapus isi doctors,
 // doctor_schedules, appointments, dan poliklinik (relasi dokter-ke-poli dibangun ulang dari CSV).
-// Bagian katalog idempotent - tidak menghapus baris; ID paket dipertahankan agar FK mcu_bookings
+// Bagian katalog idempotent — tidak menghapus baris; ID paket dipertahankan agar FK mcu_bookings
 // tidak putus.
 
 const dayColumns = 6 // SENIN..SABTU
@@ -110,7 +110,7 @@ func main() {
 // seedDoctorSchedules TRUNCATE doctors & poliklinik lalu membangun ulang dari CSV jadwal.
 // Poliklinik dipakai sebagai master data (normalized): baris poliklinik di-find-or-create
 // berdasarkan nama hasil normalisasi kolom "Poliklinik", lalu dokter ditautkan ke poli lewat
-// doctors.poli_id - bukan nama poli yang di-hardcode.
+// doctors.poli_id — bukan nama poli yang di-hardcode.
 func seedDoctorSchedules(db *sqlx.DB, csvPath string) (poliCount, doctorCount, scheduleCount int, err error) {
 	if _, err := db.Exec("TRUNCATE doctors RESTART IDENTITY CASCADE"); err != nil {
 		return 0, 0, 0, fmt.Errorf("truncate doctors: %w", err)

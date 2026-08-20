@@ -30,7 +30,7 @@ func (h *QueueHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// date opsional - default ke hari ini di service
+	// date opsional — default ke hari ini di service
 	date := r.URL.Query().Get("date")
 
 	items, err := h.service.GetQueue(department, date)

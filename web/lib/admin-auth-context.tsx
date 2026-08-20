@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AdminAuthContext - RSU Tangsel Care
+ * AdminAuthContext — RSU Tangsel Care
  * State sesi admin + operasi auth (login/logout) terpusat.
  * Data bersumber dari localStorage via lib/admin-api.
  */
