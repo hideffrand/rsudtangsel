@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Model & runtime artifacts (cnocr/torch)
+*.onnx
+*.pt
+*.pth
+models/
+.runtime/
+
+# Testing / linting
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Logs
+*.log
+
+# IDE & OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Misc
+*.pem
