@@ -98,7 +98,14 @@ func (s *McuBookingService) Register(req request.McuBookingRequest) (*response.M
 		radiologyTests = []string{}
 	}
 
-	// 5. Build and persist booking
+	// 5. Generate unique MCU booking number: MCU{DDMMYY}-{seq:03d}
+	count, err := s.bookingRepo.CountByDate(req.BookingDate)
+	if err != nil {
+		return nil, fmt.Errorf("generate booking number: %w", err)
+	}
+	bookingNumber := generateMcuBookingNumber(req.BookingDate, count+1)
+
+	// 6. Build and persist booking
 	booking := &model.McuBooking{
 		PatientID:      patientID,
 		PackageID:      req.PackageID,
@@ -116,6 +123,7 @@ func (s *McuBookingService) Register(req request.McuBookingRequest) (*response.M
 		PaymentStatus:  "unpaid",
 		PaymentMethod:  req.PaymentMethod,
 		Notes:          req.Notes,
+		BookingNumber:  bookingNumber,
 	}
 
 	id, err := s.bookingRepo.Create(booking)
@@ -181,6 +189,20 @@ func (s *McuBookingService) GetRevenue(startDate, endDate string) (int64, error)
 }
 
 // --- private helpers ---
+
+// generateMcuBookingNumber generates a unique MCU booking number.
+// Format: MCU{DDMMYY}-{seq:03d}, e.g. MCU200826-001
+// seq is based on the count of bookings already registered for the same date + 1.
+func generateMcuBookingNumber(bookingDate string, seq int) string {
+	// bookingDate is "YYYY-MM-DD"; extract DD, MM, YY
+	day, month, year := "00", "00", "00"
+	if len(bookingDate) == 10 {
+		day = bookingDate[8:10]
+		month = bookingDate[5:7]
+		year = bookingDate[2:4]
+	}
+	return fmt.Sprintf("MCU%s%s%s-%03d", day, month, year, seq)
+}
 
 // calculateTotalPrice computes: package base price + add-on lab fees + add-on radiology fees.
 func calculateTotalPrice(basePrice int64, labTests, radiologyTests []string) int64 {

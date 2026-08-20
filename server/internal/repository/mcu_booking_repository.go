@@ -34,18 +34,18 @@ func (r *McuBookingRepository) Create(b *model.McuBooking) (int, error) {
 		  (patient_id, package_id, booking_date, booking_time,
 		   nik, full_name, birth_date, phone_number, address,
 		   lab_tests, radiology_tests,
-		   status, total_price, payment_status, payment_method, notes)
+		   status, total_price, payment_status, payment_method, notes, booking_number)
 		VALUES
 		  ($1, $2, $3, $4,
 		   $5, $6, $7, $8, $9,
 		   $10, $11,
-		   $12, $13, $14, $15, $16)
+		   $12, $13, $14, $15, $16, $17)
 		RETURNING id`
 	err := r.db.QueryRow(query,
 		b.PatientID, b.PackageID, b.BookingDate, b.BookingTime,
 		b.NIK, b.FullName, b.BirthDate, b.PhoneNumber, b.Address,
 		pq.Array(b.LabTests), pq.Array(b.RadiologyTests),
-		b.Status, b.TotalPrice, b.PaymentStatus, b.PaymentMethod, b.Notes,
+		b.Status, b.TotalPrice, b.PaymentStatus, b.PaymentMethod, b.Notes, b.BookingNumber,
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create mcu booking: %w", err)
@@ -57,7 +57,7 @@ func (r *McuBookingRepository) Create(b *model.McuBooking) (int, error) {
 // Returns nil if not found.
 func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, error) {
 	query := `
-		SELECT b.id, b.package_id, p.name AS package_name,
+		SELECT b.id, COALESCE(b.booking_number, ''), b.package_id, p.name AS package_name,
 		       b.nik, b.full_name, b.phone_number, b.birth_date, b.address,
 		       b.booking_date::text, b.booking_time::text,
 		       b.lab_tests, b.radiology_tests,
@@ -84,7 +84,7 @@ func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, e
 	)
 	var resp response.McuBookingResponse
 	err = rows.Scan(
-		&resp.ID, &resp.PackageID, &resp.PackageName,
+		&resp.ID, &resp.BookingNumber, &resp.PackageID, &resp.PackageName,
 		&resp.NIK, &resp.FullName, &resp.PhoneNumber, &resp.BirthDate, &resp.Address,
 		&resp.BookingDate, &resp.BookingTime,
 		&labTests, &radiologyTests,
@@ -227,7 +227,7 @@ func (r *McuBookingRepository) AdminUpdate(id int, status, paymentStatus, notes 
 // findList executes a list query (joined with mcu_packages) with an arbitrary WHERE clause.
 func (r *McuBookingRepository) findList(whereClause string, args ...interface{}) ([]response.McuBookingListItem, error) {
 	query := fmt.Sprintf(`
-		SELECT b.id, p.name AS package_name,
+		SELECT b.id, COALESCE(b.booking_number, ''), p.name AS package_name,
 		       b.full_name, b.nik, b.phone_number,
 		       b.booking_date::text, b.booking_time::text,
 		       b.status, b.total_price,
@@ -249,7 +249,7 @@ func (r *McuBookingRepository) findList(whereClause string, args ...interface{})
 	for rows.Next() {
 		var item response.McuBookingListItem
 		if err := rows.Scan(
-			&item.ID, &item.PackageName,
+			&item.ID, &item.BookingNumber, &item.PackageName,
 			&item.FullName, &item.NIK, &item.PhoneNumber,
 			&item.BookingDate, &item.BookingTime,
 			&item.Status, &item.TotalPrice,

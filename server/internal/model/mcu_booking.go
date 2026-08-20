@@ -35,6 +35,8 @@ type McuBooking struct {
 
 	Notes string `db:"notes"`
 
+	BookingNumber string `db:"booking_number"` // e.g. MCU200826-001
+
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
