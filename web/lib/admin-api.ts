@@ -5,7 +5,8 @@
  * Token JWT/Session disimpan di localStorage (client-side only).
  */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+// Proxy server-side (app/api/proxy) — URL backend tidak diekspos ke browser.
+const BASE_URL = "/api/proxy";
 
 // ─── Token Management ─────────────────────────────────────────────────────────
 

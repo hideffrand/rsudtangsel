@@ -8,11 +8,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# NEXT_PUBLIC_* di-inline saat build. Harus URL yang bisa diakses browser,
-# bukan nama service compose (mis. http://localhost:8080/api).
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
 COPY . .
 RUN npm run build
 

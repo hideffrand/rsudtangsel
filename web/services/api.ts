@@ -12,8 +12,10 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+// baseURL = proxy server-side (app/api/proxy) + prefix /api backend.
+// Path service di bawah tetap relatif (mis. '/poli'), backend URL tidak diekspos.
 const client: AxiosInstance = axios.create({
-  baseURL: `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8088'}`,
+  baseURL: '/api/proxy/api',
   headers: { 'Content-Type': 'application/json' },
 });
 

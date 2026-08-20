@@ -55,11 +55,12 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-      args:
-        # URL yang DIKENALI BROWSER (host port server), bukan nama service compose.
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
     container_name: rsudtangsel-web
     restart: unless-stopped
+    environment:
+      # Server-side proxy target (app/api/proxy). Di dalam docker network, web
+      # container menjangkau server via nama service, bukan localhost.
+      BACKEND_API_URL: ${BACKEND_API_URL:-http://server:8080}
     ports:
       - "3000:3000"
     depends_on:
