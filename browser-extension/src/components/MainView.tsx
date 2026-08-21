@@ -13,8 +13,14 @@ export function MainView() {
   const [result, setResult] = useState<OcrResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Kamera in-panel (getUserMedia) untuk desktop.
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   const cameraRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     return () => {
@@ -22,12 +28,83 @@ export function MainView() {
     };
   }, [previewUrl]);
 
+  useEffect(() => {
+    if (cameraOpen && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [cameraOpen, stream]);
+
+  useEffect(() => {
+    return () => {
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [stream]);
+
   function onPick(f: File | null) {
     setError(null);
     setResult(null);
     setFile(f);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(f ? URL.createObjectURL(f) : null);
+  }
+
+  // Perangkat sentuh (HP/tablet) membuka kamera native via capture input;
+  // desktop memakai getUserMedia dengan pratinjau langsung di panel.
+  async function openCamera() {
+    setCameraError(null);
+    const prefersNativeCapture =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse)").matches;
+    if (
+      prefersNativeCapture ||
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof window === "undefined" ||
+      !window.isSecureContext
+    ) {
+      cameraRef.current?.click();
+      return;
+    }
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+      setStream(s);
+      setCameraOpen(true);
+    } catch (err) {
+      setCameraError(err instanceof Error ? err.message : String(err));
+      cameraRef.current?.click();
+    }
+  }
+
+  function closeCamera() {
+    stream?.getTracks().forEach((t) => t.stop());
+    setStream(null);
+    setCameraOpen(false);
+    setCameraError(null);
+  }
+
+  function captureFrame() {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const f = new File([blob], `foto-${Date.now()}.jpg`, { type: "image/jpeg" });
+      onPick(f);
+      closeCamera();
+    }, "image/jpeg", 0.92);
   }
 
   async function handleProcess() {
@@ -63,7 +140,7 @@ export function MainView() {
 
       {/* Ambil / unggah */}
       <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-        <button className="tile" onClick={() => cameraRef.current?.click()}>
+        <button className="tile" onClick={openCamera}>
           <span className="tile-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
@@ -99,6 +176,27 @@ export function MainView() {
         style={{ display: "none" }}
         onChange={(e) => onPick(e.target.files?.[0] ?? null)}
       />
+
+      {cameraError && (
+        <div className="alert" role="alert" style={{ marginBottom: 18 }}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{cameraError}</span>
+        </div>
+      )}
 
       {/* Pratinjau */}
       {previewUrl && (
@@ -194,6 +292,42 @@ export function MainView() {
               {result.raw_text || "—"}
             </pre>
           </details>
+        </div>
+      )}
+
+      {/* Kamera in-panel (desktop) */}
+      {cameraOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 20,
+            background: "#000",
+            display: "flex",
+            flexDirection: "column",
+          }}
+          role="dialog"
+          aria-label="Kamera"
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{ flex: 1, width: "100%", minHeight: 0, objectFit: "cover" }}
+          />
+          <div style={{ display: "flex", gap: 8, padding: 12, background: "#111" }}>
+            <button
+              className="btn-outline"
+              onClick={closeCamera}
+              style={{ flex: 1, background: "#222", borderColor: "#333", color: "#eee" }}
+            >
+              Batal
+            </button>
+            <button className="btn-primary" onClick={captureFrame} style={{ flex: 1 }}>
+              Tangkap
+            </button>
+          </div>
         </div>
       )}
     </div>
