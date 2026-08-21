@@ -75,6 +75,10 @@ func main() {
 	dashboardSvc := service.NewDashboardService(appointmentRepo)
 	adminHandler := handler.NewAdminHandler(authSvc, dashboardSvc, appointmentRepo)
 
+	// --- OCR proxy (forwards uploads to the Python OCR microservice) ---
+	ocrSvc := service.NewOCRService()
+	ocrHandler := handler.NewOCRHandler(ocrSvc)
+
 	// =========================================================
 	// Route registration
 	// =========================================================
@@ -95,6 +99,9 @@ func main() {
 	mux.HandleFunc("/api/diagnostic-services", diagnosticHandler.Collection)
 	mux.HandleFunc("/api/diagnostic-services/{id}", diagnosticHandler.Item)
 
+	// --- Public OCR proxy route ---
+	mux.HandleFunc("/api/ocr/extract", ocrHandler.Extract)
+
 	// --- MCU booking public routes ---
 	mux.HandleFunc("/api/mcu/register", mcuBookingHandler.Register)
 	mux.HandleFunc("/api/mcu/my-bookings", mcuBookingHandler.GetMyBookings)
@@ -110,7 +117,7 @@ func main() {
 	)
 
 	// --- Admin protected routes (JWT auth + role check + audit logging) ---
-	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, userRepo)
+	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, ocrHandler, userRepo)
 	mux.Handle("/api/admin/", adminProtected)
 
 	// --- Apply CORS middleware, then request logger to all routes ---
@@ -134,6 +141,7 @@ func main() {
 func buildAdminProtectedRouter(
 	adminHandler *handler.AdminHandler,
 	mcuBookingHandler *handler.McuBookingHandler,
+	ocrHandler *handler.OCRHandler,
 	userRepo *repository.UserRepository,
 ) http.Handler {
 	protectedMux := http.NewServeMux()
@@ -160,6 +168,9 @@ func buildAdminProtectedRouter(
 	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/confirm", mcuBookingHandler.AdminConfirmBooking)
 	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/cancel", mcuBookingHandler.AdminCancelBooking)
 	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/payment/confirm", mcuBookingHandler.AdminConfirmPayment)
+
+	// --- OCR proxy (authenticated variant) ---
+	protectedMux.HandleFunc("/api/admin/ocr/extract", ocrHandler.Extract)
 
 	// Apply middleware stack: Auth → Role(admin, staff) → Audit
 	return middleware.AuthMiddleware(

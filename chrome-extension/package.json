@@ -1,0 +1,25 @@
+{
+  "name": "webform-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome extension untuk mengambil/unggah dokumen dan mengisi form web via OCR.",
+  "scripts": {
+    "dev": "next dev",
+    "build:next": "next build && node scripts/postbuild.mjs",
+    "postbuild": "node scripts/postbuild.mjs",
+    "build": "npm run build:next",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.3"
+  }
+}

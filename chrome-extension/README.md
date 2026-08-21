@@ -1,90 +1,68 @@
-# Product Requirement Document: webform-copilot
+# Webform Copilot (Chrome Extension)
 
-## 1. Executive Summary & Overview
+Chrome Extension (Manifest V3) yang membantu pengisian form web di rumah sakit dengan memotret / mengunggah dokumen lalu mengekstrak datanya lewat OCR. Semua tampilan ada di dalam satu **side panel**.
 
-**webform-copilot** is a Chrome Extension (Manifest V3) built with Next.js that automates data entry into web applications (e.g., Odoo CRM, Salesforce, patient portals). It allows authenticated users to capture or upload document images, select a target form profile, process the image via a custom external OCR API, and automatically populate active web page form fields.
+## Fitur
 
----
+- **Login / Auth** — autentikasi ke backend Go (`POST /api/admin/login`). Token disimpan di `chrome.storage.session` (ephemeral, hilang saat browser ditutup), refresh token otomatis dirotasi saat mendekati kedaluwarsa.
+- **Aplikasi utama** — pilih jenis dokumen (mock: *Registrasi Pasien* / *Inventory*), ambil foto (kamera) atau unggah gambar, lalu proses ke `POST /api/admin/ocr/extract` di server Go (yang mem-proxy ke microservice Python OCR). Hasil field ekstraksi + teks mentah ditampilkan.
+- **Pengaturan** — ubah base URL server Go dan tombol keluar (logout).
 
-## 2. Core Technical Architecture
+## Arsitektur
 
 ```text
-[ User Login ] ──► [ Auth Server ] ──► [ Store JWT Token in chrome.storage ]
-                                                  │
-[ Mode Selector ] ──► [ Select Local JSON Schema ] ─┤
-                                                  │
-[ Camera / Upload ] ──────────────────────────────┼──► [ Custom External OCR API ]
-                                                  │             │
-                                                  │      [ Extracted JSON ]
-                                                  │             │
-                                                  ▼             ▼
-                                         [ Content Script Autofill Engine ]
-                                                        │
-                                                        ▼
-                                             [ Target Web Page DOM ]
+[ Side Panel (Next.js static export) ]
+   ├── LoginView   → POST {baseUrl}/api/admin/login        → chrome.storage.session
+   ├── MainView    → POST {baseUrl}/api/admin/ocr/extract  (Bearer token)
+   └── SettingsView→ base URL di chrome.storage.local + logout
 
+[ Background service worker ] → membuka side panel saat ikon diklik
 ```
 
----
+- Build dengan Next.js 14 (`output: "export"`), background di-bundle terpisah lewat esbuild.
+- `scripts/postbuild.mjs` mengganti nama file/direktori berawalan `_` (Next.js memproduksi `_next/`, `_app-*.js`, dsb.) — Chrome menolak unpacked extension yang mengandung nama reserved tersebut, lalu menulis ulang referensinya.
+- CORS: server Go mengizinkan semua origin saat `ALLOWED_ORIGINS` kosong (dev). Untuk produksi tambahkan `chrome-extension://<id>` ke `ALLOWED_ORIGINS`.
 
-## 3. Feature Requirements
+## Prasyarat & menjalankan
 
-### FR-1: Authentication & Access Control
+```bash
+npm install
 
-| Feature ID | Feature Name | Description |
-| --- | --- | --- |
-| **FR-1.1** | Login Screen | Authentication UI inside the side panel accepting user credentials. |
-| **FR-1.2** | Token Management | Securely stores JWT/Auth tokens in `chrome.storage.session`. |
-| **FR-1.3** | Session Guard | Blocks camera, upload, and autofill features until session is validated. |
+# Server Go (auth + OCR proxy):
+#   cd ../server && go run ./cmd/api        (butuh DATABASE_URL, admin di-seed dari env)
+# Microservice OCR (agar /api/admin/ocr/extract tidak 502):
+#   cd ../ocr-service && uvicorn main:app --port 8000 --reload
 
-### FR-2: Image Acquisition Engine
+npm run build
+# Muat folder out/ via chrome://extensions → Load unpacked
+```
 
-| Feature ID | Feature Name | Description |
-| --- | --- | --- |
-| **FR-2.1** | Live Camera Stream | Embedded HTML5 `<video>` preview allowing snapshot capture. |
-| **FR-2.2** | File Drag & Drop | Dropzone accepting `.png`, `.jpg`, `.jpeg`, `.webp`, and `.pdf` files. |
-| **FR-2.3** | Preview Pane | Visual confirmation interface prior to dispatching image payloads. |
+> Selalu pakai `npm run build` (bukan `npm run build:next` saja). `next build` menulis ulang `out/`
+> dan memproduksi file berawalan `_`; langkah `postbuild` (renama `_next/` → `next-assets/` dst.)
+> sudah dibundel ke dalam `build:next` supaya hasil build selalu bisa dimuat Chrome. Jika esbuild gagal
+> karena beda platform (Windows vs WSL), jalankan `npm install @esbuild/<platform>-<arch>@0.23.1 --no-save`.
 
-### FR-3: Form Mode Selector & Mapping (MVP Approach)
+## Struktur
 
-| Feature ID | Feature Name | Description |
-| --- | --- | --- |
-| **FR-3.1** | Profile Mode Selector | Side panel dropdown enabling users to explicitly select target document types (e.g., *Inventory Receipt*, *Patient Registration*). |
-| **FR-3.2** | Hardcoded Profile Schemas | Static local JSON configurations bundled inside the extension codebase (`/schemas/inventory.json`, `/schemas/patient.json`) defining expected target field selectors and keys. |
-| **FR-3.3** | Dynamic Field Harvester | In addition to static profiles, content script scans visible form controls (`id`, `name`, `<label>`) to send page layout context to the OCR endpoint. |
+```
+src/
+├── background/index.ts        # membuka side panel saat action diklik
+├── components/
+│   ├── LoginView.tsx          # form login ke backend auth
+│   ├── MainView.tsx           # capture/upload + selector dokumen + hasil OCR
+│   └── SettingsView.tsx       # base URL server + logout
+├── lib/
+│   ├── auth.ts                # login / refresh / logout / sesi
+│   ├── ocr.ts                 # panggil /api/admin/ocr/extract
+│   ├── settings.ts            # chrome.storage.local
+│   └── types.ts               # Settings, AuthSession, OcrResult, dll.
+└── pages/
+    ├── sidepanel.tsx          # shell 3 view (login / main / settings)
+    └── index.tsx              # placeholder
+```
 
-### FR-4: External OCR API Integration
+## Catatan
 
-| Feature ID | Feature Name | Description |
-| --- | --- | --- |
-| **FR-4.1** | Authorized Transport | Transmits image payload and selected profile schema ID to `POST /api/v1/ocr` with `Authorization: Bearer <token>`. |
-| **FR-4.2** | Payload Structure | Sends `multipart/form-data` containing image source and field metadata. |
-| **FR-4.3** | Structured Response | Returns standardized key-value JSON matching target input expectations. |
-
-### FR-5: DOM Autofill Engine
-
-| Feature ID | Feature Name | Description |
-| --- | --- | --- |
-| **FR-5.1** | Framework State Bypass | Uses native JavaScript property descriptors to trigger reactive state updates in React, Vue, and Angular forms. |
-| **FR-5.2** | Event Dispatching | Fires synthetic `input`, `change`, and `blur` events on populated elements. |
-| **FR-5.3** | Frame Traversal | Executes content script across frames (`"all_frames": true`) for embedded `<iframe>` forms. |
-
----
-
-## 4. Non-Functional Requirements
-
-* **Security**: All API traffic must use HTTPS. Bearer tokens are kept isolated inside extension storage and never exposed to webpage scripts.
-* **Performance**: UI image capture to payload dispatch overhead must remain under 300ms.
-* **Reliability**: Displays toast alerts whenever fields fail to match DOM selectors.
-
----
-
-## 5. Future Roadmap
-
-### Phase 2: Dynamic API Profiles (Option 2)
-
-To remove the need to redeploy extension code when web forms change or new document types are added:
-
-* **Remote Schema Sync (`GET /api/v1/schemas`)**: On application load, the extension will query the central backend API to dynamically fetch up-to-date form definitions and mapping rules.
-* **Centralized Schema Admin Panel**: A web portal where system administrators can create, edit, or delete form schemas and field selectors without modifying the extension codebase.
-* **Auto-Detect Profile AI**: Automatic classification endpoint that inspects captured images and selects the correct form profile automatically without manual user dropdown selection.
+- Sesi disimpan di `chrome.storage.session` — tidak bertahan setelah browser ditutup (sesuai PRD FR-1.2).
+- Endpoint OCR `POST /api/admin/ocr/extract` (proteksi Bearer) dan varian publik `/api/ocr/extract` keduanya ada di server Go.
+- `doc_type` dikirim apa adanya; parser OCR service memakai parser generic untuk jenis yang belum dikenal (lihat `ocr-service/doc_parser.py`).
