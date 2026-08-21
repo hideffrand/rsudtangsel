@@ -2,7 +2,7 @@
 
 Sistem Informasi Rumah Sakit Terpadu untuk RSU Tangerang Selatan.
 
-## 👥 Contributors
+## Contributors
 
 | Contributor | Role |
 |-------------|------|
@@ -10,7 +10,7 @@ Sistem Informasi Rumah Sakit Terpadu untuk RSU Tangerang Selatan.
 | **@BryanSeanAbner** | Software Dev |
 | **@ebenhaezer19** | Cybersecurity Dev |
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend**: Next.js, Tailwind CSS, TypeScript
 - **Backend**: Go, PostgreSQL
