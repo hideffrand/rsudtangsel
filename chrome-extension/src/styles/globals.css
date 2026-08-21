@@ -1,49 +1,236 @@
+/* ============================================================
+   DESIGN TOKENS - RSU Tangsel Care
+   Sesuai DESIGN.md §2 & §8 (implementasi web/app/globals.css)
+   Filosofi: shadcn/ui, clean, accessible. Side panel extension.
+   ============================================================ */
+
 :root {
-  --bg: #ffffff;
-  --fg: #17181a;
-  --muted: #6b6f76;
-  --border: #e4e4e7;
-  --accent: #2563eb;
-  --danger: #b3261e;
-  --radius: 6px;
+  /* Neutral (§2.1) */
+  --background: #ffffff;
+  --foreground: #1c2626;
+  --muted: #f4f7f7;
+  --muted-foreground: #5c6b6b;
+  --border: #e0e7e7;
+
+  /* Brand (§2.1) */
+  --primary: #0e7d80;
+  --primary-foreground: #ffffff;
+  --primary-hover: #0a5f61;
+  --accent: #e63946; /* sangat terbatas - emergency saja */
+
+  /* Status (§2.1) */
+  --success: #16a34a;
+  --warning: #d97706;
+  --destructive: #dc2626;
+
+  /* Tint lembut status (padanan bg-primary/10, bg-red-50 dst di web) */
+  --primary-soft: #e6f2f2;
+  --destructive-soft: #fef2f2;
+  --success-soft: #f0fdf4;
+  --warning-soft: #fffbeb;
+
+  /* Radius (§8.2) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body {
+html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
-  font-size: 14px;
-  line-height: 1.45;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Focus ring aksesibel (§5.2) */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Reduced motion (§5.2) */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Teknis/mono - data mentah, nama file, kode */
 .mono {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
-button {
-  font: inherit;
+/* Label kecil (§2.2 - 13px, medium) */
+.eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* Divider tipis (§2.3 thin border) */
+.tear {
+  height: 1px;
+  background: var(--border);
+  border: none;
+  margin: 0;
+}
+
+/* Baris field hasil ekstraksi: label ..... nilai */
+.field-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+}
+.field-row .f-label {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.field-row .f-leader {
+  flex: 1;
+  min-width: 10px;
+  border-bottom: 1px dotted var(--border);
+  transform: translateY(-3px);
+}
+.field-row .f-value {
+  flex-shrink: 1;
+  font-size: 14px;
+  text-align: right;
+  max-width: 58%;
+  word-break: break-word;
+}
+
+/* Tombol aksi ambil/unggah (card kecil, §8.2 rounded-md) */
+.tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 500;
+  min-height: 64px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.tile:hover { background: var(--muted); border-color: var(--primary); }
+.tile .tile-icon { display: flex; align-items: center; justify-content: center; }
+
+/* Tab underline (§3 Tabs - underline, bukan pill besar) */
+.tab {
+  flex: 1;
+  padding: 10px 4px;
+  border: none;
+  border-bottom: 2px solid var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 500;
+}
+.tab[data-active="true"] {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+/* Chip pill (badge, §8.2 rounded-full) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Input - label selalu di atas, bukan placeholder-only (§3) */
+.field-underline {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  padding: 10px 12px;
+  font-size: 16px;
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.15s ease;
+}
+.field-underline::placeholder { color: var(--muted-foreground); }
+.field-underline:focus { outline: none; border-color: var(--primary); }
+
+/* Tombol (§3 Button min 44px, §8.2 rounded-sm) */
+.btn-primary,
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
+.btn-primary {
+  border: 1px solid transparent;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-primary:disabled { opacity: 0.45; cursor: default; }
 
-input,
-textarea,
-select {
-  font: inherit;
-  color: inherit;
+.btn-outline {
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
 }
+.btn-outline:hover { background: var(--muted); }
 
-::selection {
-  background: color-mix(in srgb, var(--accent) 25%, transparent);
+/* Alert error: ikon + teks, bukan hanya warna (§5.2) */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  background: var(--destructive-soft);
+  color: var(--destructive);
+  font-size: 13px;
+  line-height: 1.5;
 }
+.alert svg { flex-shrink: 0; margin-top: 1px; }
 
-a {
-  color: var(--accent);
-}
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+button { font: inherit; cursor: pointer; }
+input, textarea, select { font: inherit; color: inherit; }
+::selection { background: var(--primary-soft); }
+a { color: var(--primary); }

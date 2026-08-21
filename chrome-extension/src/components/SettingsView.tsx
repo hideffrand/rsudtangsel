@@ -1,15 +1,8 @@
+// SettingsView.tsx
 import { useEffect, useState } from "react";
 import { DEFAULT_SETTINGS, Settings } from "@/lib/types";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { logout } from "@/lib/auth";
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius)",
-  padding: "8px",
-  marginTop: 4,
-};
 
 export function SettingsView() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -48,63 +41,47 @@ export function SettingsView() {
   if (!loaded) return null;
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>URL server</div>
+    <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+      <div className="eyebrow" style={{ marginBottom: 6 }}>URL server</div>
       <input
         value={settings.baseUrl}
         onChange={(e) => setSettings((s) => ({ ...s, baseUrl: e.target.value }))}
-        style={inputStyle}
+        className="field-underline"
       />
-      <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+      <div className="mono" style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 6 }}>
         Origin API Go tanpa trailing slash, mis. http://localhost:8080
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-        <button
-          onClick={handleSave}
-          style={{
-            border: "none",
-            borderRadius: "var(--radius)",
-            background: "var(--accent)",
-            color: "white",
-            padding: "8px 16px",
-          }}
-        >
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
+        <button onClick={handleSave} className="btn-primary" style={{ padding: "0 16px" }}>
           Simpan
         </button>
         {status && (
-          <span className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
+          <span className="mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
             {status}
           </span>
         )}
       </div>
 
-      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+      <div className="tear" style={{ margin: "24px 0" }} />
 
       <button
         onClick={handleLogout}
-        style={{
-          width: "100%",
-          border: "1px solid var(--danger)",
-          borderRadius: "var(--radius)",
-          background: "transparent",
-          color: "var(--danger)",
-          padding: "10px 16px",
-          fontWeight: 600,
-        }}
+        className="btn-outline"
+        style={{ width: "100%", borderColor: "var(--destructive)", color: "var(--destructive)" }}
       >
         Keluar
       </button>
 
-      <details style={{ marginTop: 20 }}>
-        <summary style={{ cursor: "pointer", color: "var(--muted)", fontSize: 13 }}>
+      <details style={{ marginTop: 22 }}>
+        <summary className="eyebrow" style={{ cursor: "pointer" }}>
           Troubleshooting
         </summary>
-        <p style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.5 }}>
+        <p style={{ color: "var(--muted-foreground)", fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>
           Pastikan server Go berjalan (<code className="mono">go run ./cmd/api</code>) dan
           microservice OCR aktif (<code className="mono">uvicorn main:app --port 8000</code>).
-          Jika permintaan gagal dengan error jaringan/origin, tambahkan origin
-          <code className="mono"> chrome-extension://&lt;id-extension&gt;</code> ke{" "}
+          Jika permintaan gagal dengan error jaringan/origin, tambahkan origin{" "}
+          <code className="mono">chrome-extension://&lt;id-extension&gt;</code> ke{" "}
           <code className="mono">ALLOWED_ORIGINS</code> di server.
         </p>
       </details>

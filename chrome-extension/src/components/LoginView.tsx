@@ -1,13 +1,6 @@
+// LoginView.tsx
 import { useState } from "react";
 import { login } from "@/lib/auth";
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius)",
-  padding: "8px",
-  marginTop: 4,
-};
 
 export function LoginView() {
   const [username, setUsername] = useState("");
@@ -29,65 +22,68 @@ export function LoginView() {
   }
 
   return (
-    <div style={{ padding: 16, flex: 1, overflowY: "auto" }}>
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "8px 0 4px" }}>Webform Copilot</h1>
-      <p style={{ color: "var(--muted)", marginTop: 0, marginBottom: 24 }}>
-        Masuk untuk mengunggah dokumen dan mengisi form web secara otomatis.
+    <div style={{ padding: "28px 20px", flex: 1, overflowY: "auto" }}>
+      <div className="eyebrow" style={{ marginBottom: 8 }}>Masuk</div>
+      <h1 style={{ fontSize: 22, fontWeight: 600, margin: "0 0 6px" }}>
+        Isi kredensial Anda
+      </h1>
+      <p style={{ color: "var(--muted-foreground)", marginTop: 0, marginBottom: 28, fontSize: 14 }}>
+        Untuk mengunggah dokumen dan mengisi form web secara otomatis.
       </p>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <label style={{ fontSize: 13, fontWeight: 600 }}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <label className="eyebrow">
           Username
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
             autoFocus
-            style={inputStyle}
+            className="field-underline"
+            style={{ display: "block", marginTop: 6 }}
           />
         </label>
 
-        <label style={{ fontSize: 13, fontWeight: 600 }}>
+        <label className="eyebrow">
           Password
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
-            style={inputStyle}
+            className="field-underline"
+            style={{ display: "block", marginTop: 6 }}
           />
         </label>
 
         <button
           type="submit"
           disabled={busy || !username.trim() || !password}
-          style={{
-            border: "none",
-            borderRadius: "var(--radius)",
-            background: "var(--accent)",
-            color: "white",
-            padding: "10px 16px",
-            fontWeight: 600,
-            opacity: busy || !username.trim() || !password ? 0.5 : 1,
-          }}
+          className="btn-primary"
+          style={{ marginTop: 8 }}
         >
           {busy ? "Memproses…" : "Masuk"}
         </button>
       </form>
 
       {error && (
-        <div
-          className="mono"
-          style={{
-            marginTop: 16,
-            color: "var(--danger)",
-            fontSize: 12,
-            border: "1px solid var(--danger)",
-            borderRadius: "var(--radius)",
-            padding: "8px",
-          }}
-        >
-          {error}
+        <div className="alert" role="alert">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{error}</span>
         </div>
       )}
     </div>

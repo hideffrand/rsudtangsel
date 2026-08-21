@@ -1,3 +1,4 @@
+// MainView.tsx
 import { useEffect, useRef, useState } from "react";
 import { DOC_TYPE_OPTIONS, OcrResult } from "@/lib/types";
 import { extractOcr } from "@/lib/ocr";
@@ -44,44 +45,41 @@ export function MainView() {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: 18 }}>
       {/* Jenis dokumen */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Jenis dokumen</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {DOC_TYPE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setDocType(opt.value)}
-              style={{
-                flex: 1,
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                background: docType === opt.value ? "var(--accent)" : "transparent",
-                color: docType === opt.value ? "white" : "var(--fg)",
-                padding: "10px 8px",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+      <div className="eyebrow" style={{ marginBottom: 8 }}>Jenis dokumen</div>
+      <div style={{ display: "flex", marginBottom: 20 }}>
+        {DOC_TYPE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            className="tab"
+            data-active={docType === opt.value}
+            onClick={() => setDocType(opt.value)}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Ambil / unggah */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <button
-          onClick={() => cameraRef.current?.click()}
-          style={actionButtonStyle}
-        >
-          📷 Ambil Foto
+      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+        <button className="tile" onClick={() => cameraRef.current?.click()}>
+          <span className="tile-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+              <circle cx="12" cy="13" r="3" />
+            </svg>
+          </span>
+          Ambil Foto
         </button>
-        <button
-          onClick={() => uploadRef.current?.click()}
-          style={actionButtonStyle}
-        >
+        <button className="tile" onClick={() => uploadRef.current?.click()}>
+          <span className="tile-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+          </span>
           Unggah Gambar
         </button>
       </div>
@@ -104,13 +102,15 @@ export function MainView() {
 
       {/* Pratinjau */}
       {previewUrl && (
-        <div style={{ marginBottom: 16 }}>
-          <img
-            src={previewUrl}
-            alt="Pratinjau dokumen"
-            style={{ width: "100%", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}
-          />
-          <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ border: "1.5px dashed var(--border)", borderRadius: "var(--radius-sm)", padding: 6 }}>
+            <img
+              src={previewUrl}
+              alt="Pratinjau dokumen"
+              style={{ width: "100%", display: "block", borderRadius: "var(--radius-sm)" }}
+            />
+          </div>
+          <div className="mono" style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 6 }}>
             {file?.name}
           </div>
         </div>
@@ -120,64 +120,62 @@ export function MainView() {
         <button
           onClick={handleProcess}
           disabled={busy}
-          style={{
-            width: "100%",
-            border: "none",
-            borderRadius: "var(--radius)",
-            background: "var(--accent)",
-            color: "white",
-            padding: "10px 16px",
-            fontWeight: 600,
-            opacity: busy ? 0.5 : 1,
-            marginBottom: 16,
-          }}
+          className="btn-primary"
+          style={{ width: "100%", marginBottom: 18 }}
         >
           {busy ? "Memproses…" : "Proses OCR"}
         </button>
       )}
 
       {error && (
-        <div
-          className="mono"
-          style={{
-            color: "var(--danger)",
-            fontSize: 12,
-            border: "1px solid var(--danger)",
-            borderRadius: "var(--radius)",
-            padding: "8px",
-            marginBottom: 16,
-          }}
-        >
-          {error}
+        <div className="alert" role="alert" style={{ marginBottom: 18 }}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{error}</span>
         </div>
       )}
 
       {result && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Hasil ekstraksi</div>
-            <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-              confidence {result.avg_confidence.toFixed(1)}% · {Math.round(result.process_time_ms)} ms
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div className="eyebrow">Hasil ekstraksi</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <span className="chip">{result.avg_confidence.toFixed(1)}%</span>
+              <span className="chip" style={{ background: "transparent", color: "var(--muted-foreground)" }}>
+                {Math.round(result.process_time_ms)} ms
+              </span>
             </div>
           </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
-            <tbody>
-              {result.extracted_fields.map((f) => (
-                <tr key={f.key} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "6px 8px 6px 0", color: "var(--muted)", fontSize: 12, verticalAlign: "top" }}>
-                    {f.key}
-                  </td>
-                  <td style={{ padding: "6px 0", fontSize: 13, wordBreak: "break-word" }}>
-                    {f.value || <span style={{ color: "var(--muted)" }}>—</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="tear" style={{ margin: "8px 0" }} />
 
-          <details style={{ marginTop: 12 }}>
-            <summary style={{ cursor: "pointer", color: "var(--muted)", fontSize: 12 }}>
+          <div>
+            {result.extracted_fields.map((f) => (
+              <div key={f.key} className="field-row">
+                <span className="f-label">{f.key}</span>
+                <span className="f-leader" />
+                <span className="f-value">
+                  {f.value || <span style={{ color: "var(--muted-foreground)" }}>—</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <details style={{ marginTop: 14 }}>
+            <summary className="eyebrow" style={{ cursor: "pointer" }}>
               Teks mentah
             </summary>
             <pre
@@ -185,10 +183,12 @@ export function MainView() {
               style={{
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
-                fontSize: 11,
-                background: "#f4f4f5",
-                borderRadius: "var(--radius)",
-                padding: 8,
+                fontSize: 12,
+                background: "var(--background)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                padding: 10,
+                marginTop: 8,
               }}
             >
               {result.raw_text || "—"}
@@ -199,14 +199,3 @@ export function MainView() {
     </div>
   );
 }
-
-const actionButtonStyle: React.CSSProperties = {
-  flex: 1,
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius)",
-  background: "#f4f4f5",
-  color: "var(--fg)",
-  padding: "10px 8px",
-  fontSize: 13,
-  fontWeight: 600,
-};
