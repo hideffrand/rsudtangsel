@@ -10,6 +10,7 @@
 import {
   useEffect,
   useRef,
+  useId,
   type ReactNode,
 } from "react";
 import { Button } from "./button";
@@ -17,7 +18,7 @@ import { Button } from "./button";
 interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   /** Judul untuk footer tombol utama */
   confirmLabel?: string;
@@ -41,7 +42,8 @@ export function Dialog({
   confirmVariant = "primary",
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const titleId = `dialog-title-${title.replace(/\s+/g, "-").toLowerCase()}`;
+  const generatedId = useId();
+  const titleId = `dialog-title-${generatedId.replace(/:/g, "")}`;
 
   // Trap focus & Escape key
   useEffect(() => {

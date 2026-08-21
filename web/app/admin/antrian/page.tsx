@@ -12,6 +12,26 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
+  Plus,
+  QrCode,
+  RotateCw,
+  Clock,
+  CheckCircle,
+  Volume2,
+  SkipForward,
+  CheckSquare,
+  ClipboardList,
+  MapPin,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRightLeft,
+  Hospital,
+  PersonStanding,
+  Settings,
+  Zap,
+  Lightbulb,
+} from "lucide-react";
+import {
   getAdminQueue,
   callPatient,
   skipPatient,
@@ -301,14 +321,14 @@ export default function AntrianAdminPage() {
             onClick={() => setShowDirectSpecialistModal(true)}
             className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
-            <span>➕</span> Booking Spesialis (Tanpa QR)
+            <Plus className="w-3.5 h-3.5" /> Booking Spesialis (Tanpa QR)
           </button>
 
           <button
             onClick={handleOpenScanner}
             className="px-4 py-2 text-sm font-extrabold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-md shadow-emerald-700/20 flex items-center gap-2 cursor-pointer"
           >
-            <span>📷</span> Scan QR Check-in
+            <QrCode className="w-4 h-4" /> Scan QR Check-in
           </button>
         </div>
       </div>
@@ -357,9 +377,9 @@ export default function AntrianAdminPage() {
           />
           <button
             onClick={fetchQueue}
-            className="px-2.5 py-1 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+            className="px-2.5 py-1 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1"
           >
-            🔄 Refresh
+            <RotateCw className="w-3 h-3" /> Refresh
           </button>
         </div>
       </div>
@@ -414,7 +434,7 @@ export default function AntrianAdminPage() {
 
                     <div className="flex items-center justify-between text-[11px] text-slate-500">
                       <span>{item.poli}</span>
-                      <span>⏰ {item.schedule_time || item.created_at}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {item.schedule_time || item.created_at}</span>
                     </div>
                   </button>
                 );
@@ -453,7 +473,7 @@ export default function AntrianAdminPage() {
               {/* Floor / Room Notification Card */}
               <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl space-y-1">
                 <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <span>📍</span> Lokasi Pertemuan Medis (Lantai &amp; Ruangan):
+                  <MapPin className="w-3.5 h-3.5" /> Lokasi Pertemuan Medis (Lantai &amp; Ruangan):
                 </span>
                 <p className="text-base font-black text-emerald-950">
                   {selectedPatient.floor_info || getFloorForPoli(selectedPatient.poli)}
@@ -493,7 +513,7 @@ export default function AntrianAdminPage() {
                       onClick={() => handleProcessCheckIn(selectedPatient.number)}
                       className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span>✅</span> Konfirmasi Check-in Manual
+                      <CheckCircle className="w-3.5 h-3.5" /> Konfirmasi Check-in Manual
                     </button>
                   )}
 
@@ -507,7 +527,7 @@ export default function AntrianAdminPage() {
                     }}
                     className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                   >
-                    <span>📢</span> Panggil Pasien
+                    <Volume2 className="w-3.5 h-3.5" /> Panggil Pasien
                   </button>
 
                   {/* Skip Patient */}
@@ -518,9 +538,9 @@ export default function AntrianAdminPage() {
                       setSelectedPatient((prev) => (prev ? { ...prev, status: res.status } : null));
                       showToast(`Pasien ${selectedPatient.patient_name} dilewati`, "warning");
                     }}
-                    className="px-3.5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all cursor-pointer"
+                    className="px-3.5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    <span>⏭️</span> Lewati (Skip)
+                    <SkipForward className="w-3.5 h-3.5" /> Lewati (Skip)
                   </button>
 
                   {/* Finish Consultation Trigger */}
@@ -535,14 +555,14 @@ export default function AntrianAdminPage() {
                     }}
                     className="px-5 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-md shadow-emerald-700/20 flex items-center gap-1.5 ml-auto cursor-pointer"
                   >
-                    <span>🏁</span> Selesai Konsultasi Dokter
+                    <CheckSquare className="w-3.5 h-3.5" /> Selesai Konsultasi Dokter
                   </button>
                 </div>
               </div>
             </>
           ) : (
             <div className="p-16 text-center text-slate-400 space-y-2">
-              <span className="text-4xl">📋</span>
+              <ClipboardList className="w-10 h-10 mx-auto opacity-40" />
               <p className="text-sm font-semibold">Pilih pasien di sebelah kiri untuk melihat detail &amp; memproses antrian.</p>
             </div>
           )}
@@ -555,7 +575,7 @@ export default function AntrianAdminPage() {
       <Dialog
         isOpen={showScannerModal}
         onClose={handleCloseScanner}
-        title="📷 Scan QR Code Kehadiran Pasien"
+        title={<span className="flex items-center gap-2"><QrCode className="w-4 h-4" /> Scan QR Code Kehadiran Pasien</span>}
         confirmLabel="Tutup"
         onConfirm={handleCloseScanner}
       >
@@ -569,8 +589,9 @@ export default function AntrianAdminPage() {
             <div id="reader" className="w-full max-w-[320px] rounded-lg overflow-hidden" />
             
             {scannerError && (
-              <div className="p-4 text-center space-y-2 text-amber-400 text-xs">
-                <span>⚠️ {scannerError}</span>
+              <div className="p-4 text-center space-y-2 text-amber-400 text-xs flex items-center gap-2 justify-center">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{scannerError}</span>
               </div>
             )}
 
@@ -615,7 +636,7 @@ export default function AntrianAdminPage() {
       <Dialog
         isOpen={!!checkInSuccessInfo}
         onClose={() => setCheckInSuccessInfo(null)}
-        title="✅ Pasien Berhasil Check-in!"
+        title={<span className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-emerald-600" /> Pasien Berhasil Check-in!</span>}
         confirmLabel="Mengerti, Arahkan Pasien"
         onConfirm={() => setCheckInSuccessInfo(null)}
       >
@@ -632,8 +653,8 @@ export default function AntrianAdminPage() {
             </div>
 
             <div className="p-4 bg-slate-900 text-white rounded-xl space-y-1">
-              <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
-                📍 SILAKAN ARAHKAN PASIEN KE:
+              <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" /> SILAKAN ARAHKAN PASIEN KE:
               </span>
               <p className="text-base font-black text-emerald-300">{checkInSuccessInfo.floorInfo}</p>
               <p className="text-xs text-slate-300">
@@ -671,7 +692,7 @@ export default function AntrianAdminPage() {
                       : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  🟢 Selesai Normal
+                  <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Selesai Normal</span>
                   <p className="text-[11px] font-normal text-slate-500 mt-0.5">Pulang / tebus obat farmasi</p>
                 </button>
 
@@ -684,7 +705,7 @@ export default function AntrianAdminPage() {
                       : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  🔄 Rujuk ke Spesialis
+                  <span className="flex items-center gap-1.5"><ArrowRightLeft className="w-4 h-4 text-teal-600" /> Rujuk ke Spesialis</span>
                   <p className="text-[11px] font-normal text-slate-500 mt-0.5">Dari Dokter Umum ke Dokter Spesialis</p>
                 </button>
 
@@ -697,7 +718,7 @@ export default function AntrianAdminPage() {
                       : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  🏥 Rawat Inap
+                  <span className="flex items-center gap-1.5"><Hospital className="w-4 h-4 text-rose-600" /> Rawat Inap</span>
                   <p className="text-[11px] font-normal text-slate-500 mt-0.5">Kamar rawat / observasi ICU</p>
                 </button>
 
@@ -710,7 +731,7 @@ export default function AntrianAdminPage() {
                       : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  🚶 Rawat Jalan
+                  <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-indigo-600" /> Rawat Jalan</span>
                   <p className="text-[11px] font-normal text-slate-500 mt-0.5">Jadwalkan kontrol berkala</p>
                 </button>
               </div>
@@ -719,8 +740,8 @@ export default function AntrianAdminPage() {
             {/* If Referral to Specialist Chosen */}
             {outcomeType === "RujukanSpesialis" && (
               <div className="p-4 bg-teal-50/70 border border-teal-300 rounded-xl space-y-3">
-                <span className="font-extrabold text-teal-900 text-xs uppercase tracking-wider block">
-                  ⚙️ Pengaturan Rujukan Dokter Spesialis (Tanpa QR):
+                <span className="font-extrabold text-teal-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <Settings className="w-3.5 h-3.5" /> Pengaturan Rujukan Dokter Spesialis (Tanpa QR):
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -771,14 +792,15 @@ export default function AntrianAdminPage() {
                     />
                   </div>
                   <div className="flex items-center pt-4">
-                    <span className="text-[11px] font-bold text-teal-800 bg-teal-100 px-2.5 py-1.5 rounded-lg border border-teal-300">
-                      ⚡ Langsung Disetujui (No QR)
+                    <span className="text-[11px] font-bold text-teal-800 bg-teal-100 px-2.5 py-1.5 rounded-lg border border-teal-300 flex items-center gap-1.5">
+                      <Zap className="w-3 h-3" /> Langsung Disetujui (No QR)
                     </span>
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-white border border-teal-200 rounded-lg text-[11px] text-teal-800">
-                  💡 Pasien dapat langsung menuju poli spesialis pada tanggal yang dipilih tanpa perlu scan QR lagi, cukup menunjukkan <strong>Nomor Rekam Medis</strong>.
+                <div className="p-2.5 bg-white border border-teal-200 rounded-lg text-[11px] text-teal-800 flex items-start gap-1.5">
+                  <Lightbulb className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>Pasien dapat langsung menuju poli spesialis pada tanggal yang dipilih tanpa perlu scan QR lagi, cukup menunjukkan <strong>Nomor Rekam Medis</strong>.</span>
                 </div>
               </div>
             )}
@@ -805,7 +827,7 @@ export default function AntrianAdminPage() {
       <Dialog
         isOpen={showDirectSpecialistModal}
         onClose={() => setShowDirectSpecialistModal(false)}
-        title="➕ Tambah Antrian Spesialis (Langsung Tanpa QR)"
+        title={<span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Tambah Antrian Spesialis (Langsung Tanpa QR)</span>}
         confirmLabel="Setujui &amp; Buat Antrian"
         cancelLabel="Batal"
         onConfirm={() => {
