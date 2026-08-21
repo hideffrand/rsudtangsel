@@ -59,9 +59,10 @@ export interface OcrResult {
   message: string;
 }
 
-// Mock selector for the main view. doc_type values are slugs; the OCR
-// service falls back to its generic parser for unknown types.
-export const DOC_TYPE_OPTIONS = [
-  { label: "Registrasi Pasien", value: "registrasi-pasien" },
-  { label: "Inventory", value: "inventory" },
-] as const;
+// Master data jenis dokumen OCR, dikelola backend (GET /api/admin/ocr-document-types).
+// id = slug yang dikirim sebagai doc_type; name = label UI; fields = daftar field ekstraksi.
+export interface OCRDocumentType {
+  id: string;
+  name: string;
+  fields: string;
+}

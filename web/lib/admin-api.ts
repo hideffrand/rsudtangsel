@@ -587,6 +587,47 @@ export async function confirmMcuPayment(id: number): Promise<McuBookingItem> {
   }
 }
 
+// ─── OCR Document Types (Jenis Dokumen OCR) ──────────────────────────────────
+
+export interface OCRDocumentType {
+  id: string;
+  name: string;
+  fields: string;
+}
+
+export async function getOCRDocumentTypes(): Promise<OCRDocumentType[]> {
+  return adminFetch<OCRDocumentType[]>("/api/admin/ocr-document-types");
+}
+
+export async function getOCRDocumentType(id: string): Promise<OCRDocumentType> {
+  return adminFetch<OCRDocumentType>(`/api/admin/ocr-document-types/${id}`);
+}
+
+export async function createOCRDocumentType(data: {
+  id: string;
+  name: string;
+  fields: string;
+}): Promise<OCRDocumentType> {
+  return adminFetch<OCRDocumentType>("/api/admin/ocr-document-types", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateOCRDocumentType(
+  id: string,
+  data: { name: string; fields: string }
+): Promise<OCRDocumentType> {
+  return adminFetch<OCRDocumentType>(`/api/admin/ocr-document-types/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteOCRDocumentType(id: string): Promise<void> {
+  await adminFetch<void>(`/api/admin/ocr-document-types/${id}`, { method: "DELETE" });
+}
+
 // ─── OCR Document Extraction ──────────────────────────────────────────────────
 
 export interface OcrExtractedField {

@@ -1,12 +1,16 @@
 // MainView.tsx
 import { useEffect, useRef, useState } from "react";
-import { DOC_TYPE_OPTIONS, OcrResult } from "@/lib/types";
+import { OCRDocumentType, OcrResult } from "@/lib/types";
 import { extractOcr } from "@/lib/ocr";
+import { getOCRDocumentTypes } from "@/lib/ocrDocumentTypes";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/bmp";
 
 export function MainView() {
-  const [docType, setDocType] = useState<string>(DOC_TYPE_OPTIONS[0].value);
+  const [docTypes, setDocTypes] = useState<OCRDocumentType[]>([]);
+  const [docTypesLoading, setDocTypesLoading] = useState(true);
+  const [docTypesError, setDocTypesError] = useState<string | null>(null);
+  const [docType, setDocType] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,6 +25,29 @@ export function MainView() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Jenis dokumen dikelola backend — muat saat panel terbuka.
+  useEffect(() => {
+    let cancelled = false;
+    setDocTypesLoading(true);
+    setDocTypesError(null);
+    getOCRDocumentTypes()
+      .then((list) => {
+        if (cancelled) return;
+        setDocTypes(list);
+        setDocType((prev) => prev || list[0]?.id || "");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setDocTypesError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setDocTypesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -108,7 +135,7 @@ export function MainView() {
   }
 
   async function handleProcess() {
-    if (!file) return;
+    if (!file || !docType) return;
     setBusy(true);
     setError(null);
     setResult(null);
@@ -123,20 +150,49 @@ export function MainView() {
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: 18 }}>
-      {/* Jenis dokumen */}
+      {/* Jenis dokumen — dimuat dari backend */}
       <div className="eyebrow" style={{ marginBottom: 8 }}>Jenis dokumen</div>
-      <div style={{ display: "flex", marginBottom: 20 }}>
-        {DOC_TYPE_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            className="tab"
-            data-active={docType === opt.value}
-            onClick={() => setDocType(opt.value)}
+      {docTypesLoading ? (
+        <div className="mono" style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 20 }}>
+          Memuat jenis dokumen OCR…
+        </div>
+      ) : docTypesError ? (
+        <div className="alert" role="alert" style={{ marginBottom: 20 }}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
           >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{docTypesError}</span>
+        </div>
+      ) : docTypes.length === 0 ? (
+        <div className="mono" style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 20 }}>
+          Belum ada jenis dokumen OCR terdaftar.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexWrap: "wrap", marginBottom: 20 }}>
+          {docTypes.map((opt) => (
+            <button
+              key={opt.id}
+              className="tab"
+              data-active={docType === opt.id}
+              onClick={() => setDocType(opt.id)}
+            >
+              {opt.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Ambil / unggah */}
       <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
@@ -217,7 +273,7 @@ export function MainView() {
       {file && (
         <button
           onClick={handleProcess}
-          disabled={busy}
+          disabled={busy || !docType}
           className="btn-primary"
           style={{ width: "100%", marginBottom: 18 }}
         >

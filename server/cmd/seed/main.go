@@ -73,6 +73,19 @@ var diagnosticServices = []catalogService{
 		[]string{"Scan MRI Brain 1.5 Tesla", "Bacaan Dokter Spesialis Radiologi"}},
 }
 
+// ocrDocumentTypes adalah master data jenis dokumen OCR (slug id = doc_type yang
+// dikirim ke microservice OCR). fields berisi daftar field ekstraksi.
+type catalogOCRDocumentType struct {
+	id     string
+	name   string
+	fields string
+}
+
+var ocrDocumentTypes = []catalogOCRDocumentType{
+	{"registrasi-pasien", "Registrasi Pasien", "Nama, NIK, Alamat, No. Telepon"},
+	{"inventory", "Inventory", "Nama Barang, Kode Barang, Jumlah, Lokasi"},
+}
+
 func main() {
 	_ = godotenv.Load()
 
@@ -102,9 +115,12 @@ func main() {
 	if err := seedDiagnosticServices(db); err != nil {
 		log.Fatalf("seed diagnostic services: %v", err)
 	}
+	if err := seedOCRDocumentTypes(db); err != nil {
+		log.Fatalf("seed document types: %v", err)
+	}
 
-	fmt.Printf("Seeder selesai: %d poliklinik, %d dokter, %d jadwal, %d MCU, %d layanan diagnostik.\n",
-		poliCount, doctorCount, scheduleCount, len(mcuServices), len(diagnosticServices))
+	fmt.Printf("Seeder selesai: %d poliklinik, %d dokter, %d jadwal, %d MCU, %d layanan diagnostik, %d jenis dokumen OCR.\n",
+		poliCount, doctorCount, scheduleCount, len(mcuServices), len(diagnosticServices), len(ocrDocumentTypes))
 }
 
 // seedDoctorSchedules TRUNCATE doctors & poliklinik lalu membangun ulang dari CSV jadwal.
@@ -224,6 +240,20 @@ func seedDiagnosticServices(db *sqlx.DB) error {
 		}
 		if err := replaceItems(db, "diagnostic_service_items", "service_id", id, s.items); err != nil {
 			return fmt.Errorf("items for %q: %w", s.name, err)
+		}
+	}
+	return nil
+}
+
+// seedOCRDocumentTypes men-insert/update ocr_document_types (idempotent, tidak menghapus baris).
+func seedOCRDocumentTypes(db *sqlx.DB) error {
+	for _, d := range ocrDocumentTypes {
+		if _, err := db.Exec(
+			`INSERT INTO ocr_document_types (id, name, fields) VALUES ($1, $2, $3)
+			 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, fields = EXCLUDED.fields`,
+			d.id, d.name, d.fields,
+		); err != nil {
+			return fmt.Errorf("upsert document type %q: %w", d.id, err)
 		}
 	}
 	return nil

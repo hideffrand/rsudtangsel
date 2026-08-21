@@ -75,6 +75,11 @@ func main() {
 	dashboardSvc := service.NewDashboardService(appointmentRepo)
 	adminHandler := handler.NewAdminHandler(authSvc, dashboardSvc, appointmentRepo)
 
+	// --- Document type master data (jenis dokumen OCR) ---
+	ocrDocumentTypeRepo := repository.NewOCRDocumentTypeRepository(db)
+	ocrDocumentTypeSvc := service.NewOCRDocumentTypeService(ocrDocumentTypeRepo)
+	ocrDocumentTypeHandler := handler.NewOCRDocumentTypeHandler(ocrDocumentTypeSvc)
+
 	// --- OCR proxy (forwards uploads to the Python OCR microservice) ---
 	ocrSvc := service.NewOCRService()
 	ocrHandler := handler.NewOCRHandler(ocrSvc)
@@ -117,7 +122,7 @@ func main() {
 	)
 
 	// --- Admin protected routes (JWT auth + role check + audit logging) ---
-	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, ocrHandler, userRepo)
+	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, ocrHandler, ocrDocumentTypeHandler, userRepo)
 	mux.Handle("/api/admin/", adminProtected)
 
 	// --- Apply CORS middleware, then request logger to all routes ---
@@ -142,6 +147,7 @@ func buildAdminProtectedRouter(
 	adminHandler *handler.AdminHandler,
 	mcuBookingHandler *handler.McuBookingHandler,
 	ocrHandler *handler.OCRHandler,
+	ocrDocumentTypeHandler *handler.OCRDocumentTypeHandler,
 	userRepo *repository.UserRepository,
 ) http.Handler {
 	protectedMux := http.NewServeMux()
@@ -171,6 +177,10 @@ func buildAdminProtectedRouter(
 
 	// --- OCR proxy (authenticated variant) ---
 	protectedMux.HandleFunc("/api/admin/ocr/extract", ocrHandler.Extract)
+
+	// --- Document type master data (CRUD) ---
+	protectedMux.HandleFunc("/api/admin/ocr-document-types", ocrDocumentTypeHandler.Collection)
+	protectedMux.HandleFunc("/api/admin/ocr-document-types/{id}", ocrDocumentTypeHandler.Item)
 
 	// Apply middleware stack: Auth → Role(admin, staff) → Audit
 	return middleware.AuthMiddleware(

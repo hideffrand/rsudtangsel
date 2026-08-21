@@ -13,6 +13,7 @@ import {
   Hospital,
   CalendarDays,
   FlaskConical,
+  FileText,
   Inbox,
 } from "lucide-react";
 import {
@@ -189,6 +190,7 @@ export default function AdminDashboardPage() {
           { href: "/admin/mcu", label: "MCU Booking", icon: <Hospital className="w-5 h-5" /> },
           { href: "/admin/jadwal-dokter", label: "Jadwal Dokter", icon: <CalendarDays className="w-5 h-5" /> },
           { href: "/admin/layanan-kesehatan", label: "Layanan Kesehatan", icon: <FlaskConical className="w-5 h-5" /> },
+          { href: "/admin/jenis-dokumen-ocr", label: "Jenis Dokumen OCR", icon: <FileText className="w-5 h-5" /> },
         ].map((item) => (
           <Link
             key={item.href}
