@@ -212,3 +212,73 @@ Simple list based on `Card`: one card per booking/visit, contents: status `Badge
 - [ ] Font size manually increased (browser zoom 200%) - layout must not break/overlap.
 - [ ] `prefers-reduced-motion` tested, animations correctly disabled.
 - [ ] Tap targets measured - no interactive element below 44px.
+
+---
+
+## 8. Implementation Notes (Verified from `web/`)
+
+Source of truth for what is actually implemented in the Next.js 16 + Tailwind v4 codebase. Where the running code differs from the spec above, treat the code as current and migrate drift toward the spec (see §8.4).
+
+### 8.1 Colors (as implemented in `web/app/globals.css`)
+
+Tokens are defined in both `:root` (CSS vars) and `@theme` (Tailwind utilities) and consumed as `bg-background`, `text-foreground`, `border-border`, `bg-muted`, `text-muted-foreground`, `bg-primary`, `bg-primary-hover`, `text-accent`, `text-success`, `text-warning`, `text-destructive` — **always use these, never raw hex** in components.
+
+| Token | Spec (§2.1) | Implemented | Note |
+|---|---|---|---|
+| `--background` | `#FFFFFF` | `#ffffff` | match |
+| `--foreground` | `#1C2626` | `#1c2626` | match |
+| `--muted` | `#F1F4F4` | `#f4f7f7` | slightly lighter than spec |
+| `--muted-foreground` | `#5C6B6B` | `#5c6b6b` | match |
+| `--border` | `#E2E8E8` | `#e0e7e7` | slightly darker than spec |
+| `--primary` | `#0E7D80` | `#0e7d80` | match |
+| `--primary-foreground` | `#FFFFFF` | `#ffffff` | match |
+| `--primary-hover` | `#0A5F61` | `#0a5f61` | match |
+| `--accent` | `#E63946` | `#e63946` | match |
+| `--success` | `#16A34A` | `#16a34a` | match |
+| `--warning` | `#D97706` | `#d97706` | match |
+| `--destructive` | `#DC2626` | `#dc2626` | match |
+
+### 8.2 Border radius (Tailwind v4 overridden tokens)
+
+`--radius-sm/md/lg` are overridden in `@theme`, so `rounded-*` utilities below those names resolve to the custom values:
+
+| Utility | Value | Used for |
+|---|---|---|
+| `rounded-sm` | 8px (`--radius-sm`) | Buttons, inputs, textarea, toasts, nav links |
+| `rounded-md` | 12px (`--radius-md`) | Cards, dialogs/modals, form panels |
+| `rounded-lg` | 16px (`--radius-lg`) | Larger surfaces (service cards, sidebar panels) |
+| `rounded-full` | pill | Badges, status chips, avatars, carousel dots, search bar |
+| `rounded-xs` | 2px (Tailwind default) | Tiny category chips only (home page) |
+
+**Caution:** `rounded-xl` / `rounded-2xl` / `rounded-3xl` are **not** overridden — they keep Tailwind defaults (12/16/24px) and appear only in legacy and hero surfaces (§8.4). Default container/card radius must remain `rounded-md` (12px).
+
+### 8.3 Shadow scale (as implemented)
+
+| Utility | Usage |
+|---|---|
+| `shadow-2xs` | Smallest - resting state for articles, contact cards |
+| `shadow-xs` | Default interactive controls (buttons, inputs) + Card default |
+| `shadow-sm` | Card hover state, active stepper circle |
+| `shadow-md` | Hero carousel, mobile menu panel |
+| `shadow-lg` | Dialogs/modals, WhatsApp popup |
+| `shadow-xl` | Mega dropdown panels, success confirmation modal |
+
+Buttons, inputs, and Cards default to `shadow-xs`; hover states use `shadow-sm`. `shadow-2xl` appears in exactly one marketing banner (§8.4). No decorative floating shadows.
+
+### 8.4 Deviations found in the codebase (migrate forward when touched)
+
+- **`app/daftar-online/`** — legacy styling: hardcoded `slate-*`/`emerald-*` classes, `rounded-xl`/`rounded-2xl`, `shadow-md`+ instead of `border-border`, `bg-primary`, `rounded-md`. Uses Tailwind defaults, not the tokens above. Migrate to the token system on next touch.
+- **`app/admin/*`** — uses a **slate + emerald** palette (`emerald-600` primary, `slate-200` borders, `dark:` variants in `stat-card.tsx`/`sidebar.tsx`), distinct from the patient-facing teal. Backoffice is out of scope (§1) — keep as-is.
+- **`components/sections/health-access-section.tsx`** — `slate-900 → primary → slate-900` gradient banner, `rounded-3xl`, blurred decorative blobs, `shadow-2xl`. Contradicts §1/§2.3 ("no decorative gradients", no `rounded-3xl` on everything). Accept as a one-off hero moment or reduce to the standard card treatment.
+- **`components/ui/whatsapp-float.tsx`** — uses WhatsApp's `emerald-*` brand colors. Intentional third-party brand exception; **do not** convert to teal.
+- Interactive focus is `focus:border-primary focus:ring-1 focus:ring-primary` (inputs) / `focus-visible:outline-primary` (buttons, links), consistent with §5.2.
+
+### 8.5 Typography, spacing & structure (implemented)
+
+- Inter via `next/font/google`, weights 400/500/600 (`--font-sans`), applied on `body`; base 16px, `line-height: 1.5`. ✓ §2.2
+- `html[data-font-size="lg"]` → 18px drives the header A+/A− control. ✓ §5.1
+- Spacing on the Tailwind 4px scale (`p-4`, `px-5`, `gap-3`, …); free-form values limited to hero min-height. ✓ §2.3
+- Page container: `max-width: var(--container-max)` (1200px) + `px-4 sm:px-6 lg:px-8`. ✓ §2.3
+- Buttons: `h-11` (44px) for `sm`/`md`, `h-12` (48px) for `lg` — meets the 44px tap target. ✓ §5.1
+- Header sticky/white/thin bottom border, i18n `ID/EN` toggle, `A−/A+` font control. ✓ §4, §5.1
+- Focus ring, `prefers-reduced-motion`, semantic HTML (`label`→`input`, `aria-describedby`, `role="status"`). ✓ §5.2
