@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Webform Copilot",
+  "name": "RSU Tangsel Web-Copilot",
   "version": "0.1.0",
   "description": "Ambil foto atau unggah dokumen lalu otomatis isi form web (registrasi pasien & inventory).",
   "permissions": ["sidePanel", "storage"],
