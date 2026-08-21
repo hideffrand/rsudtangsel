@@ -54,6 +54,24 @@ Muat hasil build:
 > dan memproduksi file berawalan `_`; langkah `postbuild` (renama `_next/` → `next-assets/` dst.)
 > sudah dibundel ke dalam `build:next` supaya hasil build selalu bisa dimuat.
 
+## Cara menguji
+
+```bash
+npm run build        # build + postbuild (jangan lupa setelah ada perubahan)
+npx tsc --noEmit     # cek tipe (tidak ada eslint di module ini)
+```
+
+Siapkan backend dulu supaya alur login + OCR bisa diuji:
+
+1. Jalankan DB + server Go: `cd ../server && go run ./cmd/api` (butuh `DATABASE_URL`).
+2. Jalankan OCR microservice: `cd ../ocr-service && uvicorn main:app --port 8000 --reload`.
+3. Muat `out/` sebagai unpacked extension (lihat bagian "Muat hasil build").
+4. Buka side panel lewat ikon ekstensi di toolbar → login dengan kredensial admin server.
+5. Di tab *Pengaturan*, pastikan base URL menunjuk ke server Go (mis. `http://localhost:8080/api`).
+6. Kembali ke view utama, pilih jenis dokumen, unggah/ambil foto, klik proses — hasil OCR
+   ditampilkan sebagai field + teks mentah. Jika microservice OCR tidak berjalan, Anda akan
+   melihat error `502` dari server Go (proxy gagal).
+
 ## Struktur
 
 ```
