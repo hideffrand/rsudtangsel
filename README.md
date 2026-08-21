@@ -13,6 +13,6 @@ Sistem Informasi Rumah Sakit Terpadu untuk RSU Tangerang Selatan.
 ## Tech Stack
 
 - **Frontend**: Next.js, Tailwind CSS, TypeScript
-- **Backend**: Go, PostgreSQL
+- **Backend**: Go, Python, PostgreSQL
 - **Infrastructure**: Docker, Nginx
 
