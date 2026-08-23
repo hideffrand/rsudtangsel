@@ -45,14 +45,14 @@ var radiologyTestPrices = map[string]int64{
 // McuBookingService handles business logic for MCU booking registration.
 type McuBookingService struct {
 	bookingRepo *repository.McuBookingRepository
-	packageRepo *repository.McuPackageRepository
+	packageRepo *repository.MedicalPackageRepository
 	patientRepo *repository.PatientRepository
 }
 
 // NewMcuBookingService creates a new McuBookingService.
 func NewMcuBookingService(
 	bookingRepo *repository.McuBookingRepository,
-	packageRepo *repository.McuPackageRepository,
+	packageRepo *repository.MedicalPackageRepository,
 	patientRepo *repository.PatientRepository,
 ) *McuBookingService {
 	return &McuBookingService{

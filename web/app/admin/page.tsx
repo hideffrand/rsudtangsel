@@ -17,13 +17,12 @@ import {
   Inbox,
 } from "lucide-react";
 import {
-  getDashboardStats,
   getAdminQueue,
   callPatient,
   skipPatient,
-  type DashboardStats,
   type QueueItem,
-} from "@/lib/admin-api";
+} from "@/services/queue";
+import { getDashboardStats, type DashboardStats } from "@/services/dashboard";
 import { StatCard } from "@/components/admin/stat-card";
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {

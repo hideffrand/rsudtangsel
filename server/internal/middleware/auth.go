@@ -16,6 +16,13 @@ type contextKey string
 const (
 	contextKeyUserID   contextKey = "user_id"
 	contextKeyUserRole contextKey = "user_role"
+
+	// CookieAccessToken holds the JWT access token set by the login handler.
+	// The web admin consumes it via the Next.js proxy; the Authorization
+	// header remains supported for API clients (e.g. browser extension).
+	CookieAccessToken = "token"
+	// CookieRefreshToken holds the opaque refresh token for cookie-based sessions.
+	CookieRefreshToken = "refresh_token"
 )
 
 // Claims defines the JWT token payload.
@@ -26,23 +33,27 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// AuthMiddleware validates the JWT token from the Authorization: Bearer <token> header.
+// AuthMiddleware validates the JWT token from the Authorization: Bearer <token>
+// header, falling back to the `token` cookie set by the login handler.
 // On success, it injects user_id and role into the request context.
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
+		var tokenString string
+		if authHeader := r.Header.Get("Authorization"); authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+				utils.ErrorResponse(w, http.StatusUnauthorized, "Invalid Authorization format. Use: Bearer <token>")
+				return
+			}
+			tokenString = parts[1]
+		} else if cookie, err := r.Cookie(CookieAccessToken); err == nil && cookie.Value != "" {
+			tokenString = cookie.Value
+		}
+
+		if tokenString == "" {
 			utils.ErrorResponse(w, http.StatusUnauthorized, "Authorization header is required")
 			return
 		}
-
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			utils.ErrorResponse(w, http.StatusUnauthorized, "Invalid Authorization format. Use: Bearer <token>")
-			return
-		}
-
-		tokenString := parts[1]
 		claims, err := parseJWT(tokenString)
 		if err != nil {
 			utils.ErrorResponse(w, http.StatusUnauthorized, "Invalid or expired token")

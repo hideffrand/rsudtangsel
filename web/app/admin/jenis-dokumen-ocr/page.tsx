@@ -8,7 +8,7 @@ import {
   createOCRDocumentType,
   updateOCRDocumentType,
   deleteOCRDocumentType,
-} from "@/lib/admin-api";
+} from "@/services/ocr";
 
 type FormState = {
   id: string;

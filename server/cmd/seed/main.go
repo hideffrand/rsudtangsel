@@ -13,7 +13,7 @@ import (
 )
 
 // Seeder utama: (1) jadwal dokter dari CSV ke tabel poliklinik, doctors, dan doctor_schedules,
-// (2) katalog layanan (mcu_packages + diagnostic_services).
+// (2) katalog layanan (medical_packages: MCU + Lab + Radiologi).
 // Cara pakai: cd server && make seed (atau go run ./cmd/seed)
 // CSV jadwal diambil dari SCHEDULE_CSV env (default: ../jadwal_dokter.csv).
 // PERHATIAN: bagian jadwal dokter TRUNCATE doctors & poliklinik CASCADE — menghapus isi doctors,
@@ -109,18 +109,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := seedMcuPackages(db); err != nil {
-		log.Fatalf("seed mcu packages: %v", err)
-	}
-	if err := seedDiagnosticServices(db); err != nil {
-		log.Fatalf("seed diagnostic services: %v", err)
+	if err := seedMedicalPackages(db); err != nil {
+		log.Fatalf("seed medical packages: %v", err)
 	}
 	if err := seedOCRDocumentTypes(db); err != nil {
 		log.Fatalf("seed document types: %v", err)
 	}
 
-	fmt.Printf("Seeder selesai: %d poliklinik, %d dokter, %d jadwal, %d MCU, %d layanan diagnostik, %d jenis dokumen OCR.\n",
-		poliCount, doctorCount, scheduleCount, len(mcuServices), len(diagnosticServices), len(ocrDocumentTypes))
+	fmt.Printf("Seeder selesai: %d poliklinik, %d dokter, %d jadwal, %d paket layanan (MCU/Lab/Radiologi), %d jenis dokumen OCR.\n",
+		poliCount, doctorCount, scheduleCount, len(mcuServices)+len(diagnosticServices), len(ocrDocumentTypes))
 }
 
 // seedDoctorSchedules TRUNCATE doctors & poliklinik lalu membangun ulang dari CSV jadwal.
@@ -217,28 +214,15 @@ func seedDoctorSchedules(db *sqlx.DB, csvPath string) (poliCount, doctorCount, s
 	return poliCount, doctorCount, scheduleCount, nil
 }
 
-// seedMcuPackages men-insert/update mcu_packages + items tanpa menghapus baris lama.
-func seedMcuPackages(db *sqlx.DB) error {
-	for _, s := range mcuServices {
-		id, err := upsertService(db, "mcu_packages", "name", s.name, s.description, s.price)
+// seedMedicalPackages men-insert/update medical_packages (MCU + Lab + Radiologi)
+// + items tanpa menghapus baris lama. Kunci idempotensi: (type, name).
+func seedMedicalPackages(db *sqlx.DB) error {
+	for _, s := range append(mcuServices, diagnosticServices...) {
+		id, err := upsertMedicalPackage(db, s.category, s.name, s.description, s.price)
 		if err != nil {
 			return fmt.Errorf("upsert %q: %w", s.name, err)
 		}
-		if err := replaceItems(db, "mcu_package_items", "package_id", id, s.items); err != nil {
-			return fmt.Errorf("items for %q: %w", s.name, err)
-		}
-	}
-	return nil
-}
-
-// seedDiagnosticServices men-insert/update diagnostic_services + items tanpa menghapus baris lama.
-func seedDiagnosticServices(db *sqlx.DB) error {
-	for _, s := range diagnosticServices {
-		id, err := upsertDiagnostic(db, s.category, s.name, s.description, s.price)
-		if err != nil {
-			return fmt.Errorf("upsert %q: %w", s.name, err)
-		}
-		if err := replaceItems(db, "diagnostic_service_items", "service_id", id, s.items); err != nil {
+		if err := replaceItems(db, "medical_package_items", "package_id", id, s.items); err != nil {
 			return fmt.Errorf("items for %q: %w", s.name, err)
 		}
 	}
@@ -259,38 +243,23 @@ func seedOCRDocumentTypes(db *sqlx.DB) error {
 	return nil
 }
 
-func upsertService(db *sqlx.DB, table, nameCol, name, description string, price int64) (int, error) {
-	var id int
-	err := db.Get(&id, `SELECT id FROM `+table+` WHERE name = $1 LIMIT 1`, name)
-	if err == nil {
-		_, err = db.Exec(
-			`UPDATE `+table+` SET description = $1, price = $2, is_active = TRUE, updated_at = NOW() WHERE id = $3`,
-			description, price, id,
-		)
-		return id, err
-	}
-	err = db.Get(&id,
-		`INSERT INTO `+table+` (name, description, price, is_active) VALUES ($1, $2, $3, TRUE) RETURNING id`,
-		name, description, price,
-	)
-	return id, err
-}
-
-func upsertDiagnostic(db *sqlx.DB, category, name, description string, price int64) (int, error) {
+// upsertMedicalPackage menemukan paket berdasarkan (type, name) lalu update,
+// atau insert baru. ID tidak pernah berubah agar FK mcu_bookings tetap valid.
+func upsertMedicalPackage(db *sqlx.DB, packageType, name, description string, price int64) (int, error) {
 	var id int
 	err := db.Get(&id,
-		`SELECT id FROM diagnostic_services WHERE category = $1 AND name = $2 LIMIT 1`, category, name)
+		`SELECT id FROM medical_packages WHERE type = $1 AND name = $2 LIMIT 1`, packageType, name)
 	if err == nil {
 		_, err = db.Exec(
-			`UPDATE diagnostic_services SET description = $1, price = $2, is_active = TRUE, updated_at = NOW() WHERE id = $3`,
+			`UPDATE medical_packages SET description = $1, price = $2, is_active = TRUE, updated_at = NOW() WHERE id = $3`,
 			description, price, id,
 		)
 		return id, err
 	}
 	err = db.Get(&id,
-		`INSERT INTO diagnostic_services (category, name, description, price, is_active)
+		`INSERT INTO medical_packages (type, name, description, price, is_active)
 		 VALUES ($1, $2, $3, $4, TRUE) RETURNING id`,
-		category, name, description, price,
+		packageType, name, description, price,
 	)
 	return id, err
 }

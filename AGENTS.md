@@ -6,7 +6,7 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
 
 ## Data & naming conventions
 
-- All data-representing identifiers are English: table/column names, Go struct/DTO names, JSON keys, HTTP routes, query params, function names, and web data-layer identifiers (`services/*.ts`, `lib/admin-api.ts`). Data *values* (poli names, UI text) stay Indonesian.
+- All data-representing identifiers are English: table/column names, Go struct/DTO names, JSON keys, HTTP routes, query params, function names, and web data-layer identifiers (`services/*.ts`). Data *values* (poli names, UI text) stay Indonesian.
 - `poli`/`poliklinik`/`poli_id` and `nik`/`NIK` are accepted domain terms — never rename them.
 - Queue routes are `/api/online-registration`, `/api/queue` (requires `?department=`, optional `date=`), `/api/admin/queue` (filters `poli` + `date`). They are NOT `daftar-online`/`antrian`. Admin dashboard JSON uses `patients_today`, `avg_wait_time`, `new_complaints`, `total_queue`.
 
@@ -15,7 +15,7 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
 - Poli is a first-class entity: `poliklinik` table + `GET /api/poli` (+ `/api/poli/{id}`). Do not derive the poli list from `doctors.specialty`.
 - `doctors.poli_id` FK → `poliklinik.id`; `specialty` is a denormalized copy of the poli name, kept in sync by `DoctorService` (find-or-create poli by name on doctor create/update).
 - Frontend poli dropdowns (daftar-online, jadwal-dokter, admin pages) all load from `web/services/poli.ts` (`poliApi.getAll()`).
-- `make seed` (`go run ./cmd/seed`) TRUNCATEs `doctors` + `poliklinik` CASCADE (wipes appointments too), rebuilds the schedule from `../jadwal_dokter.csv` (`SCHEDULE_CSV` env), and idempotently seeds the catalog tables (`mcu_packages` + `diagnostic_services` + `ocr_document_types`). Doctors are linked to poli via `doctors.poli_id` (find-or-create poli by name).
+- `make seed` (`go run ./cmd/seed`) TRUNCATEs `doctors` + `poliklinik` CASCADE (wipes appointments too), rebuilds the schedule from `../jadwal_dokter.csv` (`SCHEDULE_CSV` env), and idempotently seeds the catalog tables (`medical_packages` + `ocr_document_types`). Doctors are linked to poli via `doctors.poli_id` (find-or-create poli by name).
 
 ## OCR document types (master data)
 
@@ -24,7 +24,7 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
 - `cmd/seed` upserts 2 entries idempotently: `registrasi-pasien` and `inventory` (matches the browser-extension selector).
 - Consumers fetch the list from the backend — never hardcode doc-type options:
   - browser-extension: `lib/ocrDocumentTypes.ts` → `getOCRDocumentTypes()`
-  - web admin CRUD page: `/admin/jenis-dokumen-ocr` (`app/admin/jenis-dokumen-ocr/page.tsx`) using `lib/admin-api.ts` (`getOCRDocumentTypes` etc.). Uses raw-fetch `adminFetch`, NOT the axios `services/*` layer.
+  - web admin CRUD page: `/admin/jenis-dokumen-ocr` (`app/admin/jenis-dokumen-ocr/page.tsx`) using `services/ocr.ts`.
 - Go identifiers/names use the `OCRDocumentType`/`ocr_document_types` prefix (an earlier blind find-replace produced `OCROCR*` and `OCR OCR` duplications — check for those before committing).
 - The seed slugs (`registrasi-pasien`, `inventory`) do NOT match the OCR microservice's parser keys (`ktp`/`bpjs`/`rujukan`/`resep`/`generic`) — unknown doc types fall back to the generic parser.
 
@@ -41,7 +41,7 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
 - Verify: `npm run lint` (eslint) + `npx tsc --noEmit`. There's no standalone typecheck script; `npm run build` is the typecheck but currently fails on this dev box (`lightningcss` native-module mismatch) — use `tsc` instead.
 - Reuse the existing UI kit (`components/ui/*`: button, card, dialog, input, modal, toast, stepper, …) instead of writing new components ad hoc.
 - i18n (`lib/translations.ts` id/en + `lib/i18n-context.tsx`) applies only to **public-facing** pages under `app/`. **Admin pages (`app/admin/*`) hardcode Indonesian UI strings** — follow that, don't add i18n keys there.
-- Two divergent API clients: `services/api.ts` (axios) expects `NEXT_PUBLIC_API_URL` to include the `/api` suffix (web/.env: `http://localhost:8088/api`); `lib/admin-api.ts` (raw fetch) also appends `/api/...` itself — same env ⇒ double `/api` on admin calls. Don't "fix" one without the other. Master-data admin CRUD pages (e.g. `jenis-dokumen-ocr`, `antrian`, `mcu`) use the raw-fetch `adminFetch` from `lib/admin-api.ts`, NOT the axios `services/*` layer.
+- Single API client: all `web/services/*.ts` go through the axios client in `services/api.ts` (baseURL `/api/proxy/api`, envelope-unwrapping interceptor, auto 401-refresh retry via the httpOnly cookie session). One file per domain module, covering both public and admin sides (`mcu.ts`, `queue.ts`, `ocr.ts`). Admin session = httpOnly cookies set by the backend; nothing auth-related is stored in localStorage/sessionStorage; `lib/admin-auth-context.tsx` verifies via `GET /admin/me` on mount. Route guard: `web/proxy.ts` validates `/admin/*` against `/api/admin/me` (fail-closed).
 
 ## Server rules & gotchas (run from `server/`)
 
@@ -58,8 +58,8 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
   - `version` exits 1 with `no migration` when nothing is applied — normal, not an error.
   - Editing an already-applied migration will not re-run it. To reapply on dev: `TRUNCATE schema_migrations`, then migrate up.
 - **Response convention**: every HTTP response must go through `internal/utils` `SuccessResponse`/`ErrorResponse` (envelope `success`, `status_code`, `data`, `message`). Never write raw JSON in handlers.
-- **Catalog seed**: bundled into `go run ./cmd/seed` — idempotently seeds `mcu_packages` (10) + `diagnostic_services` (4 lab, 3 radiologi) + `ocr_document_types` (2) with items. It never deletes rows, so package IDs used by `mcu_bookings` stay stable. Run `make seed` after migrating to populate the catalog (`/api/mcu-packages`, `/api/diagnostic-services`).
-- **API test**: `bash test_api.sh` (34 tests). Needs a running server + migrated DB; **hardcodes** `BASE_URL=http://localhost:8080` (line 3) — env override is ignored. On this dev box :8080 is often taken by an unrelated process; use `sed 's|:8080|:9090|' test_api.sh | tr -d '\r'` or free 8080.
+- **Catalog seed**: bundled into `go run ./cmd/seed` — idempotently seeds `medical_packages` (single table, `type` ∈ `mcu` | `lab` | `radiologi`: 10 MCU + 4 lab + 3 radiologi) + `ocr_document_types` (2) with items. It never deletes rows, so package IDs used by `mcu_bookings` stay stable. Run `make seed` after migrating to populate the catalog (`/api/medical-packages`, filter `?type=`).
+- **API test**: `bash test_api.sh`. Needs a running server + migrated DB; **hardcodes** `BASE_URL=http://localhost:8080` (line 3) — env override is ignored. On this dev box :8080 is often taken by an unrelated process; use `sed 's|:8080|:9090|' test_api.sh | tr -d '\r'` or free 8080.
 - `server/api` (8.8 MB) is a **stale committed binary** — don't rebuild or re-commit it. `make build` outputs `bin/server` (gitignored). `.gitignore` covers `/server` and `/bin/`, not `/api`.
 - **OCR proxy**: the Go server proxies OCR to the microservice (`internal/service/ocr_service.go` via `OCR_SERVICE_URL`, default `http://localhost:8000`) — `POST /api/ocr/extract` and `/api/admin/ocr/extract` (15 MB file limit). Locally these 502 unless `ocr-service` is running.
 

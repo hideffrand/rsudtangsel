@@ -12,7 +12,7 @@ import {
   cancelMcuBooking,
   confirmMcuPayment,
   type McuBookingItem,
-} from "@/lib/admin-api";
+} from "@/services/mcu";
 import { Dialog } from "@/components/ui/dialog";
 import { ClipboardList } from "lucide-react";
 

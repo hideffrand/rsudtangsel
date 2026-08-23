@@ -3,7 +3,10 @@
 /**
  * AdminAuthContext — RSU Tangsel Care
  * State sesi admin + operasi auth (login/logout) terpusat.
- * Data bersumber dari localStorage via lib/admin-api.
+ *
+ * Sepenuhnya berbasis cookie httpOnly dari backend — tidak ada token/profil
+ * di localStorage atau sessionStorage. Saat provider ter-mount, profil
+ * diambil dari GET /api/admin/me (fetchMe) untuk memverifikasi sesi.
  */
 
 import {
@@ -16,15 +19,12 @@ import {
   type ReactNode,
 } from "react";
 import {
-  getUser,
-  isAuthenticated,
+  fetchMe,
   loginAdmin,
   logoutAdmin,
-  saveTokens,
-  saveUser,
   type AdminUser,
   type LoginResponse,
-} from "./admin-api";
+} from "@/services/auth";
 
 type AuthStatus = "checking" | "authenticated" | "unauthenticated";
 
@@ -42,32 +42,37 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("checking");
   const [user, setUser] = useState<AdminUser | null>(null);
 
-  const syncFromStorage = useCallback(() => {
-    setStatus(isAuthenticated() ? "authenticated" : "unauthenticated");
-    setUser(getUser());
-  }, []);
-
-  // Sinkronkan state dari localStorage saat mount + perubahan storage lain tab
+  // Verifikasi sesi saat load: /me sukses = authenticated (cookie valid).
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    syncFromStorage();
-    window.addEventListener("storage", syncFromStorage);
-    return () => window.removeEventListener("storage", syncFromStorage);
-  }, [syncFromStorage]);
+    let cancelled = false;
+    fetchMe()
+      .then((profile) => {
+        if (cancelled) return;
+        setUser(profile);
+        setStatus("authenticated");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUser(null);
+        setStatus("unauthenticated");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const data = await loginAdmin(username, password);
-    saveTokens(data.access_token, data.refresh_token);
-    saveUser(data.user);
-    setStatus("authenticated");
+    // Backend menyetel cookie httpOnly; profil hanya di memory state.
     setUser(data.user);
+    setStatus("authenticated");
     return data;
   }, []);
 
   const logout = useCallback(async () => {
     await logoutAdmin();
-    setStatus("unauthenticated");
     setUser(null);
+    setStatus("unauthenticated");
   }, []);
 
   const value = useMemo(

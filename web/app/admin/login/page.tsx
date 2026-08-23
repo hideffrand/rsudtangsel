@@ -3,25 +3,24 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { isAuthenticated } from "@/lib/admin-api";
 import { useAdminAuth } from "@/lib/admin-auth-context";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login } = useAdminAuth();
+  const { login, status, isAuthenticated } = useAdminAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
 
-  // Jika sudah login, redirect ke dashboard
+  // Jika sudah login (cookie valid, terverifikasi via /me), redirect ke dashboard
   useEffect(() => {
-    if (isAuthenticated()) {
+    if (status !== "checking" && isAuthenticated) {
       router.replace("/admin");
     }
-  }, [router]);
+  }, [status, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

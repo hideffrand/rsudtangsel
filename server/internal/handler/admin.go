@@ -3,12 +3,14 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hideffrand/rsudtangsel/server/internal/dto/request"
+	"github.com/hideffrand/rsudtangsel/server/internal/middleware"
 	"github.com/hideffrand/rsudtangsel/server/internal/repository"
 	"github.com/hideffrand/rsudtangsel/server/internal/service"
 	"github.com/hideffrand/rsudtangsel/server/internal/utils"
@@ -66,11 +68,14 @@ func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setAuthCookies(w, r, loginResp.AccessToken, loginResp.RefreshToken)
 	utils.SuccessResponse(w, http.StatusOK, loginResp, "Login successful")
 }
 
 // RefreshToken handles POST /api/admin/refresh
 // Rotates the refresh token and returns a new access token.
+// The refresh token comes from the JSON body (API clients) or the
+// refresh_token cookie (web session).
 func (h *AdminHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -78,27 +83,33 @@ func (h *AdminHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req request.RefreshTokenRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
 		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	if errMsg := req.Validate(); errMsg != "" {
-		utils.ErrorResponse(w, http.StatusBadRequest, errMsg)
+	if req.RefreshToken == "" {
+		req.RefreshToken = cookieValue(r, middleware.CookieRefreshToken)
+	}
+	if req.RefreshToken == "" {
+		utils.ErrorResponse(w, http.StatusUnauthorized, "refresh_token is required")
 		return
 	}
 
 	resp, err := h.authSvc.RefreshToken(req.RefreshToken)
 	if err != nil {
+		clearAuthCookies(w)
 		utils.ErrorResponse(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
+	setAuthCookies(w, r, resp.AccessToken, resp.RefreshToken)
 	utils.SuccessResponse(w, http.StatusOK, resp, "Token refreshed")
 }
 
 // Logout handles POST /api/admin/logout
-// Deletes the refresh token from the database. This operation is idempotent.
+// Deletes the refresh token from the database and clears the auth cookies.
+// This operation is idempotent.
 func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -106,13 +117,36 @@ func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req request.RefreshTokenRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
 		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
+	if req.RefreshToken == "" {
+		req.RefreshToken = cookieValue(r, middleware.CookieRefreshToken)
+	}
 	_ = h.authSvc.Logout(req.RefreshToken)
+	clearAuthCookies(w)
 	utils.SuccessResponse(w, http.StatusOK, nil, "Logged out successfully")
+}
+
+// Me handles GET /api/admin/me
+// Returns the profile of the authenticated user (from the JWT claims, either
+// Bearer header or cookie). Used by the web admin auth context and by the
+// Next.js proxy to validate the session.
+func (h *AdminHandler) Me(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	profile, err := h.authSvc.GetProfile(middleware.GetUserID(r.Context()))
+	if err != nil {
+		utils.ErrorResponse(w, http.StatusUnauthorized, "Sesi tidak valid")
+		return
+	}
+
+	utils.SuccessResponse(w, http.StatusOK, profile)
 }
 
 // DashboardStats handles GET /api/admin/dashboard/stats
@@ -202,6 +236,56 @@ func (h *AdminHandler) UpdateQueueStatus(w http.ResponseWriter, r *http.Request)
 }
 
 // --- Private helpers ---
+
+// setAuthCookies sets the httpOnly session cookies (access + refresh) on the
+// response. Must be called before the response body/headers are written.
+// SameSite=Lax is safe here: all web traffic reaches the backend through the
+// same-origin Next.js proxy, and the browser extension uses Bearer headers.
+func setAuthCookies(w http.ResponseWriter, r *http.Request, accessToken, refreshToken string) {
+	secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CookieAccessToken,
+		Value:    accessToken,
+		Path:     "/",
+		MaxAge:   service.AccessTokenExpirySecs(),
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CookieRefreshToken,
+		Value:    refreshToken,
+		Path:     "/",
+		MaxAge:   int(service.RefreshTokenExpiry().Seconds()),
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// clearAuthCookies expires the auth cookies.
+func clearAuthCookies(w http.ResponseWriter) {
+	for _, name := range []string{middleware.CookieAccessToken, middleware.CookieRefreshToken} {
+		http.SetCookie(w, &http.Cookie{
+			Name:     name,
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+}
+
+// cookieValue returns the value of the named request cookie, or "" if absent.
+func cookieValue(r *http.Request, name string) string {
+	c, err := r.Cookie(name)
+	if err != nil {
+		return ""
+	}
+	return c.Value
+}
+
 
 // parseQueuePath extracts the ID and action from a URL path: /api/admin/queue/{id}/{action}.
 func parseQueuePath(path string) (int, string, error) {

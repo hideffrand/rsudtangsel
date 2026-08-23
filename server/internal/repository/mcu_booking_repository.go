@@ -53,7 +53,7 @@ func (r *McuBookingRepository) Create(b *model.McuBooking) (int, error) {
 	return id, nil
 }
 
-// FindByID returns a full booking detail (joined with mcu_packages).
+// FindByID returns a full booking detail (joined with medical_packages).
 // Returns nil if not found.
 func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, error) {
 	query := `
@@ -64,7 +64,7 @@ func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, e
 		       b.status, b.total_price, b.payment_status, b.payment_method, b.notes,
 		       TO_CHAR(b.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
 		FROM mcu_bookings b
-		JOIN mcu_packages p ON p.id = b.package_id
+		JOIN medical_packages p ON p.id = b.package_id
 		WHERE b.id = $1`
 
 	// Use raw sqlx query with pq.Array scanning
@@ -224,7 +224,7 @@ func (r *McuBookingRepository) AdminUpdate(id int, status, paymentStatus, notes 
 
 // --- private helpers ---
 
-// findList executes a list query (joined with mcu_packages) with an arbitrary WHERE clause.
+// findList executes a list query (joined with medical_packages) with an arbitrary WHERE clause.
 func (r *McuBookingRepository) findList(whereClause string, args ...interface{}) ([]response.McuBookingListItem, error) {
 	query := fmt.Sprintf(`
 		SELECT b.id, COALESCE(b.booking_number, ''), p.name AS package_name,
@@ -233,7 +233,7 @@ func (r *McuBookingRepository) findList(whereClause string, args ...interface{})
 		       b.status, b.total_price,
 		       TO_CHAR(b.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
 		FROM mcu_bookings b
-		JOIN mcu_packages p ON p.id = b.package_id
+		JOIN medical_packages p ON p.id = b.package_id
 		%s`, whereClause)
 
 	rows, err := r.db.Queryx(query, args...)

@@ -10,7 +10,7 @@
  */
 
 import { useState } from "react";
-import { extractOcrDocument } from "@/lib/admin-api";
+import { extractOcrDocument } from "@/services/ocr";
 
 interface OcrDoc {
   id: string;

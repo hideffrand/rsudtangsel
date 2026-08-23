@@ -20,7 +20,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { doctorsApi, type Doctor } from "@/services/doctors";
 import { poliApi, type Poli } from "@/services/poli";
 import { registrationApi } from "@/services/registration";
-import { getFloorForPoli, addMockQueueItem, type QueueItem } from "@/lib/admin-api";
+import { getFloorForPoli, addMockQueueItem, type QueueItem } from "@/services/queue";
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
 

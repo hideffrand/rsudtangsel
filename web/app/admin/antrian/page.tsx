@@ -40,7 +40,7 @@ import {
   createDirectSpecialistBooking,
   getFloorForPoli,
   type QueueItem,
-} from "@/lib/admin-api";
+} from "@/services/queue";
 import { poliApi, type Poli } from "@/services/poli";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";

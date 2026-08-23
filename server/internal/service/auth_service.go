@@ -67,7 +67,7 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*response
 	}
 
 	// 6. Persist the refresh token
-	refreshExpiry := time.Now().Add(getRefreshTokenExpiry())
+	refreshExpiry := time.Now().Add(RefreshTokenExpiry())
 	if err := s.userRepo.SaveRefreshToken(user.ID, refreshToken, refreshExpiry); err != nil {
 		return nil, fmt.Errorf("save refresh token: %w", err)
 	}
@@ -83,7 +83,7 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*response
 		Details:   fmt.Sprintf(`{"username":"%s","role":"%s"}`, user.Username, user.Role),
 	})
 
-	accessExpirySecs := getAccessTokenExpirySecs()
+	accessExpirySecs := AccessTokenExpirySecs()
 	return &response.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -142,12 +142,12 @@ func (s *AuthService) RefreshToken(refreshToken string) (*response.LoginResponse
 	}
 
 	// 7. Persist the new refresh token
-	refreshExpiry := time.Now().Add(getRefreshTokenExpiry())
+	refreshExpiry := time.Now().Add(RefreshTokenExpiry())
 	if err := s.userRepo.SaveRefreshToken(user.ID, newRefreshToken, refreshExpiry); err != nil {
 		return nil, fmt.Errorf("save new refresh token: %w", err)
 	}
 
-	accessExpirySecs := getAccessTokenExpirySecs()
+	accessExpirySecs := AccessTokenExpirySecs()
 	return &response.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
@@ -159,6 +159,24 @@ func (s *AuthService) RefreshToken(refreshToken string) (*response.LoginResponse
 			Email:    user.Email,
 			Role:     user.Role,
 		},
+	}, nil
+}
+
+// GetProfile returns the public profile of the given user ID (no password).
+// Used by GET /api/admin/me.
+func (s *AuthService) GetProfile(userID int) (*response.UserResponse, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("find user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	return &response.UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		Role:     user.Role,
 	}, nil
 }
 
@@ -179,7 +197,7 @@ func (s *AuthService) generateAccessToken(user *model.User) (string, error) {
 		secret = "changeme-please-set-JWT_SECRET-in-env"
 	}
 
-	expiry := time.Duration(getAccessTokenExpirySecs()) * time.Second
+	expiry := time.Duration(AccessTokenExpirySecs()) * time.Second
 
 	claims := &middleware.Claims{
 		UserID:   user.ID,
@@ -206,8 +224,8 @@ func generateSecureToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// getAccessTokenExpirySecs reads ACCESS_TOKEN_EXPIRY from env (default: 3600 seconds).
-func getAccessTokenExpirySecs() int {
+// AccessTokenExpirySecs reads ACCESS_TOKEN_EXPIRY from env (default: 3600 seconds).
+func AccessTokenExpirySecs() int {
 	raw := os.Getenv("ACCESS_TOKEN_EXPIRY")
 	if raw == "" {
 		return 3600
@@ -219,8 +237,8 @@ func getAccessTokenExpirySecs() int {
 	return v
 }
 
-// getRefreshTokenExpiry reads REFRESH_TOKEN_EXPIRY from env (default: 7 days).
-func getRefreshTokenExpiry() time.Duration {
+// RefreshTokenExpiry reads REFRESH_TOKEN_EXPIRY from env (default: 7 days).
+func RefreshTokenExpiry() time.Duration {
 	raw := os.Getenv("REFRESH_TOKEN_EXPIRY")
 	if raw == "" {
 		return 7 * 24 * time.Hour

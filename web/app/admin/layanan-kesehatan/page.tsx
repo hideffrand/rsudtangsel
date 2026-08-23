@@ -3,17 +3,11 @@
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import {
-  mcuPackagesApi,
-  type McuPackage,
-} from "@/services/mcuPackages";
-import {
-  diagnosticServicesApi,
-  type DiagnosticService,
-} from "@/services/diagnosticServices";
+  medicalPackagesApi,
+  type MedicalPackage,
+} from "@/services/medicalPackages";
 
 type TabKind = "mcu" | "lab" | "radiologi";
-
-type CatalogItem = McuPackage | DiagnosticService;
 
 interface ItemDraft {
   name: string;
@@ -48,9 +42,7 @@ function formatRupiah(n: number) {
 
 export default function AdminLayananKesehatanPage() {
   const [tab, setTab] = useState<TabKind>("mcu");
-  const [mcu, setMcu] = useState<McuPackage[]>([]);
-  const [lab, setLab] = useState<DiagnosticService[]>([]);
-  const [radio, setRadio] = useState<DiagnosticService[]>([]);
+  const [packages, setPackages] = useState<MedicalPackage[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +56,7 @@ export default function AdminLayananKesehatanPage() {
 
   const [form, setForm] = useState<CatalogForm>(EMPTY_FORM);
 
-  const activeList: CatalogItem[] = tab === "mcu" ? mcu : tab === "lab" ? lab : radio;
+  const activeList: MedicalPackage[] = packages.filter((p) => p.type === tab);
 
   const filteredList = activeList.filter((item) => {
     const q = searchQuery.toLowerCase();
@@ -78,14 +70,7 @@ export default function AdminLayananKesehatanPage() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [m, l, r] = await Promise.all([
-        mcuPackagesApi.getAll(),
-        diagnosticServicesApi.getAll("lab"),
-        diagnosticServicesApi.getAll("radiologi"),
-      ]);
-      setMcu(m);
-      setLab(l);
-      setRadio(r);
+      setPackages(await medicalPackagesApi.getAll());
     } catch (err) {
       console.error(err);
       setLoadError("Gagal memuat katalog layanan dari server. Silakan coba lagi.");
@@ -99,14 +84,9 @@ export default function AdminLayananKesehatanPage() {
     loadAll();
   }, []);
 
-  const reloadKind = async (kind: TabKind) => {
-    if (kind === "mcu") {
-      setMcu(await mcuPackagesApi.getAll());
-    } else if (kind === "lab") {
-      setLab(await diagnosticServicesApi.getAll("lab"));
-    } else {
-      setRadio(await diagnosticServicesApi.getAll("radiologi"));
-    }
+  const reloadKind = async () => {
+    // Semua tipe berasal dari satu endpoint — muat ulang seluruh katalog.
+    setPackages(await medicalPackagesApi.getAll());
   };
 
   const openCreate = () => {
@@ -116,7 +96,7 @@ export default function AdminLayananKesehatanPage() {
     setIsFormOpen(true);
   };
 
-  const openEdit = (kind: TabKind, item: CatalogItem) => {
+  const openEdit = (kind: TabKind, item: MedicalPackage) => {
     setEditing({ id: item.id, kind });
     setForm({
       name: item.name,
@@ -164,20 +144,13 @@ export default function AdminLayananKesehatanPage() {
     setIsSaving(true);
     setFormError(null);
     try {
+      const payload = { type: kind, name, description: form.description, price, is_active: form.isActive, items };
       if (editing) {
-        if (kind === "mcu") {
-          await mcuPackagesApi.update(editing.id, { name, description: form.description, price, is_active: form.isActive, items });
-        } else {
-          await diagnosticServicesApi.update(editing.id, { category: kind, name, description: form.description, price, is_active: form.isActive, items });
-        }
+        await medicalPackagesApi.update(editing.id, payload);
       } else {
-        if (kind === "mcu") {
-          await mcuPackagesApi.create({ name, description: form.description, price, is_active: form.isActive, items });
-        } else {
-          await diagnosticServicesApi.create({ category: kind, name, description: form.description, price, is_active: form.isActive, items });
-        }
+        await medicalPackagesApi.create(payload);
       }
-      await reloadKind(kind);
+      await reloadKind();
       setIsFormOpen(false);
     } catch (err) {
       console.error(err);
@@ -191,12 +164,8 @@ export default function AdminLayananKesehatanPage() {
     if (!deleteItem) return;
     setIsSaving(true);
     try {
-      if (deleteItem.kind === "mcu") {
-        await mcuPackagesApi.remove(deleteItem.id);
-      } else {
-        await diagnosticServicesApi.remove(deleteItem.id);
-      }
-      await reloadKind(deleteItem.kind);
+      await medicalPackagesApi.remove(deleteItem.id);
+      await reloadKind();
       setDeleteItem(null);
     } catch (err) {
       console.error(err);
@@ -208,11 +177,8 @@ export default function AdminLayananKesehatanPage() {
 
   const tabTitle = TABS.find((t) => t.key === tab)?.label ?? "";
 
-  const getTabCount = (key: TabKind) => {
-    if (key === "mcu") return mcu.length;
-    if (key === "lab") return lab.length;
-    return radio.length;
-  };
+  const getTabCount = (key: TabKind) =>
+    packages.filter((p) => p.type === key).length;
 
   return (
     <div className="p-6 lg:p-8 space-y-6 mx-auto">

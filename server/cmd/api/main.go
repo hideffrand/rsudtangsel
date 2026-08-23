@@ -51,22 +51,21 @@ func main() {
 	poliSvc := service.NewPoliklinikService(poliRepo)
 	queueSvc := service.NewQueueService(patientRepo, doctorRepo, appointmentRepo)
 	doctorSvc := service.NewDoctorService(doctorRepo, scheduleRepo, poliSvc)
-	mcuPackageRepo := repository.NewMcuPackageRepository(db)
-	mcuPackageSvc := service.NewMcuPackageService(mcuPackageRepo)
-	diagnosticRepo := repository.NewDiagnosticServiceRepository(db)
-	diagnosticSvc := service.NewDiagnosticServiceService(diagnosticRepo)
+
+	// Medical package catalog (MCU + Lab + Radiologi dalam satu tabel)
+	medicalPackageRepo := repository.NewMedicalPackageRepository(db)
+	medicalPackageSvc := service.NewMedicalPackageService(medicalPackageRepo)
 
 	// MCU booking layer
 	mcuBookingRepo := repository.NewMcuBookingRepository(db)
-	mcuBookingSvc := service.NewMcuBookingService(mcuBookingRepo, mcuPackageRepo, patientRepo)
+	mcuBookingSvc := service.NewMcuBookingService(mcuBookingRepo, medicalPackageRepo, patientRepo)
 
 	registrationHandler := handler.NewRegistrationHandler(queueSvc)
 	queueHandler := handler.NewQueueHandler(queueSvc)
 	doctorHandler := handler.NewDoctorHandler(doctorSvc)
 	scheduleHandler := handler.NewScheduleHandler(doctorSvc)
 	poliHandler := handler.NewPoliklinikHandler(poliSvc)
-	mcuPackageHandler := handler.NewMcuPackageHandler(mcuPackageSvc)
-	diagnosticHandler := handler.NewDiagnosticServiceHandler(diagnosticSvc)
+	medicalPackageHandler := handler.NewMedicalPackageHandler(medicalPackageSvc)
 	mcuBookingHandler := handler.NewMcuBookingHandler(mcuBookingSvc)
 
 	// --- Admin endpoints (auth, dashboard, queue management) ---
@@ -99,10 +98,8 @@ func main() {
 	mux.HandleFunc("/api/schedules/{id}", scheduleHandler.Item)
 	mux.HandleFunc("/api/poli", poliHandler.Collection)
 	mux.HandleFunc("/api/poli/{id}", poliHandler.Item)
-	mux.HandleFunc("/api/mcu-packages", mcuPackageHandler.Collection)
-	mux.HandleFunc("/api/mcu-packages/{id}", mcuPackageHandler.Item)
-	mux.HandleFunc("/api/diagnostic-services", diagnosticHandler.Collection)
-	mux.HandleFunc("/api/diagnostic-services/{id}", diagnosticHandler.Item)
+	mux.HandleFunc("/api/medical-packages", medicalPackageHandler.Collection)
+	mux.HandleFunc("/api/medical-packages/{id}", medicalPackageHandler.Item)
 
 	// --- Public OCR proxy route ---
 	mux.HandleFunc("/api/ocr/extract", ocrHandler.Extract)
@@ -156,6 +153,7 @@ func buildAdminProtectedRouter(
 	protectedMux.HandleFunc("/api/admin/logout", adminHandler.Logout)
 	protectedMux.HandleFunc("/api/admin/dashboard/stats", adminHandler.DashboardStats)
 	protectedMux.HandleFunc("/api/admin/queue", adminHandler.AdminQueue)
+	protectedMux.HandleFunc("/api/admin/me", adminHandler.Me)
 
 	// Dynamic sub-path handler: /api/admin/queue/{id}/call or /skip
 	protectedMux.HandleFunc("/api/admin/queue/", func(w http.ResponseWriter, r *http.Request) {

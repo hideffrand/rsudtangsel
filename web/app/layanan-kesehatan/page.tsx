@@ -6,8 +6,7 @@ import Link from "next/link";
 import { Dialog } from "@/components/ui/dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Search, X, Check, ChevronRight } from "lucide-react";
-import { mcuPackagesApi } from "@/services/mcuPackages";
-import { diagnosticServicesApi } from "@/services/diagnosticServices";
+import { medicalPackagesApi } from "@/services/medicalPackages";
 import { HealthAccessSection } from "@/components/sections/health-access-section";
 
 type CatalogCategory = "mcu" | "lab" | "radiologi";
@@ -81,29 +80,19 @@ function LayananKesehatanContent() {
     setLoading(true);
     setError(null);
     try {
-      const [mcu, diagnostics] = await Promise.all([
-        mcuPackagesApi.getAll(),
-        diagnosticServicesApi.getAll(),
-      ]);
-      const list: CatalogItem[] = [
-        ...mcu
-          .filter((p) => p.is_active)
-          .map((p) =>
-            toCatalogItem(`mcu-${p.id}`, "mcu", p.name, p.description, p.price, p.items),
+      const packages = await medicalPackagesApi.getAll();
+      const list: CatalogItem[] = packages
+        .filter((p) => p.is_active)
+        .map((p) =>
+          toCatalogItem(
+            `${p.type}-${p.id}`,
+            p.type,
+            p.name,
+            p.description,
+            p.price,
+            p.items,
           ),
-        ...diagnostics
-          .filter((s) => s.is_active)
-          .map((s) =>
-            toCatalogItem(
-              `ds-${s.id}`,
-              s.category,
-              s.name,
-              s.description,
-              s.price,
-              s.items,
-            ),
-          ),
-      ];
+        );
       setItems(list);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat katalog layanan.");
