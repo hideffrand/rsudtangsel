@@ -22,8 +22,89 @@ def parse_document(raw_text: str, doc_type: str = "generic", blocks: List[Dict[s
         return parse_surat_rujukan(raw_text, blocks)
     elif "resep" in doc_type_clean:
         return parse_resep_dokter(raw_text, blocks)
+    elif "registrasi" in doc_type_clean or "pasien" in doc_type_clean:
+        return parse_registrasi_pasien(raw_text, blocks)
     else:
         return parse_generic(raw_text, blocks)
+
+
+# ==============================================================================
+# [EKSTRAKSI FORM REGISTRASI PASIEN] - formulir kertas pendaftaran pasien.
+# Key hasil ekstraksi dipetakan ke atribut data-copilot di form admin web
+# (web/app/admin/pasien): NIK, Nama, Umur, Jenis Kelamin, Alamat, No. Telepon.
+# ==============================================================================
+def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    """
+    Parser untuk Form Registrasi Pasien di atas kertas.
+    Field: NIK, Nama, Umur, Jenis Kelamin, Alamat, No. Telepon.
+    """
+    fields = []
+
+    # 1. NIK (16 digit) — coba dengan label dulu, lalu angka 16 digit apa pun
+    nik_match = re.search(r'NIK\s*[:\-\s]+\s*(\d{16})', raw_text, re.IGNORECASE) \
+        or re.search(r'\b(3[0-9]{15}|[0-9]{16})\b', raw_text)
+    nik_val = nik_match.group(1) if nik_match else ""
+    fields.append({
+        "key": "NIK",
+        "value": nik_val,
+        "confidence": 98.0 if nik_val else 40.0,
+        "is_required": True,
+    })
+
+    # 2. Nama — label "Nama", dibatasi satu baris agar tidak menelan baris berikutnya
+    nama_match = re.search(r'Nama\s*(?:Pasien)?\s*[:\-]\s*([A-Za-z][^\n\r:]+)', raw_text, re.IGNORECASE)
+    nama_val = nama_match.group(1).strip().rstrip(",.-") if nama_match else ""
+    fields.append({
+        "key": "Nama",
+        "value": nama_val,
+        "confidence": 92.0 if nama_val else 50.0,
+        "is_required": True,
+    })
+
+    # 3. Umur / Usia (angka tahun)
+    umur_match = re.search(r'(?:Umur|Usia)\s*[:\-]?\s*(\d{1,3})\s*(?:tahun|th|thn)?', raw_text, re.IGNORECASE)
+    umur_val = umur_match.group(1) if umur_match else ""
+    fields.append({
+        "key": "Umur",
+        "value": umur_val,
+        "confidence": 90.0 if umur_val else 45.0,
+        "is_required": False,
+    })
+
+    # 4. Jenis Kelamin (kata kunci Laki-laki / Perempuan)
+    jk_match = re.search(r'(Laki-?\s?laki|Perempuan)', raw_text, re.IGNORECASE)
+    jk_val = jk_match.group(1).title().replace(" ", "").replace("Laki-Laki", "Laki-laki") if jk_match else ""
+    fields.append({
+        "key": "Jenis Kelamin",
+        "value": jk_val,
+        "confidence": 93.0 if jk_val else 45.0,
+        "is_required": False,
+    })
+
+    # 5. Alamat — label "Alamat", satu baris
+    alamat_match = re.search(r'Alamat\s*[:\-]\s*([^\n\r]+)', raw_text, re.IGNORECASE)
+    alamat_val = alamat_match.group(1).strip() if alamat_match else ""
+    fields.append({
+        "key": "Alamat",
+        "value": alamat_val,
+        "confidence": 80.0 if alamat_val else 40.0,
+        "is_required": False,
+    })
+
+    # 6. No. Telepon — label dulu, lalu pola nomor HP Indonesia
+    telp_match = re.search(
+        r'(?:No\.?\s*)?(?:Telepon|Telp(?:on)?|HP|WA)\s*[:\-]?\s*(\+62[\d\s\-]{8,14}|08[\d\s\-]{8,12})',
+        raw_text, re.IGNORECASE) \
+        or re.search(r'\b(08\d{8,12}|\+628\d{7,13})\b', raw_text)
+    telp_val = telp_match.group(1).replace(" ", "").replace("-", "") if telp_match else ""
+    fields.append({
+        "key": "No. Telepon",
+        "value": telp_val,
+        "confidence": 88.0 if telp_val else 40.0,
+        "is_required": False,
+    })
+
+    return fields
 
 
 # ==============================================================================

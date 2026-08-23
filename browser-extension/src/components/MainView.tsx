@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { OCRDocumentType, OcrResult } from "@/lib/types";
 import { extractOcr } from "@/lib/ocr";
 import { getOCRDocumentTypes } from "@/lib/ocrDocumentTypes";
+import { autofillActiveTab, AutofillOutcome } from "@/lib/autofill";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/bmp";
 
@@ -16,6 +17,8 @@ export function MainView() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<OcrResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [autofillStatus, setAutofillStatus] = useState<string | null>(null);
+  const [autofillDetails, setAutofillDetails] = useState<AutofillOutcome[] | null>(null);
 
   // Kamera in-panel (getUserMedia) untuk desktop.
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -139,8 +142,29 @@ export function MainView() {
     setBusy(true);
     setError(null);
     setResult(null);
+    setAutofillStatus(null);
+    setAutofillDetails(null);
     try {
-      setResult(await extractOcr(file, docType));
+      const res = await extractOcr(file, docType);
+      setResult(res);
+      // Isi form di tab aktif (mis. /admin/pasien) dari hasil ekstraksi.
+      // Kegagalan autofill tidak menggagalkan hasil OCR — cukup dilaporkan.
+      try {
+        const outcomes = await autofillActiveTab(
+          res.extracted_fields.map(({ key, value }) => ({ key, value })),
+        );
+        setAutofillDetails(outcomes);
+        const filled = outcomes.filter((o) => o.filled).length;
+        setAutofillStatus(
+          filled > 0
+            ? `${filled} kolom form terisi otomatis`
+            : "Tidak ada kolom data-copilot yang cocok di halaman aktif",
+        );
+      } catch (fillErr) {
+        setAutofillStatus(
+          fillErr instanceof Error ? `Autofill gagal: ${fillErr.message}` : "Autofill gagal",
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -314,6 +338,12 @@ export function MainView() {
             </div>
           </div>
 
+          {autofillStatus && (
+            <div className="mono" role="status" style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "6px 0" }}>
+              {autofillStatus}
+            </div>
+          )}
+
           <div className="tear" style={{ margin: "8px 0" }} />
 
           <div>
@@ -329,6 +359,55 @@ export function MainView() {
           </div>
 
           <details style={{ marginTop: 14 }}>
+            <summary className="eyebrow" style={{ cursor: "pointer" }}>
+              Debug: pasangan key → form (autofill)
+            </summary>
+            {autofillDetails ? (
+              <table
+                className="mono"
+                style={{ width: "100%", fontSize: 11, marginTop: 8, borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr style={{ textAlign: "left", color: "var(--muted-foreground)" }}>
+                    <th style={{ padding: "4px 6px" }}>key</th>
+                    <th style={{ padding: "4px 6px" }}>value</th>
+                    <th style={{ padding: "4px 6px" }}>data-copilot</th>
+                    <th style={{ padding: "4px 6px" }}>status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {autofillDetails.map((o) => (
+                    <tr key={o.target} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ padding: "4px 6px", wordBreak: "break-word" }}>{o.key}</td>
+                      <td style={{ padding: "4px 6px", wordBreak: "break-word" }}>{o.value}</td>
+                      <td style={{ padding: "4px 6px" }}>{o.target}</td>
+                      <td
+                        style={{
+                          padding: "4px 6px",
+                          color: o.filled ? "#15803d" : o.found ? "#b45309" : "#b91c1c",
+                        }}
+                      >
+                        {o.filled ? "terisi" : o.found ? "ditemukan, tidak terisi" : "tidak ada di halaman"}
+                      </td>
+                    </tr>
+                  ))}
+                  {autofillDetails.length === 0 && (
+                    <tr style={{ borderTop: "1px solid var(--border)" }}>
+                      <td colSpan={4} style={{ padding: "4px 6px", color: "var(--muted-foreground)" }}>
+                        Tidak ada field bernilai dari hasil OCR.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <div className="mono" style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 8 }}>
+                Autofill belum dicoba pada hasil ini.
+              </div>
+            )}
+          </details>
+
+          <details style={{ marginTop: 10 }}>
             <summary className="eyebrow" style={{ cursor: "pointer" }}>
               Teks mentah
             </summary>

@@ -1,10 +1,11 @@
 import { getSettings } from "./settings";
+import { onStorageChanged, storageSession } from "./webext";
 import { ApiEnvelope, AuthSession, LoginResponse } from "./types";
 
 const SESSION_KEY = "copilot_session";
 
 // POST /api/admin/login — validates credentials, persists the token pair in
-// chrome.storage.session (cleared when the browser closes).
+// storage.session (cleared when the browser closes).
 export async function login(username: string, password: string): Promise<AuthSession> {
   const { baseUrl } = await getSettings();
   const res = await fetch(`${baseUrl}/api/admin/login`, {
@@ -26,12 +27,12 @@ export async function login(username: string, password: string): Promise<AuthSes
     expiresAt: Date.now() + d.expires_in * 1000,
     user: d.user,
   };
-  await chrome.storage.session.set({ [SESSION_KEY]: session });
+  await storageSession().set({ [SESSION_KEY]: session });
   return session;
 }
 
 export async function getSession(): Promise<AuthSession | null> {
-  const stored = await chrome.storage.session.get(SESSION_KEY);
+  const stored = await storageSession().get(SESSION_KEY);
   return (stored[SESSION_KEY] as AuthSession | undefined) ?? null;
 }
 
@@ -57,7 +58,7 @@ async function refresh(session: AuthSession): Promise<AuthSession> {
     expiresAt: Date.now() + d.expires_in * 1000,
     user: d.user,
   };
-  await chrome.storage.session.set({ [SESSION_KEY]: next });
+  await storageSession().set({ [SESSION_KEY]: next });
   return next;
 }
 
@@ -90,11 +91,11 @@ export async function logout(): Promise<void> {
       // best-effort; local session is cleared regardless
     }
   }
-  await chrome.storage.session.remove(SESSION_KEY);
+  await storageSession().remove(SESSION_KEY);
 }
 
 export function onSessionChanged(cb: (session: AuthSession | null) => void): void {
-  chrome.storage.onChanged.addListener((changes, area) => {
+  onStorageChanged((changes, area) => {
     if (area === "session" && changes[SESSION_KEY]) {
       cb((changes[SESSION_KEY].newValue as AuthSession | undefined) ?? null);
     }

@@ -3,8 +3,10 @@
   "name": "RSU Tangsel Web-Copilot",
   "version": "0.1.0",
   "description": "Ambil foto atau unggah dokumen lalu otomatis isi form web (registrasi pasien & inventory).",
-  "permissions": ["sidePanel", "storage"],
+  "permissions": ["sidePanel", "storage", "scripting"],
+  "host_permissions": ["<all_urls>"],
   "background": {
+    "scripts": ["background.js"],
     "service_worker": "background.js"
   },
   "action": {
@@ -12,6 +14,17 @@
   },
   "side_panel": {
     "default_path": "sidepanel/index.html"
+  },
+  "sidebar_action": {
+    "default_panel": "sidepanel/index.html",
+    "default_title": "Webform Copilot",
+    "open_at_install": false
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "webform-copilot@rsutangsel.go.id",
+      "strict_min_version": "115.0"
+    }
   },
   "icons": {
     "16": "icons/icon16.png",

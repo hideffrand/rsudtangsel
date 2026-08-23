@@ -82,7 +82,7 @@ type catalogOCRDocumentType struct {
 }
 
 var ocrDocumentTypes = []catalogOCRDocumentType{
-	{"registrasi-pasien", "Registrasi Pasien", "Nama, NIK, Alamat, No. Telepon"},
+	{"registrasi-pasien", "Registrasi Pasien", "NIK, Nama, Umur, Jenis Kelamin, Alamat, No. Telepon"},
 	{"inventory", "Inventory", "Nama Barang, Kode Barang, Jumlah, Lokasi"},
 }
 

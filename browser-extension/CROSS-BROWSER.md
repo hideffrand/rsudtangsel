@@ -1,5 +1,9 @@
 # Dukungan Multi-Browser (Chrome / Edge / Firefox)
 
+> **STATUS: IMPLEMENTED.** Langkah 1–3 di bawah sudah diterapkan
+> (`manifest.json`, `src/background.js`, `src/lib/webext.ts`). Langkah 5
+> (smoke test manual di 3 browser) masih perlu diverifikasi.
+
 Rencana membuat extension berjalan di Chrome, Edge, dan Firefox (MV3) dengan satu
 manifest dan satu output `out/`.
 
