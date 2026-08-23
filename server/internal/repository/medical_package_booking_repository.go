@@ -34,18 +34,18 @@ func (r *MedicalPackageBookingRepository) Create(b *model.MedicalPackageBooking)
 		  (patient_id, package_id, booking_date, booking_time,
 		   nik, full_name, birth_date, phone_number, address,
 		   lab_tests, radiology_tests,
-		   status, total_price, payment_status, payment_method, notes, booking_number)
+		   status, total_price, notes, booking_number)
 		VALUES
 		  ($1, $2, $3, $4,
 		   $5, $6, $7, $8, $9,
 		   $10, $11,
-		   $12, $13, $14, $15, $16, $17)
+		   $12, $13, $14, $15)
 		RETURNING id`
 	err := r.db.QueryRow(query,
 		b.PatientID, b.PackageID, b.BookingDate, b.BookingTime,
 		b.NIK, b.FullName, b.BirthDate, b.PhoneNumber, b.Address,
 		pq.Array(b.LabTests), pq.Array(b.RadiologyTests),
-		b.Status, b.TotalPrice, b.PaymentStatus, b.PaymentMethod, b.Notes, b.BookingNumber,
+		b.Status, b.TotalPrice, b.Notes, b.BookingNumber,
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create medical package booking: %w", err)
@@ -61,7 +61,7 @@ func (r *MedicalPackageBookingRepository) FindByID(id int) (*response.MedicalPac
 		       b.nik, b.full_name, b.phone_number, b.birth_date, b.address,
 		       b.booking_date::text, b.booking_time::text,
 		       b.lab_tests, b.radiology_tests,
-		       b.status, b.total_price, b.payment_status, b.payment_method, b.notes,
+		       b.status, b.total_price, b.notes,
 		       TO_CHAR(b.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
 		FROM medical_package_bookings b
 		JOIN medical_packages p ON p.id = b.package_id
@@ -88,7 +88,7 @@ func (r *MedicalPackageBookingRepository) FindByID(id int) (*response.MedicalPac
 		&resp.NIK, &resp.FullName, &resp.PhoneNumber, &resp.BirthDate, &resp.Address,
 		&resp.BookingDate, &resp.BookingTime,
 		&labTests, &radiologyTests,
-		&resp.Status, &resp.TotalPrice, &resp.PaymentStatus, &resp.PaymentMethod, &resp.Notes,
+		&resp.Status, &resp.TotalPrice, &resp.Notes,
 		&resp.CreatedAt,
 	)
 	if err != nil {
@@ -143,52 +143,10 @@ func (r *MedicalPackageBookingRepository) CountByDate(date string) (int, error) 
 	return count, nil
 }
 
-// GetRevenue returns the total revenue (sum of total_price) for paid bookings in a date range.
-func (r *MedicalPackageBookingRepository) GetRevenue(startDate, endDate string) (int64, error) {
-	var total int64
-	err := r.db.QueryRow(
-		`SELECT COALESCE(SUM(total_price), 0)
-		 FROM medical_package_bookings
-		 WHERE payment_status = 'paid'
-		   AND booking_date BETWEEN $1 AND $2`,
-		startDate, endDate,
-	).Scan(&total)
-	if err != nil {
-		return 0, fmt.Errorf("get medical package booking revenue: %w", err)
-	}
-	return total, nil
-}
-
-// UpdateStatus updates the booking status. Returns false if booking not found.
-func (r *MedicalPackageBookingRepository) UpdateStatus(id int, status string) (bool, error) {
-	res, err := r.db.Exec(
-		`UPDATE medical_package_bookings SET status = $1, updated_at = NOW() WHERE id = $2`,
-		status, id,
-	)
-	if err != nil {
-		return false, fmt.Errorf("update medical package booking status: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	return n > 0, nil
-}
-
-// UpdatePaymentStatus updates only the payment_status field. Returns false if not found.
-func (r *MedicalPackageBookingRepository) UpdatePaymentStatus(id int, paymentStatus string) (bool, error) {
-	res, err := r.db.Exec(
-		`UPDATE medical_package_bookings SET payment_status = $1, updated_at = NOW() WHERE id = $2`,
-		paymentStatus, id,
-	)
-	if err != nil {
-		return false, fmt.Errorf("update medical package payment status: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	return n > 0, nil
-}
-
-// AdminUpdate applies partial updates (status, payment_status, notes) from an admin patch.
-func (r *MedicalPackageBookingRepository) AdminUpdate(id int, status, paymentStatus, notes *string) (bool, error) {
-	if status == nil && paymentStatus == nil && notes == nil {
-		return false, fmt.Errorf("at least one field (status, payment_status, notes) must be provided")
+// AdminUpdate applies partial updates (status, notes) from an admin patch.
+func (r *MedicalPackageBookingRepository) AdminUpdate(id int, status, notes *string) (bool, error) {
+	if status == nil && notes == nil {
+		return false, fmt.Errorf("at least one field (status, notes) must be provided")
 	}
 
 	query := `UPDATE medical_package_bookings SET updated_at = NOW()`
@@ -198,11 +156,6 @@ func (r *MedicalPackageBookingRepository) AdminUpdate(id int, status, paymentSta
 	if status != nil {
 		query += fmt.Sprintf(", status = $%d", idx)
 		args = append(args, *status)
-		idx++
-	}
-	if paymentStatus != nil {
-		query += fmt.Sprintf(", payment_status = $%d", idx)
-		args = append(args, *paymentStatus)
 		idx++
 	}
 	if notes != nil {

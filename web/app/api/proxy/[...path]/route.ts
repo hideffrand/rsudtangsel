@@ -46,9 +46,17 @@ async function proxy(request: NextRequest): Promise<Response> {
 
   const responseHeaders = new Headers();
   for (const [key, value] of upstream.headers) {
-    if (!HOP_BY_HOP.has(key.toLowerCase())) {
+    // set-cookie ditangani terpisah di bawah: iterasi Headers biasa
+    // menggabungkan beberapa cookie jadi satu nilai dipisah koma, yang
+    // membuat browser menolak cookie sesi (token/refresh_token).
+    if (!HOP_BY_HOP.has(key.toLowerCase()) && key.toLowerCase() !== "set-cookie") {
       responseHeaders.set(key, value);
     }
+  }
+
+  // Teruskan setiap cookie Set-Cookie satu per satu (multi-value header).
+  for (const cookie of upstream.headers.getSetCookie()) {
+    responseHeaders.append("set-cookie", cookie);
   }
 
   return new Response(upstream.body, {

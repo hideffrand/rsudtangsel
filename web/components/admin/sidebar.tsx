@@ -31,7 +31,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
   { href: "/admin/antrian", label: "Manajemen Antrian", icon: <ListOrdered size={18} /> },
-  { href: "/admin/mcu", label: "MCU Booking", icon: <Stethoscope size={18} /> },
+  { href: "/admin/mcu", label: "Booking Paket", icon: <Stethoscope size={18} /> },
   { href: "/admin/jadwal-dokter", label: "Jadwal Dokter", icon: <CalendarDays size={18} /> },
   { href: "/admin/layanan-kesehatan", label: "Layanan Kesehatan", icon: <HeartPulse size={18} /> },
   { href: "/admin/jenis-dokumen-ocr", label: "Jenis Dokumen OCR", icon: <FileText size={18} /> },

@@ -26,12 +26,8 @@ type MedicalPackageBooking struct {
 	//                   cancelled
 	Status string `db:"status"`
 
-	// Payment:   unpaid → awaiting_confirmation → paid
-	//                              ↓
-	//                          cancelled
-	TotalPrice    int64  `db:"total_price"`    // IDR (Rupiah)
-	PaymentStatus string `db:"payment_status"` // unpaid | awaiting_confirmation | paid | cancelled
-	PaymentMethod string `db:"payment_method"` // transfer | qris | cash | bpjs
+	// Harga total paket (IDR) — hanya catatan harga, tanpa alur pembayaran.
+	TotalPrice int64 `db:"total_price"` // IDR (Rupiah)
 
 	Notes string `db:"notes"`
 

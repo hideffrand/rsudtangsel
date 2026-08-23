@@ -5,8 +5,6 @@ export async function proxy(req: NextRequest) {
     const token = req.cookies.get("token")?.value;
     const pathname = req.nextUrl.pathname;
 
-    console.log(token)
-
     if (pathname === "/admin/login") {
         return NextResponse.next();
     }

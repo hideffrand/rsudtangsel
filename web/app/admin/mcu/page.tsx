@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Manajemen MCU Booking Admin - RSU Tangsel Care (/admin/mcu)
- * Filter status + tanggal, Confirm/Cancel/Konfirmasi Pembayaran.
+ * Manajemen Booking Paket Layanan Admin - RSU Tangsel Care (/admin/mcu)
+ * Paket MCU/Lab/Radiologi. Filter status + tanggal, Confirm/Cancel.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -10,7 +10,6 @@ import {
   getPackageBookings,
   confirmPackageBooking,
   cancelPackageBooking,
-  confirmPackagePayment,
   type PackageBookingItem,
 } from "@/services/packageBookings";
 import { Dialog } from "@/components/ui/dialog";
@@ -23,18 +22,11 @@ const BOOKING_STATUS: Record<string, { label: string; cls: string }> = {
   cancelled: { label: "Dibatalkan", cls: "bg-red-100 text-red-600 border border-red-200" },
 };
 
-const PAYMENT_STATUS: Record<string, { label: string; cls: string }> = {
-  unpaid: { label: "Belum Bayar", cls: "bg-slate-100 text-slate-600" },
-  awaiting_confirmation: { label: "Menunggu Konfirmasi", cls: "bg-amber-100 text-amber-700" },
-  paid: { label: "Lunas", cls: "bg-emerald-100 text-emerald-700" },
-  cancelled: { label: "Dibatalkan", cls: "bg-red-100 text-red-600" },
-};
-
 function formatRupiah(n: number) {
   return `Rp ${n.toLocaleString("id-ID")}`;
 }
 
-type ActionType = "confirm" | "cancel" | "payment";
+type ActionType = "confirm" | "cancel";
 
 export default function McuAdminPage() {
   const [bookings, setBookings] = useState<PackageBookingItem[]>([]);
@@ -61,7 +53,7 @@ export default function McuAdminPage() {
       });
       setBookings(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Gagal memuat data MCU Booking.");
+      setError(err instanceof Error ? err.message : "Gagal memuat data booking paket.");
     } finally {
       setLoading(false);
     }
@@ -79,10 +71,8 @@ export default function McuAdminPage() {
       let updated: PackageBookingItem;
       if (confirm.action === "confirm") {
         updated = await confirmPackageBooking(confirm.id);
-      } else if (confirm.action === "cancel") {
-        updated = await cancelPackageBooking(confirm.id);
       } else {
-        updated = await confirmPackagePayment(confirm.id);
+        updated = await cancelPackageBooking(confirm.id);
       }
       setBookings((prev) =>
         prev.map((b) => (b.id === confirm.id ? updated : b))
@@ -98,16 +88,15 @@ export default function McuAdminPage() {
   const ACTION_CONFIG: Record<ActionType, { title: string; confirmLabel: string; destructive: boolean }> = {
     confirm: { title: "Konfirmasi Booking", confirmLabel: "Ya, Konfirmasi", destructive: false },
     cancel: { title: "Batalkan Booking", confirmLabel: "Ya, Batalkan", destructive: true },
-    payment: { title: "Konfirmasi Pembayaran", confirmLabel: "Tandai Lunas", destructive: false },
   };
 
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">MCU Booking</h1>
+        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Booking Paket Layanan</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Kelola pendaftaran Medical Check Up pasien - konfirmasi, batalkan, dan catat pembayaran.
+          Kelola pendaftaran paket layanan pasien (MCU, Lab, Radiologi) - konfirmasi dan batalkan booking.
         </p>
       </div>
 
@@ -182,7 +171,7 @@ export default function McuAdminPage() {
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="font-bold text-slate-800">
-            Daftar MCU Booking <span className="text-emerald-600">({bookings.length})</span>
+            Daftar Booking Paket <span className="text-emerald-600">({bookings.length})</span>
           </h2>
         </div>
 
@@ -203,10 +192,9 @@ export default function McuAdminPage() {
               <thead>
                 <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider">
                   <th className="px-5 py-3 text-left font-semibold">Pasien</th>
-                  <th className="px-5 py-3 text-left font-semibold">Paket MCU</th>
+                  <th className="px-5 py-3 text-left font-semibold">Paket</th>
                   <th className="px-5 py-3 text-left font-semibold hidden md:table-cell">Tgl. Booking</th>
                   <th className="px-5 py-3 text-left font-semibold">Status</th>
-                  <th className="px-5 py-3 text-left font-semibold hidden lg:table-cell">Pembayaran</th>
                   <th className="px-5 py-3 text-left font-semibold hidden lg:table-cell">Total</th>
                   <th className="px-5 py-3 text-right font-semibold">Aksi</th>
                 </tr>
@@ -214,7 +202,6 @@ export default function McuAdminPage() {
               <tbody className="divide-y divide-slate-100">
                 {bookings.map((item) => {
                   const bStatus = BOOKING_STATUS[item.status] ?? { label: item.status, cls: "bg-slate-100 text-slate-600 border border-slate-200" };
-                  const pStatus = PAYMENT_STATUS[item.payment_status] ?? { label: item.payment_status, cls: "bg-slate-100 text-slate-600" };
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-5 py-4">
@@ -230,11 +217,6 @@ export default function McuAdminPage() {
                       <td className="px-5 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${bStatus.cls}`}>
                           {bStatus.label}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 hidden lg:table-cell">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${pStatus.cls}`}>
-                          {pStatus.label}
                         </span>
                       </td>
                       <td className="px-5 py-4 font-semibold text-slate-800 hidden lg:table-cell">
@@ -254,14 +236,6 @@ export default function McuAdminPage() {
                               className="px-2.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
                             >
                               Konfirmasi
-                            </button>
-                          )}
-                          {item.payment_status === "awaiting_confirmation" && (
-                            <button
-                              onClick={() => setConfirm({ id: item.id, action: "payment", name: item.full_name, package_name: item.package_name })}
-                              className="px-2.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
-                            >
-                              Konfirmasi Bayar
                             </button>
                           )}
                           {(item.status === "pending" || item.status === "confirmed") && (
@@ -297,7 +271,6 @@ export default function McuAdminPage() {
           <p className="text-sm text-muted-foreground">
             {confirm.action === "confirm" && "Anda akan mengkonfirmasi booking "}
             {confirm.action === "cancel" && "Anda akan membatalkan booking "}
-            {confirm.action === "payment" && "Anda akan menandai pembayaran sebagai LUNAS untuk "}
             <strong className="text-foreground">{confirm.name}</strong> - paket{" "}
             <strong className="text-foreground">{confirm.package_name}</strong>.
           </p>
@@ -314,7 +287,7 @@ export default function McuAdminPage() {
       <Dialog
         isOpen={detailItem !== null}
         onClose={() => setDetailItem(null)}
-        title="Detail MCU Booking"
+        title="Detail Booking Paket"
         cancelLabel="Tutup"
       >
         {detailItem && (
@@ -324,10 +297,9 @@ export default function McuAdminPage() {
                 { label: "Nama", value: detailItem.full_name },
                 { label: "NIK", value: detailItem.nik },
                 { label: "Telepon", value: detailItem.phone_number },
-                { label: "Paket MCU", value: detailItem.package_name },
+                { label: "Paket", value: detailItem.package_name },
                 { label: "Tgl. Booking", value: new Date(detailItem.booking_date).toLocaleDateString("id-ID", { dateStyle: "long" }) },
                 { label: "Jam", value: detailItem.booking_time?.slice(0, 5) },
-                { label: "Metode Bayar", value: detailItem.payment_method || "-" },
                 { label: "Total", value: formatRupiah(detailItem.total_price) },
               ].map((row) => (
                 <div key={row.label} className="space-y-0.5">

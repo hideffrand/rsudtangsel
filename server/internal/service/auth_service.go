@@ -72,8 +72,8 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*response
 		return nil, fmt.Errorf("save refresh token: %w", err)
 	}
 
-	// 7. Update last_login timestamp (non-blocking)
-	go s.userRepo.UpdateLastLogin(user.ID)
+	// 7. Update last-login metadata: timestamp, IP, and browser (non-blocking)
+	go s.userRepo.UpdateLastLogin(user.ID, ip, userAgent)
 
 	// 8. Log successful login (non-blocking)
 	s.logAuditAsync(&model.AuditLog{

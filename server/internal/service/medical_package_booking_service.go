@@ -118,12 +118,10 @@ func (s *MedicalPackageBookingService) Register(req request.MedicalPackageBookin
 		Address:        req.Address,
 		LabTests:       labTests,
 		RadiologyTests: radiologyTests,
-		Status:         "pending",
-		TotalPrice:     totalPrice,
-		PaymentStatus:  "unpaid",
-		PaymentMethod:  req.PaymentMethod,
-		Notes:          req.Notes,
-		BookingNumber:  bookingNumber,
+		Status:      "pending",
+		TotalPrice:  totalPrice,
+		Notes:       req.Notes,
+		BookingNumber: bookingNumber,
 	}
 
 	id, err := s.bookingRepo.Create(booking)
@@ -156,7 +154,7 @@ func (s *MedicalPackageBookingService) AdminGetBookings(status, date string) ([]
 	return s.bookingRepo.FindAll(status, date)
 }
 
-// AdminUpdateBooking applies partial updates to a booking (status, payment_status, notes).
+// AdminUpdateBooking applies partial updates to a booking (status, notes).
 func (s *MedicalPackageBookingService) AdminUpdateBooking(id int, req request.MedicalPackageBookingAdminUpdateRequest) (*response.MedicalPackageBookingResponse, error) {
 	// Validate status values if provided
 	if req.Status != nil {
@@ -165,14 +163,8 @@ func (s *MedicalPackageBookingService) AdminUpdateBooking(id int, req request.Me
 			return nil, fmt.Errorf("invalid status: must be pending | confirmed | completed | cancelled")
 		}
 	}
-	if req.PaymentStatus != nil {
-		validPayment := map[string]bool{"unpaid": true, "awaiting_confirmation": true, "paid": true, "cancelled": true}
-		if !validPayment[*req.PaymentStatus] {
-			return nil, fmt.Errorf("invalid payment_status: must be unpaid | awaiting_confirmation | paid | cancelled")
-		}
-	}
 
-	found, err := s.bookingRepo.AdminUpdate(id, req.Status, req.PaymentStatus, req.Notes)
+	found, err := s.bookingRepo.AdminUpdate(id, req.Status, req.Notes)
 	if err != nil {
 		return nil, err
 	}
@@ -181,11 +173,6 @@ func (s *MedicalPackageBookingService) AdminUpdateBooking(id int, req request.Me
 	}
 
 	return s.bookingRepo.FindByID(id)
-}
-
-// GetRevenue returns the total revenue for paid bookings in a date range.
-func (s *MedicalPackageBookingService) GetRevenue(startDate, endDate string) (int64, error) {
-	return s.bookingRepo.GetRevenue(startDate, endDate)
 }
 
 // --- private helpers ---

@@ -74,6 +74,10 @@ func main() {
 	dashboardSvc := service.NewDashboardService(appointmentRepo)
 	adminHandler := handler.NewAdminHandler(authSvc, dashboardSvc, appointmentRepo)
 
+	// --- User management (CRUD akun staff) ---
+	userSvc := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userSvc)
+
 	// --- Document type master data (jenis dokumen OCR) ---
 	ocrDocumentTypeRepo := repository.NewOCRDocumentTypeRepository(db)
 	ocrDocumentTypeSvc := service.NewOCRDocumentTypeService(ocrDocumentTypeRepo)
@@ -119,7 +123,7 @@ func main() {
 	)
 
 	// --- Admin protected routes (JWT auth + role check + audit logging) ---
-	adminProtected := buildAdminProtectedRouter(adminHandler, medicalPackageBookingHandler, ocrHandler, ocrDocumentTypeHandler, userRepo)
+	adminProtected := buildAdminProtectedRouter(adminHandler, medicalPackageBookingHandler, ocrHandler, ocrDocumentTypeHandler, userHandler, userRepo)
 	mux.Handle("/api/admin/", adminProtected)
 
 	// --- Apply CORS middleware, then request logger to all routes ---
@@ -145,6 +149,7 @@ func buildAdminProtectedRouter(
 	medicalPackageBookingHandler *handler.MedicalPackageBookingHandler,
 	ocrHandler *handler.OCRHandler,
 	ocrDocumentTypeHandler *handler.OCRDocumentTypeHandler,
+	userHandler *handler.UserHandler,
 	userRepo *repository.UserRepository,
 ) http.Handler {
 	protectedMux := http.NewServeMux()
@@ -171,7 +176,6 @@ func buildAdminProtectedRouter(
 	protectedMux.HandleFunc("/api/admin/package-bookings/{id}/update", medicalPackageBookingHandler.AdminUpdateBooking)
 	protectedMux.HandleFunc("/api/admin/package-bookings/{id}/confirm", medicalPackageBookingHandler.AdminConfirmBooking)
 	protectedMux.HandleFunc("/api/admin/package-bookings/{id}/cancel", medicalPackageBookingHandler.AdminCancelBooking)
-	protectedMux.HandleFunc("/api/admin/package-bookings/{id}/payment/confirm", medicalPackageBookingHandler.AdminConfirmPayment)
 
 	// --- OCR proxy (authenticated variant) ---
 	protectedMux.HandleFunc("/api/admin/ocr/extract", ocrHandler.Extract)
@@ -179,6 +183,10 @@ func buildAdminProtectedRouter(
 	// --- Document type master data (CRUD) ---
 	protectedMux.HandleFunc("/api/admin/ocr-document-types", ocrDocumentTypeHandler.Collection)
 	protectedMux.HandleFunc("/api/admin/ocr-document-types/{id}", ocrDocumentTypeHandler.Item)
+
+	// --- User management (CRUD) ---
+	protectedMux.HandleFunc("/api/admin/users", userHandler.Collection)
+	protectedMux.HandleFunc("/api/admin/users/{id}", userHandler.Item)
 
 	// Apply middleware stack: Auth → Role(admin, staff) → Audit
 	return middleware.AuthMiddleware(

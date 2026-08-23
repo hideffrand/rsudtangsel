@@ -109,8 +109,6 @@ CREATE TABLE public.medical_package_bookings (
     radiology_tests text[] DEFAULT '{}'::text[] NOT NULL,
     status character varying(20) DEFAULT 'pending'::character varying NOT NULL,
     total_price bigint NOT NULL,
-    payment_status character varying(30) DEFAULT 'unpaid'::character varying NOT NULL,
-    payment_method character varying(20) DEFAULT ''::character varying NOT NULL,
     notes text DEFAULT ''::text NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -239,6 +237,8 @@ CREATE TABLE public.users (
     role character varying(20) DEFAULT 'staff'::character varying NOT NULL,
     is_active boolean DEFAULT true NOT NULL,
     last_login timestamp without time zone,
+    last_login_ip character varying(45) DEFAULT ''::character varying NOT NULL,
+    last_login_user_agent text DEFAULT ''::text NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

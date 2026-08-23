@@ -8,9 +8,11 @@ type User struct {
 	Username     string     `db:"username"`
 	Email        string     `db:"email"`
 	PasswordHash string     `db:"password_hash"`
-	Role         string     `db:"role"` // admin, staff, doctor
+	Role         string     `db:"role"` // admin, staff, dokter, backoffice, hr
 	IsActive     bool       `db:"is_active"`
 	LastLogin    *time.Time `db:"last_login"` // nullable
+	LastLoginIP  string     `db:"last_login_ip"`
+	LastLoginUA  string     `db:"last_login_user_agent"`
 	CreatedAt    time.Time  `db:"created_at"`
 	UpdatedAt    time.Time  `db:"updated_at"`
 }

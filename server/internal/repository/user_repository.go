@@ -22,7 +22,7 @@ func NewUserRepository(db *sqlx.DB) *UserRepository {
 func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, username, email, password_hash, role, is_active, last_login,
-	                 created_at, updated_at
+	                 last_login_ip, last_login_user_agent, created_at, updated_at
 	           FROM users WHERE username = $1`
 	err := r.db.Get(&user, query, username)
 	if err != nil {
@@ -38,7 +38,7 @@ func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 func (r *UserRepository) FindByID(id int) (*model.User, error) {
 	var user model.User
 	query := `SELECT id, username, email, password_hash, role, is_active, last_login,
-	                 created_at, updated_at
+	                 last_login_ip, last_login_user_agent, created_at, updated_at
 	           FROM users WHERE id = $1`
 	err := r.db.Get(&user, query, id)
 	if err != nil {
@@ -50,14 +50,92 @@ func (r *UserRepository) FindByID(id int) (*model.User, error) {
 	return &user, nil
 }
 
-// UpdateLastLogin updates the last_login timestamp for a user.
-func (r *UserRepository) UpdateLastLogin(userID int) error {
-	query := `UPDATE users SET last_login = $1 WHERE id = $2`
-	_, err := r.db.Exec(query, time.Now().UTC(), userID)
+// UpdateLastLogin records when, from where (IP), and with which browser a user last logged in.
+func (r *UserRepository) UpdateLastLogin(userID int, ip, userAgent string) error {
+	query := `UPDATE users SET last_login = $1, last_login_ip = $2, last_login_user_agent = $3 WHERE id = $4`
+	_, err := r.db.Exec(query, time.Now().UTC(), ip, userAgent, userID)
 	if err != nil {
 		return fmt.Errorf("update last login: %w", err)
 	}
 	return nil
+}
+
+// FindAllUsers returns all users ordered by creation time (newest first).
+func (r *UserRepository) FindAllUsers() ([]model.User, error) {
+	var users []model.User
+	query := `SELECT id, username, email, password_hash, role, is_active, last_login,
+	                 last_login_ip, last_login_user_agent, created_at, updated_at
+	           FROM users ORDER BY created_at DESC, id DESC`
+	err := r.db.Select(&users, query)
+	if err != nil {
+		return nil, fmt.Errorf("find all users: %w", err)
+	}
+	return users, nil
+}
+
+// CreateUser inserts a new user. Returns the generated ID.
+func (r *UserRepository) CreateUser(u *model.User) (int, error) {
+	var id int
+	query := `INSERT INTO users (username, email, password_hash, role, is_active)
+	          VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	err := r.db.QueryRow(query, u.Username, u.Email, u.PasswordHash, u.Role, u.IsActive).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("create user: %w", err)
+	}
+	return id, nil
+}
+
+// UpdateUser applies partial updates to a user. Returns false if not found.
+func (r *UserRepository) UpdateUser(id int, email, passwordHash, role *string, isActive *bool) (bool, error) {
+	query := `UPDATE users SET updated_at = NOW()`
+	args := []interface{}{}
+	idx := 1
+
+	if email != nil {
+		query += fmt.Sprintf(", email = $%d", idx)
+		args = append(args, *email)
+		idx++
+	}
+	if passwordHash != nil {
+		query += fmt.Sprintf(", password_hash = $%d", idx)
+		args = append(args, *passwordHash)
+		idx++
+	}
+	if role != nil {
+		query += fmt.Sprintf(", role = $%d", idx)
+		args = append(args, *role)
+		idx++
+	}
+	if isActive != nil {
+		query += fmt.Sprintf(", is_active = $%d", idx)
+		args = append(args, *isActive)
+		idx++
+	}
+
+	query += fmt.Sprintf(" WHERE id = $%d", idx)
+	args = append(args, id)
+
+	res, err := r.db.Exec(query, args...)
+	if err != nil {
+		return false, fmt.Errorf("update user: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+// DeleteUser removes a user and their refresh tokens. Returns false if not found.
+func (r *UserRepository) DeleteUser(id int) (bool, error) {
+	res, err := r.db.Exec(`DELETE FROM refresh_tokens WHERE user_id = $1`, id)
+	if err != nil {
+		return false, fmt.Errorf("delete user refresh tokens: %w", err)
+	}
+	_ = res
+	res, err = r.db.Exec(`DELETE FROM users WHERE id = $1`, id)
+	if err != nil {
+		return false, fmt.Errorf("delete user: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }
 
 // SaveRefreshToken saves a new refresh token to the database.

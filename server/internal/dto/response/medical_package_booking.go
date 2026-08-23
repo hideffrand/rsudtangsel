@@ -22,11 +22,9 @@ type MedicalPackageBookingResponse struct {
 	LabTests       []string `json:"lab_tests"`
 	RadiologyTests []string `json:"radiology_tests"`
 
-	// Status & payment
-	Status        string `json:"status"`
-	TotalPrice    int64  `json:"total_price"` // IDR
-	PaymentStatus string `json:"payment_status"`
-	PaymentMethod string `json:"payment_method"`
+	// Status & price
+	Status     string `json:"status"`
+	TotalPrice int64  `json:"total_price"` // IDR
 
 	Notes     string `json:"notes"`
 	CreatedAt string `json:"created_at"`

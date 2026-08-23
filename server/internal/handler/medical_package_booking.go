@@ -130,7 +130,7 @@ func (h *MedicalPackageBookingHandler) AdminGetBooking(w http.ResponseWriter, r 
 }
 
 // AdminUpdateBooking handles PATCH /api/admin/package-bookings/{id}
-// Allows partial update of status, payment_status, and/or notes.
+// Allows partial update of status and/or notes.
 func (h *MedicalPackageBookingHandler) AdminUpdateBooking(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -213,33 +213,6 @@ func (h *MedicalPackageBookingHandler) AdminCancelBooking(w http.ResponseWriter,
 	}
 
 	utils.SuccessResponse(w, http.StatusOK, updated, "Booking cancelled")
-}
-
-// AdminConfirmPayment handles PATCH /api/admin/package-bookings/{id}/payment/confirm
-// Shortcut to set payment_status = "paid".
-func (h *MedicalPackageBookingHandler) AdminConfirmPayment(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPatch {
-		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	id, ok := h.parseID(w, r)
-	if !ok {
-		return
-	}
-
-	ps := "paid"
-	updated, err := h.svc.AdminUpdateBooking(id, request.MedicalPackageBookingAdminUpdateRequest{PaymentStatus: &ps})
-	if err != nil {
-		if errors.Is(err, service.ErrMedicalPackageBookingNotFound) {
-			utils.ErrorResponse(w, http.StatusNotFound, err.Error())
-			return
-		}
-		utils.ErrorResponse(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	utils.SuccessResponse(w, http.StatusOK, updated, "Payment confirmed")
 }
 
 // --- private helper ---

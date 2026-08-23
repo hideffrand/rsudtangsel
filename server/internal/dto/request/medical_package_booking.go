@@ -20,9 +20,7 @@ type MedicalPackageBookingRequest struct {
 	LabTests       []string `json:"lab_tests"`       // e.g. ["hematologi", "gula_darah"]
 	RadiologyTests []string `json:"radiology_tests"` // e.g. ["rontgen", "usg"]
 
-	// Payment
-	PaymentMethod string `json:"payment_method"` // transfer | qris | cash | bpjs
-	Notes         string `json:"notes"`
+	Notes string `json:"notes"`
 }
 
 // Validate returns a non-empty error message if the request is invalid.
@@ -56,7 +54,6 @@ func (r *MedicalPackageBookingRequest) Validate() string {
 
 // MedicalPackageBookingAdminUpdateRequest is the request body for PATCH /api/admin/package-bookings/{id}.
 type MedicalPackageBookingAdminUpdateRequest struct {
-	Status        *string `json:"status"`         // pending | confirmed | completed | cancelled
-	PaymentStatus *string `json:"payment_status"` // unpaid | awaiting_confirmation | paid | cancelled
-	Notes         *string `json:"notes"`
+	Status *string `json:"status"` // pending | confirmed | completed | cancelled
+	Notes  *string `json:"notes"`
 }
