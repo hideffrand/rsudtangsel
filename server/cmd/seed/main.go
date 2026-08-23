@@ -33,7 +33,8 @@ type catalogService struct {
 	items       []string
 }
 
-var mcuServices = []catalogService{
+var medicalPackages = []catalogService{
+	// MCU
 	{"mcu", "Paket MCU Hemat", "Pemeriksaan kesehatan dasar hemat & efisien bagi individu.", 250000,
 		[]string{"Pemeriksaan Fisik Dokter Umum", "Hematologi Rutin (Hb, Leukosit, Trombosit)", "Urine Lengkap"}},
 	{"mcu", "Paket MCU Pelajar", "Khusus untuk syarat pendaftaran sekolah, kuliah, atau bebas narkoba.", 300000,
@@ -54,9 +55,7 @@ var mcuServices = []catalogService{
 		[]string{"Seluruh Fasilitas MCU Platinum", "MRI 1.5 Tesla organ pilihan", "Ekokardiografi Jantung", "Kamar Rawat Transit VVIP 1 Hari"}},
 	{"mcu", "Paket MCU Jantung Sehat", "Skrining khusus kebugaran & potensi penyakit jantung koronari.", 1200000,
 		[]string{"EKG Jantung 12 Lead", "Treadmill Stress Test", "Ekokardiografi USG Jantung", "Profil Lipid Lengkap & Konsultasi Spesialis Jantung"}},
-}
-
-var diagnosticServices = []catalogService{
+	// Lab
 	{"lab", "Complete Blood Count (Hematologi Rutin)", "Pemeriksaan hemoglobin, leukosit, hematokrit, trombosit, dan eritrosit.", 134900,
 		[]string{"Hemoglobin (Hb)", "Leukosit", "Trombosit", "Hematokrit", "Eritrosit"}},
 	{"lab", "Paket Cek Diabetes & Gula Darah", "Skrining kadar gula darah puasa, 2 jam PP, dan HbA1c.", 325650,
@@ -65,6 +64,7 @@ var diagnosticServices = []catalogService{
 		[]string{"SGOT (AST)", "SGPT (ALT)"}},
 	{"lab", "Tes Fungsi Ginjal (Ureum & Kreatinin)", "Pemeriksaan laju penyaringan ginjal dan pembuangan sisa asam urat/ureum.", 195000,
 		[]string{"Ureum", "Kreatinin", "Asam Urat"}},
+	// Radiologi
 	{"radiologi", "Cek Rontgen Thorax Digital", "Foto rontgen paru-paru dan jantung digital dosis radiasi rendah.", 220000,
 		[]string{"Foto X-Ray Thorax PA / AP", "Bacaan Dokter Spesialis Radiologi"}},
 	{"radiologi", "Cek USG Abdomen Abdominal 4D", "Pemeriksaan ultrasonografi organ perut (hati, empedu, ginjal, limpa, kandung kemih).", 480000,
@@ -117,7 +117,7 @@ func main() {
 	}
 
 	fmt.Printf("Seeder selesai: %d poliklinik, %d dokter, %d jadwal, %d paket layanan (MCU/Lab/Radiologi), %d jenis dokumen OCR.\n",
-		poliCount, doctorCount, scheduleCount, len(mcuServices)+len(diagnosticServices), len(ocrDocumentTypes))
+		poliCount, doctorCount, scheduleCount, len(medicalPackages), len(ocrDocumentTypes))
 }
 
 // seedDoctorSchedules TRUNCATE doctors & poliklinik lalu membangun ulang dari CSV jadwal.
@@ -217,7 +217,7 @@ func seedDoctorSchedules(db *sqlx.DB, csvPath string) (poliCount, doctorCount, s
 // seedMedicalPackages men-insert/update medical_packages (MCU + Lab + Radiologi)
 // + items tanpa menghapus baris lama. Kunci idempotensi: (type, name).
 func seedMedicalPackages(db *sqlx.DB) error {
-	for _, s := range append(mcuServices, diagnosticServices...) {
+	for _, s := range medicalPackages {
 		id, err := upsertMedicalPackage(db, s.category, s.name, s.description, s.price)
 		if err != nil {
 			return fmt.Errorf("upsert %q: %w", s.name, err)

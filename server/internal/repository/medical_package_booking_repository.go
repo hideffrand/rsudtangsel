@@ -10,27 +10,27 @@ import (
 	"github.com/lib/pq"
 )
 
-// McuBookingRepository handles all database operations for mcu_bookings.
-type McuBookingRepository struct {
+// MedicalPackageBookingRepository handles all database operations for medical_package_bookings.
+type MedicalPackageBookingRepository struct {
 	db *sqlx.DB
 }
 
-// NewMcuBookingRepository creates a new McuBookingRepository.
-func NewMcuBookingRepository(db *sqlx.DB) *McuBookingRepository {
-	return &McuBookingRepository{db: db}
+// NewMedicalPackageBookingRepository creates a new MedicalPackageBookingRepository.
+func NewMedicalPackageBookingRepository(db *sqlx.DB) *MedicalPackageBookingRepository {
+	return &MedicalPackageBookingRepository{db: db}
 }
 
 // dbRow is used for scanning joined rows (includes package_name).
-type mcuBookingRow struct {
-	model.McuBooking
+type medicalPackageBookingRow struct {
+	model.MedicalPackageBooking
 	PackageName string `db:"package_name"`
 }
 
-// Create inserts a new MCU booking and returns its generated ID.
-func (r *McuBookingRepository) Create(b *model.McuBooking) (int, error) {
+// Create inserts a new medical package booking and returns its generated ID.
+func (r *MedicalPackageBookingRepository) Create(b *model.MedicalPackageBooking) (int, error) {
 	var id int
 	query := `
-		INSERT INTO mcu_bookings
+		INSERT INTO medical_package_bookings
 		  (patient_id, package_id, booking_date, booking_time,
 		   nik, full_name, birth_date, phone_number, address,
 		   lab_tests, radiology_tests,
@@ -48,14 +48,14 @@ func (r *McuBookingRepository) Create(b *model.McuBooking) (int, error) {
 		b.Status, b.TotalPrice, b.PaymentStatus, b.PaymentMethod, b.Notes, b.BookingNumber,
 	).Scan(&id)
 	if err != nil {
-		return 0, fmt.Errorf("create mcu booking: %w", err)
+		return 0, fmt.Errorf("create medical package booking: %w", err)
 	}
 	return id, nil
 }
 
 // FindByID returns a full booking detail (joined with medical_packages).
 // Returns nil if not found.
-func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, error) {
+func (r *MedicalPackageBookingRepository) FindByID(id int) (*response.MedicalPackageBookingResponse, error) {
 	query := `
 		SELECT b.id, COALESCE(b.booking_number, ''), b.package_id, p.name AS package_name,
 		       b.nik, b.full_name, b.phone_number, b.birth_date, b.address,
@@ -63,14 +63,14 @@ func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, e
 		       b.lab_tests, b.radiology_tests,
 		       b.status, b.total_price, b.payment_status, b.payment_method, b.notes,
 		       TO_CHAR(b.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
-		FROM mcu_bookings b
+		FROM medical_package_bookings b
 		JOIN medical_packages p ON p.id = b.package_id
 		WHERE b.id = $1`
 
 	// Use raw sqlx query with pq.Array scanning
 	rows, err := r.db.Queryx(query, id)
 	if err != nil {
-		return nil, fmt.Errorf("find mcu booking: %w", err)
+		return nil, fmt.Errorf("find medical package booking: %w", err)
 	}
 	defer rows.Close()
 
@@ -82,7 +82,7 @@ func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, e
 		labTests       pq.StringArray
 		radiologyTests pq.StringArray
 	)
-	var resp response.McuBookingResponse
+	var resp response.MedicalPackageBookingResponse
 	err = rows.Scan(
 		&resp.ID, &resp.BookingNumber, &resp.PackageID, &resp.PackageName,
 		&resp.NIK, &resp.FullName, &resp.PhoneNumber, &resp.BirthDate, &resp.Address,
@@ -92,7 +92,7 @@ func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, e
 		&resp.CreatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("scan mcu booking: %w", err)
+		return nil, fmt.Errorf("scan medical package booking: %w", err)
 	}
 	resp.LabTests = []string(labTests)
 	resp.RadiologyTests = []string(radiologyTests)
@@ -106,13 +106,13 @@ func (r *McuBookingRepository) FindByID(id int) (*response.McuBookingResponse, e
 }
 
 // FindByNIK returns all bookings for a patient identified by NIK.
-func (r *McuBookingRepository) FindByNIK(nik string) ([]response.McuBookingListItem, error) {
+func (r *MedicalPackageBookingRepository) FindByNIK(nik string) ([]response.MedicalPackageBookingListItem, error) {
 	return r.findList("WHERE b.nik = $1 ORDER BY b.booking_date DESC, b.id DESC", nik)
 }
 
 // FindAll returns bookings optionally filtered by status and/or date.
 // Pass empty strings to skip filters.
-func (r *McuBookingRepository) FindAll(status, date string) ([]response.McuBookingListItem, error) {
+func (r *MedicalPackageBookingRepository) FindAll(status, date string) ([]response.MedicalPackageBookingListItem, error) {
 	where := "WHERE 1=1"
 	args := []interface{}{}
 	idx := 1
@@ -132,66 +132,66 @@ func (r *McuBookingRepository) FindAll(status, date string) ([]response.McuBooki
 }
 
 // CountByDate counts the total number of MCU bookings for a given date.
-func (r *McuBookingRepository) CountByDate(date string) (int, error) {
+func (r *MedicalPackageBookingRepository) CountByDate(date string) (int, error) {
 	var count int
 	err := r.db.QueryRow(
-		`SELECT COUNT(*) FROM mcu_bookings WHERE booking_date = $1`, date,
+		`SELECT COUNT(*) FROM medical_package_bookings WHERE booking_date = $1`, date,
 	).Scan(&count)
 	if err != nil {
-		return 0, fmt.Errorf("count mcu bookings by date: %w", err)
+		return 0, fmt.Errorf("count medical package bookings by date: %w", err)
 	}
 	return count, nil
 }
 
 // GetRevenue returns the total revenue (sum of total_price) for paid bookings in a date range.
-func (r *McuBookingRepository) GetRevenue(startDate, endDate string) (int64, error) {
+func (r *MedicalPackageBookingRepository) GetRevenue(startDate, endDate string) (int64, error) {
 	var total int64
 	err := r.db.QueryRow(
 		`SELECT COALESCE(SUM(total_price), 0)
-		 FROM mcu_bookings
+		 FROM medical_package_bookings
 		 WHERE payment_status = 'paid'
 		   AND booking_date BETWEEN $1 AND $2`,
 		startDate, endDate,
 	).Scan(&total)
 	if err != nil {
-		return 0, fmt.Errorf("get mcu revenue: %w", err)
+		return 0, fmt.Errorf("get medical package booking revenue: %w", err)
 	}
 	return total, nil
 }
 
 // UpdateStatus updates the booking status. Returns false if booking not found.
-func (r *McuBookingRepository) UpdateStatus(id int, status string) (bool, error) {
+func (r *MedicalPackageBookingRepository) UpdateStatus(id int, status string) (bool, error) {
 	res, err := r.db.Exec(
-		`UPDATE mcu_bookings SET status = $1, updated_at = NOW() WHERE id = $2`,
+		`UPDATE medical_package_bookings SET status = $1, updated_at = NOW() WHERE id = $2`,
 		status, id,
 	)
 	if err != nil {
-		return false, fmt.Errorf("update mcu booking status: %w", err)
+		return false, fmt.Errorf("update medical package booking status: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n > 0, nil
 }
 
 // UpdatePaymentStatus updates only the payment_status field. Returns false if not found.
-func (r *McuBookingRepository) UpdatePaymentStatus(id int, paymentStatus string) (bool, error) {
+func (r *MedicalPackageBookingRepository) UpdatePaymentStatus(id int, paymentStatus string) (bool, error) {
 	res, err := r.db.Exec(
-		`UPDATE mcu_bookings SET payment_status = $1, updated_at = NOW() WHERE id = $2`,
+		`UPDATE medical_package_bookings SET payment_status = $1, updated_at = NOW() WHERE id = $2`,
 		paymentStatus, id,
 	)
 	if err != nil {
-		return false, fmt.Errorf("update mcu payment status: %w", err)
+		return false, fmt.Errorf("update medical package payment status: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n > 0, nil
 }
 
 // AdminUpdate applies partial updates (status, payment_status, notes) from an admin patch.
-func (r *McuBookingRepository) AdminUpdate(id int, status, paymentStatus, notes *string) (bool, error) {
+func (r *MedicalPackageBookingRepository) AdminUpdate(id int, status, paymentStatus, notes *string) (bool, error) {
 	if status == nil && paymentStatus == nil && notes == nil {
 		return false, fmt.Errorf("at least one field (status, payment_status, notes) must be provided")
 	}
 
-	query := `UPDATE mcu_bookings SET updated_at = NOW()`
+	query := `UPDATE medical_package_bookings SET updated_at = NOW()`
 	args := []interface{}{}
 	idx := 1
 
@@ -225,29 +225,29 @@ func (r *McuBookingRepository) AdminUpdate(id int, status, paymentStatus, notes 
 // --- private helpers ---
 
 // findList executes a list query (joined with medical_packages) with an arbitrary WHERE clause.
-func (r *McuBookingRepository) findList(whereClause string, args ...interface{}) ([]response.McuBookingListItem, error) {
+func (r *MedicalPackageBookingRepository) findList(whereClause string, args ...interface{}) ([]response.MedicalPackageBookingListItem, error) {
 	query := fmt.Sprintf(`
 		SELECT b.id, COALESCE(b.booking_number, ''), p.name AS package_name,
 		       b.full_name, b.nik, b.phone_number,
 		       b.booking_date::text, b.booking_time::text,
 		       b.status, b.total_price,
 		       TO_CHAR(b.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
-		FROM mcu_bookings b
+		FROM medical_package_bookings b
 		JOIN medical_packages p ON p.id = b.package_id
 		%s`, whereClause)
 
 	rows, err := r.db.Queryx(query, args...)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return []response.McuBookingListItem{}, nil
+			return []response.MedicalPackageBookingListItem{}, nil
 		}
 		return nil, fmt.Errorf("list mcu bookings: %w", err)
 	}
 	defer rows.Close()
 
-	var list []response.McuBookingListItem
+	var list []response.MedicalPackageBookingListItem
 	for rows.Next() {
-		var item response.McuBookingListItem
+		var item response.MedicalPackageBookingListItem
 		if err := rows.Scan(
 			&item.ID, &item.BookingNumber, &item.PackageName,
 			&item.FullName, &item.NIK, &item.PhoneNumber,
@@ -255,12 +255,12 @@ func (r *McuBookingRepository) findList(whereClause string, args ...interface{})
 			&item.Status, &item.TotalPrice,
 			&item.CreatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan mcu booking list row: %w", err)
+			return nil, fmt.Errorf("scan medical package booking list row: %w", err)
 		}
 		list = append(list, item)
 	}
 	if list == nil {
-		list = []response.McuBookingListItem{}
+		list = []response.MedicalPackageBookingListItem{}
 	}
 	return list, nil
 }

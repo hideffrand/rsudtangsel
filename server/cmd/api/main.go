@@ -57,8 +57,8 @@ func main() {
 	medicalPackageSvc := service.NewMedicalPackageService(medicalPackageRepo)
 
 	// MCU booking layer
-	mcuBookingRepo := repository.NewMcuBookingRepository(db)
-	mcuBookingSvc := service.NewMcuBookingService(mcuBookingRepo, medicalPackageRepo, patientRepo)
+	medicalPackageBookingRepo := repository.NewMedicalPackageBookingRepository(db)
+	medicalPackageBookingSvc := service.NewMedicalPackageBookingService(medicalPackageBookingRepo, medicalPackageRepo, patientRepo)
 
 	registrationHandler := handler.NewRegistrationHandler(queueSvc)
 	queueHandler := handler.NewQueueHandler(queueSvc)
@@ -66,7 +66,7 @@ func main() {
 	scheduleHandler := handler.NewScheduleHandler(doctorSvc)
 	poliHandler := handler.NewPoliklinikHandler(poliSvc)
 	medicalPackageHandler := handler.NewMedicalPackageHandler(medicalPackageSvc)
-	mcuBookingHandler := handler.NewMcuBookingHandler(mcuBookingSvc)
+	medicalPackageBookingHandler := handler.NewMedicalPackageBookingHandler(medicalPackageBookingSvc)
 
 	// --- Admin endpoints (auth, dashboard, queue management) ---
 	userRepo := repository.NewUserRepository(db)
@@ -105,8 +105,8 @@ func main() {
 	mux.HandleFunc("/api/ocr/extract", ocrHandler.Extract)
 
 	// --- MCU booking public routes ---
-	mux.HandleFunc("/api/mcu/register", mcuBookingHandler.Register)
-	mux.HandleFunc("/api/mcu/my-bookings", mcuBookingHandler.GetMyBookings)
+	mux.HandleFunc("/api/package-bookings/register", medicalPackageBookingHandler.Register)
+	mux.HandleFunc("/api/package-bookings/my-bookings", medicalPackageBookingHandler.GetMyBookings)
 
 	// --- Admin public routes (rate limited) ---
 	mux.Handle("/api/admin/login",
@@ -119,7 +119,7 @@ func main() {
 	)
 
 	// --- Admin protected routes (JWT auth + role check + audit logging) ---
-	adminProtected := buildAdminProtectedRouter(adminHandler, mcuBookingHandler, ocrHandler, ocrDocumentTypeHandler, userRepo)
+	adminProtected := buildAdminProtectedRouter(adminHandler, medicalPackageBookingHandler, ocrHandler, ocrDocumentTypeHandler, userRepo)
 	mux.Handle("/api/admin/", adminProtected)
 
 	// --- Apply CORS middleware, then request logger to all routes ---
@@ -142,7 +142,7 @@ func main() {
 // Middleware chain: AuthMiddleware → RoleMiddleware → AuditMiddleware → handler
 func buildAdminProtectedRouter(
 	adminHandler *handler.AdminHandler,
-	mcuBookingHandler *handler.McuBookingHandler,
+	medicalPackageBookingHandler *handler.MedicalPackageBookingHandler,
 	ocrHandler *handler.OCRHandler,
 	ocrDocumentTypeHandler *handler.OCRDocumentTypeHandler,
 	userRepo *repository.UserRepository,
@@ -166,12 +166,12 @@ func buildAdminProtectedRouter(
 	})
 
 	// --- MCU booking management ---
-	protectedMux.HandleFunc("/api/admin/mcu/bookings", mcuBookingHandler.AdminListBookings)
-	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}", mcuBookingHandler.AdminGetBooking)
-	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/update", mcuBookingHandler.AdminUpdateBooking)
-	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/confirm", mcuBookingHandler.AdminConfirmBooking)
-	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/cancel", mcuBookingHandler.AdminCancelBooking)
-	protectedMux.HandleFunc("/api/admin/mcu/bookings/{id}/payment/confirm", mcuBookingHandler.AdminConfirmPayment)
+	protectedMux.HandleFunc("/api/admin/package-bookings", medicalPackageBookingHandler.AdminListBookings)
+	protectedMux.HandleFunc("/api/admin/package-bookings/{id}", medicalPackageBookingHandler.AdminGetBooking)
+	protectedMux.HandleFunc("/api/admin/package-bookings/{id}/update", medicalPackageBookingHandler.AdminUpdateBooking)
+	protectedMux.HandleFunc("/api/admin/package-bookings/{id}/confirm", medicalPackageBookingHandler.AdminConfirmBooking)
+	protectedMux.HandleFunc("/api/admin/package-bookings/{id}/cancel", medicalPackageBookingHandler.AdminCancelBooking)
+	protectedMux.HandleFunc("/api/admin/package-bookings/{id}/payment/confirm", medicalPackageBookingHandler.AdminConfirmPayment)
 
 	// --- OCR proxy (authenticated variant) ---
 	protectedMux.HandleFunc("/api/admin/ocr/extract", ocrHandler.Extract)

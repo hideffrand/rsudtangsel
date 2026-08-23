@@ -1,7 +1,7 @@
 package response
 
-// McuBookingResponse is the full detail response for a single MCU booking.
-type McuBookingResponse struct {
+// MedicalPackageBookingResponse is the full detail response for a single medical package booking.
+type MedicalPackageBookingResponse struct {
 	ID            int    `json:"id"`
 	BookingNumber string `json:"booking_number"` // e.g. MCU200826-001
 	PackageID     int    `json:"package_id"`
@@ -32,8 +32,8 @@ type McuBookingResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// McuBookingListItem is a compact row used in list endpoints.
-type McuBookingListItem struct {
+// MedicalPackageBookingListItem is a compact row used in list endpoints.
+type MedicalPackageBookingListItem struct {
 	ID            int    `json:"id"`
 	BookingNumber string `json:"booking_number"`
 	PackageName   string `json:"package_name"`

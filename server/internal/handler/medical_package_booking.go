@@ -11,27 +11,27 @@ import (
 	"github.com/hideffrand/rsudtangsel/server/internal/utils"
 )
 
-// McuBookingHandler handles HTTP requests for MCU booking endpoints.
-type McuBookingHandler struct {
-	svc *service.McuBookingService
+// MedicalPackageBookingHandler handles HTTP requests for medical package booking endpoints.
+type MedicalPackageBookingHandler struct {
+	svc *service.MedicalPackageBookingService
 }
 
-// NewMcuBookingHandler creates a new McuBookingHandler.
-func NewMcuBookingHandler(svc *service.McuBookingService) *McuBookingHandler {
-	return &McuBookingHandler{svc: svc}
+// NewMedicalPackageBookingHandler creates a new MedicalPackageBookingHandler.
+func NewMedicalPackageBookingHandler(svc *service.MedicalPackageBookingService) *MedicalPackageBookingHandler {
+	return &MedicalPackageBookingHandler{svc: svc}
 }
 
 // ======================== Public Endpoints ========================
 
 // Register handles POST /api/mcu/register
-// Allows any patient to book an MCU appointment without authentication.
-func (h *McuBookingHandler) Register(w http.ResponseWriter, r *http.Request) {
+// Allows any patient to book an appointment without authentication.
+func (h *MedicalPackageBookingHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	var req request.McuBookingRequest
+	var req request.MedicalPackageBookingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
@@ -44,7 +44,7 @@ func (h *McuBookingHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	booking, err := h.svc.Register(req)
 	if err != nil {
-		if errors.Is(err, service.ErrMcuBookingPkgNotFound) {
+		if errors.Is(err, service.ErrMedicalPackageBookingPkgNotFound) {
 			utils.ErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
@@ -52,12 +52,12 @@ func (h *McuBookingHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SuccessResponse(w, http.StatusCreated, booking, "MCU booking registered successfully")
+	utils.SuccessResponse(w, http.StatusCreated, booking, "Booking registered successfully")
 }
 
-// GetMyBookings handles GET /api/mcu/my-bookings?nik=<NIK>
-// Returns all MCU bookings for the patient identified by their NIK.
-func (h *McuBookingHandler) GetMyBookings(w http.ResponseWriter, r *http.Request) {
+// GetMyBookings handles GET /api/package-bookings/my-bookings?nik=<NIK>
+// Returns all bookings for the patient identified by their NIK.
+func (h *MedicalPackageBookingHandler) GetMyBookings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -84,9 +84,9 @@ func (h *McuBookingHandler) GetMyBookings(w http.ResponseWriter, r *http.Request
 
 // ======================== Admin Endpoints ========================
 
-// AdminListBookings handles GET /api/admin/mcu/bookings
+// AdminListBookings handles GET /api/admin/package-bookings
 // Query params: status (optional), date (optional, YYYY-MM-DD)
-func (h *McuBookingHandler) AdminListBookings(w http.ResponseWriter, r *http.Request) {
+func (h *MedicalPackageBookingHandler) AdminListBookings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -104,8 +104,8 @@ func (h *McuBookingHandler) AdminListBookings(w http.ResponseWriter, r *http.Req
 	utils.SuccessResponse(w, http.StatusOK, bookings)
 }
 
-// AdminGetBooking handles GET /api/admin/mcu/bookings/{id}
-func (h *McuBookingHandler) AdminGetBooking(w http.ResponseWriter, r *http.Request) {
+// AdminGetBooking handles GET /api/admin/package-bookings/{id}
+func (h *MedicalPackageBookingHandler) AdminGetBooking(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -118,7 +118,7 @@ func (h *McuBookingHandler) AdminGetBooking(w http.ResponseWriter, r *http.Reque
 
 	booking, err := h.svc.GetBooking(id)
 	if err != nil {
-		if errors.Is(err, service.ErrMcuBookingNotFound) {
+		if errors.Is(err, service.ErrMedicalPackageBookingNotFound) {
 			utils.ErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
@@ -129,9 +129,9 @@ func (h *McuBookingHandler) AdminGetBooking(w http.ResponseWriter, r *http.Reque
 	utils.SuccessResponse(w, http.StatusOK, booking)
 }
 
-// AdminUpdateBooking handles PATCH /api/admin/mcu/bookings/{id}
+// AdminUpdateBooking handles PATCH /api/admin/package-bookings/{id}
 // Allows partial update of status, payment_status, and/or notes.
-func (h *McuBookingHandler) AdminUpdateBooking(w http.ResponseWriter, r *http.Request) {
+func (h *MedicalPackageBookingHandler) AdminUpdateBooking(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -142,7 +142,7 @@ func (h *McuBookingHandler) AdminUpdateBooking(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var req request.McuBookingAdminUpdateRequest
+	var req request.MedicalPackageBookingAdminUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
@@ -150,7 +150,7 @@ func (h *McuBookingHandler) AdminUpdateBooking(w http.ResponseWriter, r *http.Re
 
 	updated, err := h.svc.AdminUpdateBooking(id, req)
 	if err != nil {
-		if errors.Is(err, service.ErrMcuBookingNotFound) {
+		if errors.Is(err, service.ErrMedicalPackageBookingNotFound) {
 			utils.ErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
@@ -161,9 +161,9 @@ func (h *McuBookingHandler) AdminUpdateBooking(w http.ResponseWriter, r *http.Re
 	utils.SuccessResponse(w, http.StatusOK, updated, "Booking updated")
 }
 
-// AdminConfirmBooking handles PATCH /api/admin/mcu/bookings/{id}/confirm
+// AdminConfirmBooking handles PATCH /api/admin/package-bookings/{id}/confirm
 // Shortcut to set status = "confirmed".
-func (h *McuBookingHandler) AdminConfirmBooking(w http.ResponseWriter, r *http.Request) {
+func (h *MedicalPackageBookingHandler) AdminConfirmBooking(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -175,9 +175,9 @@ func (h *McuBookingHandler) AdminConfirmBooking(w http.ResponseWriter, r *http.R
 	}
 
 	status := "confirmed"
-	updated, err := h.svc.AdminUpdateBooking(id, request.McuBookingAdminUpdateRequest{Status: &status})
+	updated, err := h.svc.AdminUpdateBooking(id, request.MedicalPackageBookingAdminUpdateRequest{Status: &status})
 	if err != nil {
-		if errors.Is(err, service.ErrMcuBookingNotFound) {
+		if errors.Is(err, service.ErrMedicalPackageBookingNotFound) {
 			utils.ErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
@@ -188,9 +188,9 @@ func (h *McuBookingHandler) AdminConfirmBooking(w http.ResponseWriter, r *http.R
 	utils.SuccessResponse(w, http.StatusOK, updated, "Booking confirmed")
 }
 
-// AdminCancelBooking handles PATCH /api/admin/mcu/bookings/{id}/cancel
+// AdminCancelBooking handles PATCH /api/admin/package-bookings/{id}/cancel
 // Shortcut to set status = "cancelled".
-func (h *McuBookingHandler) AdminCancelBooking(w http.ResponseWriter, r *http.Request) {
+func (h *MedicalPackageBookingHandler) AdminCancelBooking(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -202,9 +202,9 @@ func (h *McuBookingHandler) AdminCancelBooking(w http.ResponseWriter, r *http.Re
 	}
 
 	status := "cancelled"
-	updated, err := h.svc.AdminUpdateBooking(id, request.McuBookingAdminUpdateRequest{Status: &status})
+	updated, err := h.svc.AdminUpdateBooking(id, request.MedicalPackageBookingAdminUpdateRequest{Status: &status})
 	if err != nil {
-		if errors.Is(err, service.ErrMcuBookingNotFound) {
+		if errors.Is(err, service.ErrMedicalPackageBookingNotFound) {
 			utils.ErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
@@ -215,9 +215,9 @@ func (h *McuBookingHandler) AdminCancelBooking(w http.ResponseWriter, r *http.Re
 	utils.SuccessResponse(w, http.StatusOK, updated, "Booking cancelled")
 }
 
-// AdminConfirmPayment handles PATCH /api/admin/mcu/bookings/{id}/payment/confirm
+// AdminConfirmPayment handles PATCH /api/admin/package-bookings/{id}/payment/confirm
 // Shortcut to set payment_status = "paid".
-func (h *McuBookingHandler) AdminConfirmPayment(w http.ResponseWriter, r *http.Request) {
+func (h *MedicalPackageBookingHandler) AdminConfirmPayment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -229,9 +229,9 @@ func (h *McuBookingHandler) AdminConfirmPayment(w http.ResponseWriter, r *http.R
 	}
 
 	ps := "paid"
-	updated, err := h.svc.AdminUpdateBooking(id, request.McuBookingAdminUpdateRequest{PaymentStatus: &ps})
+	updated, err := h.svc.AdminUpdateBooking(id, request.MedicalPackageBookingAdminUpdateRequest{PaymentStatus: &ps})
 	if err != nil {
-		if errors.Is(err, service.ErrMcuBookingNotFound) {
+		if errors.Is(err, service.ErrMedicalPackageBookingNotFound) {
 			utils.ErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
@@ -245,7 +245,7 @@ func (h *McuBookingHandler) AdminConfirmPayment(w http.ResponseWriter, r *http.R
 // --- private helper ---
 
 // parseID extracts and validates the {id} path value from the URL.
-func (h *McuBookingHandler) parseID(w http.ResponseWriter, r *http.Request) (int, bool) {
+func (h *MedicalPackageBookingHandler) parseID(w http.ResponseWriter, r *http.Request) (int, bool) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id <= 0 {
 		utils.ErrorResponse(w, http.StatusBadRequest, "invalid booking id")

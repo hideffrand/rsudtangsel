@@ -1,7 +1,7 @@
 package request
 
-// McuBookingRequest is the request body for POST /api/mcu/register.
-type McuBookingRequest struct {
+// MedicalPackageBookingRequest is the request body for POST /api/package-bookings/register.
+type MedicalPackageBookingRequest struct {
 	// Package selection
 	PackageID int `json:"package_id"` // required
 
@@ -26,7 +26,7 @@ type McuBookingRequest struct {
 }
 
 // Validate returns a non-empty error message if the request is invalid.
-func (r *McuBookingRequest) Validate() string {
+func (r *MedicalPackageBookingRequest) Validate() string {
 	if r.PackageID <= 0 {
 		return "package_id is required and must be > 0"
 	}
@@ -54,8 +54,8 @@ func (r *McuBookingRequest) Validate() string {
 	return ""
 }
 
-// McuBookingAdminUpdateRequest is the request body for PATCH /api/admin/mcu/bookings/{id}.
-type McuBookingAdminUpdateRequest struct {
+// MedicalPackageBookingAdminUpdateRequest is the request body for PATCH /api/admin/package-bookings/{id}.
+type MedicalPackageBookingAdminUpdateRequest struct {
 	Status        *string `json:"status"`         // pending | confirmed | completed | cancelled
 	PaymentStatus *string `json:"payment_status"` // unpaid | awaiting_confirmation | paid | cancelled
 	Notes         *string `json:"notes"`

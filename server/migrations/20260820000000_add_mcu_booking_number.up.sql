@@ -1,2 +1,0 @@
-ALTER TABLE mcu_bookings
-    ADD COLUMN IF NOT EXISTS booking_number VARCHAR(20) UNIQUE;

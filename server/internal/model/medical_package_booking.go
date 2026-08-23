@@ -2,8 +2,8 @@ package model
 
 import "time"
 
-// McuBooking represents a row in the mcu_bookings table.
-type McuBooking struct {
+// McuBooking represents a row in the medical_package_bookings table.
+type MedicalPackageBooking struct {
 	ID          int       `db:"id"`
 	PatientID   *int      `db:"patient_id"`   // nullable - walk-in patients have no account
 	PackageID   int       `db:"package_id"`

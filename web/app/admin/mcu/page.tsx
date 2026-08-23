@@ -7,12 +7,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  getMcuBookings,
-  confirmMcuBooking,
-  cancelMcuBooking,
-  confirmMcuPayment,
-  type McuBookingItem,
-} from "@/services/mcu";
+  getPackageBookings,
+  confirmPackageBooking,
+  cancelPackageBooking,
+  confirmPackagePayment,
+  type PackageBookingItem,
+} from "@/services/packageBookings";
 import { Dialog } from "@/components/ui/dialog";
 import { ClipboardList } from "lucide-react";
 
@@ -37,7 +37,7 @@ function formatRupiah(n: number) {
 type ActionType = "confirm" | "cancel" | "payment";
 
 export default function McuAdminPage() {
-  const [bookings, setBookings] = useState<McuBookingItem[]>([]);
+  const [bookings, setBookings] = useState<PackageBookingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,13 +49,13 @@ export default function McuAdminPage() {
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [detailItem, setDetailItem] = useState<McuBookingItem | null>(null);
+  const [detailItem, setDetailItem] = useState<PackageBookingItem | null>(null);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getMcuBookings({
+      const data = await getPackageBookings({
         status: filterStatus || undefined,
         date: filterDate || undefined,
       });
@@ -76,13 +76,13 @@ export default function McuAdminPage() {
     if (!confirm) return;
     setActionLoading(true);
     try {
-      let updated: McuBookingItem;
+      let updated: PackageBookingItem;
       if (confirm.action === "confirm") {
-        updated = await confirmMcuBooking(confirm.id);
+        updated = await confirmPackageBooking(confirm.id);
       } else if (confirm.action === "cancel") {
-        updated = await cancelMcuBooking(confirm.id);
+        updated = await cancelPackageBooking(confirm.id);
       } else {
-        updated = await confirmMcuPayment(confirm.id);
+        updated = await confirmPackagePayment(confirm.id);
       }
       setBookings((prev) =>
         prev.map((b) => (b.id === confirm.id ? updated : b))

@@ -12,8 +12,8 @@ import (
 
 // Sentinel errors for MCU booking operations.
 var (
-	ErrMcuBookingNotFound    = errors.New("mcu booking not found")
-	ErrMcuBookingPkgNotFound = errors.New("mcu package not found or inactive")
+	ErrMedicalPackageBookingNotFound    = errors.New("mcu booking not found")
+	ErrMedicalPackageBookingPkgNotFound = errors.New("mcu package not found or inactive")
 )
 
 // Lab test prices in IDR (Rupiah).
@@ -42,40 +42,40 @@ var radiologyTestPrices = map[string]int64{
 	"treadmill":  175_000,
 }
 
-// McuBookingService handles business logic for MCU booking registration.
-type McuBookingService struct {
-	bookingRepo *repository.McuBookingRepository
+// MedicalPackageBookingService handles business logic for medical package booking registration.
+type MedicalPackageBookingService struct {
+	bookingRepo *repository.MedicalPackageBookingRepository
 	packageRepo *repository.MedicalPackageRepository
 	patientRepo *repository.PatientRepository
 }
 
-// NewMcuBookingService creates a new McuBookingService.
-func NewMcuBookingService(
-	bookingRepo *repository.McuBookingRepository,
+// NewMedicalPackageBookingService creates a new MedicalPackageBookingService.
+func NewMedicalPackageBookingService(
+	bookingRepo *repository.MedicalPackageBookingRepository,
 	packageRepo *repository.MedicalPackageRepository,
 	patientRepo *repository.PatientRepository,
-) *McuBookingService {
-	return &McuBookingService{
+) *MedicalPackageBookingService {
+	return &MedicalPackageBookingService{
 		bookingRepo: bookingRepo,
 		packageRepo: packageRepo,
 		patientRepo: patientRepo,
 	}
 }
 
-// Register creates a new MCU booking.
+// Register creates a new medical package booking.
 // Business logic:
 //  1. Validate that the package exists and is active.
 //  2. Optionally link to an existing patient record by NIK.
 //  3. Calculate total price (package base + add-on diagnostics).
 //  4. Persist the booking and return the full detail response.
-func (s *McuBookingService) Register(req request.McuBookingRequest) (*response.McuBookingResponse, error) {
+func (s *MedicalPackageBookingService) Register(req request.MedicalPackageBookingRequest) (*response.MedicalPackageBookingResponse, error) {
 	// 1. Verify MCU package
 	pkg, err := s.packageRepo.FindByID(req.PackageID)
 	if err != nil {
 		return nil, fmt.Errorf("lookup package: %w", err)
 	}
 	if pkg == nil || !pkg.IsActive {
-		return nil, ErrMcuBookingPkgNotFound
+		return nil, ErrMedicalPackageBookingPkgNotFound
 	}
 
 	// 2. Look up existing patient by NIK (optional link - non-blocking)
@@ -98,15 +98,15 @@ func (s *McuBookingService) Register(req request.McuBookingRequest) (*response.M
 		radiologyTests = []string{}
 	}
 
-	// 5. Generate unique MCU booking number: MCU{DDMMYY}-{seq:03d}
+	// 5. Generate unique booking number: {PREFIX}{DDMMYY}-{seq:03d}
 	count, err := s.bookingRepo.CountByDate(req.BookingDate)
 	if err != nil {
 		return nil, fmt.Errorf("generate booking number: %w", err)
 	}
-	bookingNumber := generateMcuBookingNumber(req.BookingDate, count+1)
+	bookingNumber := generateMedicalPackageBookingNumber(pkg.Type, req.BookingDate, count+1)
 
 	// 6. Build and persist booking
-	booking := &model.McuBooking{
+	booking := &model.MedicalPackageBooking{
 		PatientID:      patientID,
 		PackageID:      req.PackageID,
 		BookingDate:    req.BookingDate,
@@ -128,36 +128,36 @@ func (s *McuBookingService) Register(req request.McuBookingRequest) (*response.M
 
 	id, err := s.bookingRepo.Create(booking)
 	if err != nil {
-		return nil, fmt.Errorf("create mcu booking: %w", err)
+		return nil, fmt.Errorf("create medical package booking: %w", err)
 	}
 
 	return s.bookingRepo.FindByID(id)
 }
 
-// GetBooking returns the full detail of a single MCU booking.
-func (s *McuBookingService) GetBooking(id int) (*response.McuBookingResponse, error) {
+// GetBooking returns the full detail of a single medical package booking.
+func (s *MedicalPackageBookingService) GetBooking(id int) (*response.MedicalPackageBookingResponse, error) {
 	b, err := s.bookingRepo.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
-		return nil, ErrMcuBookingNotFound
+		return nil, ErrMedicalPackageBookingNotFound
 	}
 	return b, nil
 }
 
 // GetPatientBookings returns all bookings for a patient identified by NIK (public endpoint).
-func (s *McuBookingService) GetPatientBookings(nik string) ([]response.McuBookingListItem, error) {
+func (s *MedicalPackageBookingService) GetPatientBookings(nik string) ([]response.MedicalPackageBookingListItem, error) {
 	return s.bookingRepo.FindByNIK(nik)
 }
 
 // AdminGetBookings returns bookings, optionally filtered by status and/or date (admin endpoint).
-func (s *McuBookingService) AdminGetBookings(status, date string) ([]response.McuBookingListItem, error) {
+func (s *MedicalPackageBookingService) AdminGetBookings(status, date string) ([]response.MedicalPackageBookingListItem, error) {
 	return s.bookingRepo.FindAll(status, date)
 }
 
 // AdminUpdateBooking applies partial updates to a booking (status, payment_status, notes).
-func (s *McuBookingService) AdminUpdateBooking(id int, req request.McuBookingAdminUpdateRequest) (*response.McuBookingResponse, error) {
+func (s *MedicalPackageBookingService) AdminUpdateBooking(id int, req request.MedicalPackageBookingAdminUpdateRequest) (*response.MedicalPackageBookingResponse, error) {
 	// Validate status values if provided
 	if req.Status != nil {
 		validStatuses := map[string]bool{"pending": true, "confirmed": true, "completed": true, "cancelled": true}
@@ -177,23 +177,24 @@ func (s *McuBookingService) AdminUpdateBooking(id int, req request.McuBookingAdm
 		return nil, err
 	}
 	if !found {
-		return nil, ErrMcuBookingNotFound
+		return nil, ErrMedicalPackageBookingNotFound
 	}
 
 	return s.bookingRepo.FindByID(id)
 }
 
-// GetRevenue returns the total revenue for paid MCU bookings in a date range.
-func (s *McuBookingService) GetRevenue(startDate, endDate string) (int64, error) {
+// GetRevenue returns the total revenue for paid bookings in a date range.
+func (s *MedicalPackageBookingService) GetRevenue(startDate, endDate string) (int64, error) {
 	return s.bookingRepo.GetRevenue(startDate, endDate)
 }
 
 // --- private helpers ---
 
-// generateMcuBookingNumber generates a unique MCU booking number.
-// Format: MCU{DDMMYY}-{seq:03d}, e.g. MCU200826-001
+// generateMedicalPackageBookingNumber generates a unique booking number.
+// Format: {PREFIX}{DDMMYY}-{seq:03d}, e.g. MCU200826-001 / LAB230826-002.
+// The prefix comes from the package type: mcu → MCU, lab → LAB, radiologi → RAD.
 // seq is based on the count of bookings already registered for the same date + 1.
-func generateMcuBookingNumber(bookingDate string, seq int) string {
+func generateMedicalPackageBookingNumber(packageType, bookingDate string, seq int) string {
 	// bookingDate is "YYYY-MM-DD"; extract DD, MM, YY
 	day, month, year := "00", "00", "00"
 	if len(bookingDate) == 10 {
@@ -201,7 +202,16 @@ func generateMcuBookingNumber(bookingDate string, seq int) string {
 		month = bookingDate[5:7]
 		year = bookingDate[2:4]
 	}
-	return fmt.Sprintf("MCU%s%s%s-%03d", day, month, year, seq)
+	prefix := "PKG"
+	switch packageType {
+	case "mcu":
+		prefix = "MCU"
+	case "lab":
+		prefix = "LAB"
+	case "radiologi":
+		prefix = "RAD"
+	}
+	return fmt.Sprintf("%s%s%s%s-%03d", prefix, day, month, year, seq)
 }
 
 // calculateTotalPrice computes: package base price + add-on lab fees + add-on radiology fees.
