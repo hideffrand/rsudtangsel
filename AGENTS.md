@@ -72,5 +72,6 @@ Code comments, logs, and API messages are in Indonesian; git commits mix convent
 
 ## Root
 
+- `OCR.md` explains the full end-to-end OCR pipeline (extension → Go proxy → ocr-service → autofill) with diagrams — read it before touching OCR/autofill code.
 - `docker-compose.yaml` has **4 services** (`db`, `server`, `web`, `ocr`) + root `.env.example` are the source of truth for DB credentials and OCR wiring (`OCR_SERVICE_URL=http://ocr:8000` inside the compose network); `server/.env.example` mirrors `DATABASE_URL`.
 - `README.md` is a one-line title placeholder — ignore it. `server/README.md` is the upstream golang-migrate README — also ignore it.
