@@ -23,8 +23,6 @@ def parse_field_config(raw_text: str, field_config: str) -> List[Dict[str, Any]]
         "patterns": ["<regex dengan group(1)>", "<fallback>"],
         "transform": "digits" (opsional)}]
     Pattern pertama yang cocok menang; regex dikompilasi case-insensitive.
-    Melempar ValueError jika konfigurasi tidak valid (pemanggil wajib fallback
-    ke parser bawaan).
     """
     rules = json.loads(field_config)
     if not isinstance(rules, list):
@@ -33,22 +31,24 @@ def parse_field_config(raw_text: str, field_config: str) -> List[Dict[str, Any]]
         raise ValueError(f"terlalu banyak field (maks {MAX_RULES})")
 
     fields: List[Dict[str, Any]] = []
+
     for rule in rules:
         if not isinstance(rule, dict) or not str(rule.get("key", "")).strip():
             raise ValueError("setiap rule butuh 'key'")
+        key_str = str(rule["key"]).strip()
         patterns = rule.get("patterns") or []
         if not isinstance(patterns, list) or len(patterns) > MAX_PATTERNS_PER_RULE:
-            raise ValueError(f"rule {rule['key']!r}: patterns tidak valid")
+            raise ValueError(f"rule {key_str!r}: patterns tidak valid")
         compiled = []
         for p in patterns:
             if not isinstance(p, str) or not p.strip():
-                raise ValueError(f"rule {rule['key']!r}: pattern kosong")
+                raise ValueError(f"rule {key_str!r}: pattern kosong")
             if len(p) > MAX_PATTERN_LEN:
-                raise ValueError(f"rule {rule['key']!r}: pattern terlalu panjang")
+                raise ValueError(f"rule {key_str!r}: pattern terlalu panjang")
             try:
                 compiled.append(re.compile(p, re.IGNORECASE))
             except re.error as exc:
-                raise ValueError(f"rule {rule['key']!r}: regex tidak valid ({exc})")
+                raise ValueError(f"rule {key_str!r}: regex tidak valid ({exc})")
 
         value = ""
         for pattern in compiled:
@@ -56,15 +56,16 @@ def parse_field_config(raw_text: str, field_config: str) -> List[Dict[str, Any]]
             if match:
                 value = (match.group(1) if match.groups() else match.group(0)).strip()
                 break
+
         if value:
             value = value.rstrip(",.-")
             if rule.get("transform") == "digits":
                 value = re.sub(r"[^\d+]", "", value)
 
         fields.append({
-            "key": str(rule["key"]).strip(),
+            "key": key_str,
             "value": value,
-            "confidence": 88.0 if value else 40.0,
+            "confidence": 92.0 if value else 40.0,
             "is_required": bool(rule.get("required", False)),
         })
     return fields
@@ -73,7 +74,6 @@ def parse_field_config(raw_text: str, field_config: str) -> List[Dict[str, Any]]
 def parse_document(raw_text: str, doc_type: str = "generic", blocks: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """
     Dispatcher parser berdasarkan tipe dokumen.
-    Jika doc_type tidak ditentukan atau 'generic', parser akan mencoba mendeteksi otomatis atau mengembalikan raw fields.
     """
     doc_type_clean = (doc_type or "generic").lower().strip()
     
@@ -94,33 +94,19 @@ def parse_document(raw_text: str, doc_type: str = "generic", blocks: List[Dict[s
 # ==============================================================================
 # [EKSTRAKSI FORM REGISTRASI PASIEN] - formulir kertas pendaftaran pasien.
 # Key hasil ekstraksi dipetakan ke atribut data-copilot di form admin web
-# (web/app/admin/pasien): NIK, Nama, Umur, Jenis Kelamin, Alamat, No. Telepon.
+# (web/app/admin/pasien): NIK, Nama Lengkap, Umur, Jenis Kelamin, Alamat, No. Telepon.
 # ==============================================================================
 def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """
     Parser untuk Form Registrasi Pasien di atas kertas.
-    Field: NIK, Nama, Umur, Jenis Kelamin, Alamat, No. Telepon.
+    Field: NIK, Nama Lengkap, Umur, Jenis Kelamin, Alamat, No. Telepon.
     """
     fields = []
-    lines = [line.strip() for line in raw_text.split('\n') if line.strip()]
 
-    # --- FUZZY HANDWRITING AUTO-CORRECTION LAYER ---
-    # Jika model OCR bawaan (CnOCR) salah membaca tulisan tangan pada demo, 
-    # kita bantu koreksi agar form tetap terisi sempurna dan flow demo berjalan mulus.
-    
     # 1. NIK
-    nik_val = ""
-    # Coba regex standar
-    nik_match = re.search(r'NIK\s*[:\-\s]+\s*(\d{16})', raw_text, re.IGNORECASE) \
-        or re.search(r'\b(3[0-9]{15}|[0-9]{16})\b', raw_text)
-    if nik_match:
-        nik_val = nik_match.group(1)
-    else:
-        # Koreksi tulisan tangan: NIK di demo dibaca "/N1k:873D 200201 0003"
-        for line in lines:
-            if "n1k" in line.lower() or "873d" in line.lower():
-                nik_val = "3573092002040003"
-                break
+    nik_match = re.search(r'N[1iI]K\s*[:\-\s]+([0-9\s\-]{12,25})', raw_text, re.IGNORECASE) \
+        or re.search(r'\b(3[0-9\s\-]{15,22})\b', raw_text)
+    nik_val = re.sub(r'\D', '', nik_match.group(1)) if nik_match else ""
     fields.append({
         "key": "NIK",
         "value": nik_val,
@@ -128,22 +114,12 @@ def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) 
         "is_required": True,
     })
 
-    # 2. Nama — label "Nama"/"Nama Pasien"/"Nama Lengkap", pemisah titik dua,
-    #    strip, atau spasi; dibatasi satu baris agar tidak menelan baris berikutnya
-    nama_val = ""
+    # 2. Nama Lengkap
     nama_match = re.search(
         r'Nama(?:\s+(?:Pasien|Lengkap))?(?:[ \t]*[:\-][ \t]*|[ \t]+)([A-Za-z][^\n\r:]+)',
         raw_text, re.IGNORECASE)
-    if nama_match:
-        nama_val = nama_match.group(1).strip().rstrip(",.-")
-    else:
-        # Koreksi tulisan tangan: "Nama Lengkap: Defriand Farera" dibaca "Mere LergisyPppfmfor"
-        for line in lines:
-            if "mere" in line.lower() or "lergisy" in line.lower() or "pppfm" in line.lower():
-                nama_val = "Defriand Farera"
-                break
+    nama_val = nama_match.group(1).strip().rstrip(",.-") if nama_match else ""
     fields.append({
-        # Key = label persis di form admin /admin/pasien (dipakai autofill ekstensi).
         "key": "Nama Lengkap",
         "value": nama_val,
         "confidence": 92.0 if nama_val else 50.0,
@@ -151,16 +127,9 @@ def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) 
     })
 
     # 3. Umur
-    umur_val = ""
-    umur_match = re.search(r'(?:Umur|Usia)\s*[:\-]?\s*(\d{1,3})\s*(?:tahun|th|thn)?', raw_text, re.IGNORECASE)
-    if umur_match:
-        umur_val = umur_match.group(1)
-    else:
-        # Koreksi tulisan tangan: "Umur: 22 tahun" dibaca "uwr:22 teaur"
-        for line in lines:
-            if "uwr:" in line.lower() or "teaur" in line.lower():
-                umur_val = "22"
-                break
+    umur_match = re.search(r'(?:Umur|Usia)\s*[:\-]?\s*(\d{1,3})\s*(?:tahun|th|thn)?', raw_text, re.IGNORECASE) \
+        or re.search(r'\b(\d{1,2})\s*(?:tahun|th|thn)\b', raw_text, re.IGNORECASE)
+    umur_val = umur_match.group(1) if umur_match else ""
     fields.append({
         "key": "Umur",
         "value": umur_val,
@@ -169,16 +138,14 @@ def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) 
     })
 
     # 4. Jenis Kelamin
+    jk_match = re.search(r'(Laki\s*[-–—]?\s*laki|Perempuan|Pria|Wanita)', raw_text, re.IGNORECASE)
     jk_val = ""
-    jk_match = re.search(r'(Laki-?\s?laki|Perempuan)', raw_text, re.IGNORECASE)
     if jk_match:
-        jk_val = jk_match.group(1).title().replace(" ", "").replace("Laki-Laki", "Laki-laki")
-    else:
-        # Koreksi tulisan tangan: "Jenis Kelamin: Laki-laki" dibaca "Jentr ulow, Lohi-Loui"
-        for line in lines:
-            if "jentr" in line.lower() or "lohi-loui" in line.lower() or "ulow" in line.lower():
-                jk_val = "Laki-laki"
-                break
+        raw_jk = jk_match.group(1).lower()
+        if "laki" in raw_jk or "pria" in raw_jk:
+            jk_val = "Laki-laki"
+        elif "perempuan" in raw_jk or "wanita" in raw_jk:
+            jk_val = "Perempuan"
     fields.append({
         "key": "Jenis Kelamin",
         "value": jk_val,
@@ -186,11 +153,9 @@ def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) 
         "is_required": False,
     })
 
-    # 5. Alamat — label "Alamat", satu baris (pemisah titik dua/strip/spasi)
-    alamat_val = ""
+    # 5. Alamat
     alamat_match = re.search(r'Alamat(?:[ \t]*[:\-][ \t]*|[ \t]+)([^\n\r]+)', raw_text, re.IGNORECASE)
-    if alamat_match:
-        alamat_val = alamat_match.group(1).strip()
+    alamat_val = alamat_match.group(1).strip().rstrip(",.-") if alamat_match else ""
     fields.append({
         "key": "Alamat",
         "value": alamat_val,
@@ -199,19 +164,11 @@ def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) 
     })
 
     # 6. No. Telepon
-    telp_val = ""
     telp_match = re.search(
-        r'(?:No\.?\s*)?(?:Telepon|Telp(?:on)?|HP|WA)(?:[ \t]*[:\-][ \t]*|[ \t]+)(\+62[\d\s\-]{8,14}|08[\d\s\-]{8,12})',
+        r'(?:No\.?\s*)?(?:Telepon|Telp(?:on)?|HP|WA)(?:[ \t]*[:\-][ \t]*|[ \t]+)(\+62[\d\s\-]{8,18}|08[\d\s\-]{8,18})',
         raw_text, re.IGNORECASE) \
-        or re.search(r'\b(08\d{8,12}|\+628\d{7,13})\b', raw_text)
-    if telp_match:
-        telp_val = telp_match.group(1).replace(" ", "").replace("-", "")
-    else:
-        # Koreksi tulisan tangan: "No. telp: 0895 0402 7351" dibaca "No. "ely :6dgs 402 7ISI"
-        for line in lines:
-            if "ely" in line.lower() or "6dgs" in line.lower() or "7isi" in line.lower():
-                telp_val = "089504027351"
-                break
+        or re.search(r'\b(08[\d\s\-]{8,16}|\+628[\d\s\-]{7,16})\b', raw_text)
+    telp_val = re.sub(r'\D', '', telp_match.group(1)) if telp_match else ""
     fields.append({
         "key": "No. Telepon",
         "value": telp_val,
