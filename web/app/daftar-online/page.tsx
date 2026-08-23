@@ -20,7 +20,8 @@ import { Card, CardBody } from "@/components/ui/card";
 import { doctorsApi, type Doctor } from "@/services/doctors";
 import { poliApi, type Poli } from "@/services/poli";
 import { registrationApi } from "@/services/registration";
-import { getFloorForPoli, addMockQueueItem, type QueueItem } from "@/services/queue";
+import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
+import { getFloorForPoli } from "@/services/queue";
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
 
@@ -59,13 +60,12 @@ interface BookingState {
   patient: PatientIdentity;
 }
 
-// Default dummy profile to pre-fill as requested
 const DEFAULT_PATIENT: PatientIdentity = {
-  nik: "1234567890123456",
-  nama: "Bryan Sean Abner Manullang",
-  tanggal_lahir: "1998-05-12",
-  no_hp: "081291608737",
-  alamat: "Perumahan Pamulang Permai, Tangerang Selatan",
+  nik: "",
+  nama: "",
+  tanggal_lahir: "",
+  no_hp: "",
+  alamat: "",
   jenis_pembayaran: "umum",
 };
 
@@ -158,22 +158,10 @@ export default function DaftarOnlinePage() {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as PatientIdentity;
-        // Force update old profiles to Bryan Sean Abner Manullang
-        if (parsed.nama === "Bryan Sean" || parsed.nama === "Budi Pratama" || parsed.no_hp === "081234567890") {
-          parsed.nama = "Bryan Sean Abner Manullang";
-          parsed.no_hp = "081291608737";
-          parsed.nik = "1234567890123456";
-          parsed.tanggal_lahir = "1998-05-12";
-          parsed.alamat = "Perumahan Pamulang Permai, Tangerang Selatan";
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
-        }
         if (parsed.nik && parsed.nama) {
           // eslint-disable-next-line react-hooks/set-state-in-effect
           setBooking((prev) => ({ ...prev, patient: parsed }));
         }
-      } else {
-        // If no profile, save the default Bryan Sean profile immediately to localStorage for testing
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_PATIENT));
       }
     } catch {
       // ignore
@@ -181,36 +169,29 @@ export default function DaftarOnlinePage() {
   }, []);
 
   // ─── 2. Fetch Master Data ──────────────────────────────────────────────────
+  const [masterDataError, setMasterDataError] = useState("");
+  const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
+
   const fetchMasterData = useCallback(async () => {
     setLoadingData(true);
+    setMasterDataError("");
     try {
-      const [poliList, docList] = await Promise.all([
+      const [poliList, docList, scheduleList] = await Promise.all([
         poliApi.getAll(),
         doctorsApi.getAll(),
+        schedulesApi.getAll(),
       ]);
 
-      const hasUmum = poliList.some((p) => p.name.toLowerCase().includes("umum"));
-      let finalPolis = poliList;
-      if (!hasUmum) {
-        finalPolis = [{ id: 999, name: "Poli Umum", description: "Layanan kesehatan primer & dokter umum" }, ...poliList];
-      }
-
-      setPolis(finalPolis);
+      setPolis(poliList);
       setDoctors(docList.filter((d) => d.status === "active"));
+      setSchedules(scheduleList);
     } catch {
-      const mockPolis: Poli[] = [
-        { id: 1, name: "Poli Umum", description: "Layanan umum, demam, flu, batuk, pusing" },
-        { id: 2, name: "Poli Jantung", description: "Spesialis Jantung & Pembuluh Darah" },
-        { id: 3, name: "Poli Anak", description: "Spesialis Kesehatan Anak & Tumbuh Kembang" },
-        { id: 4, name: "Poli Penyakit Dalam", description: "Spesialis Penyakit Dalam / Internis" },
-        { id: 5, name: "Poli Mata", description: "Spesialis Kesehatan Mata & Penglihatan" },
-        { id: 6, name: "Poli Kandungan (Obgyn)", description: "Spesialis Kebidanan & Kandungan" },
-        { id: 7, name: "Poli Bedah", description: "Spesialis Bedah Umum & Onkologi" },
-        { id: 8, name: "Poli Saraf", description: "Spesialis Saraf & Neurologi" },
-        { id: 9, name: "Poli Gigi & Mulut", description: "Spesialis Gigi, Mulut & Bedah Mulut" },
-        { id: 10, name: "Poli THT-KL", description: "Spesialis Telinga Hidung Tenggorok" },
-      ];
-      setPolis(mockPolis);
+      setPolis([]);
+      setDoctors([]);
+      setSchedules([]);
+      setMasterDataError(
+        "Gagal memuat data poli & dokter dari server. Pastikan koneksi tersedia lalu coba lagi."
+      );
     } finally {
       setLoadingData(false);
     }
@@ -256,47 +237,23 @@ export default function DaftarOnlinePage() {
       targetPoliId = Number(booking.selectedPoliId);
     }
 
-    let filtered = doctors.filter((d) => d.poli_id === targetPoliId);
+    return doctors.filter((d) => d.poli_id === targetPoliId);
+  }, [booking.selectedPoliId, booking.symptomType, doctors, polis]);
 
-    if (filtered.length === 0) {
-      const poliName = booking.selectedPoliName || "Spesialis";
-      filtered = [
-        {
-          id: 101,
-          name: poliName.includes("Umum") ? "dr. Hendra Pratama (Dokter Umum)" : `dr. Budi Pratama ${poliName.replace("Poli", "Sp.")}`,
-          specialty: poliName,
-          poli_id: targetPoliId,
-          license_number: null,
-          email: "dokter1@rsudtangsel.go.id",
-          phone_number: "081234567890",
-          bio: "Dokter Berpengalaman",
-          status: "active",
-        },
-        {
-          id: 102,
-          name: poliName.includes("Umum") ? "dr. Maya Anggraini (Dokter Umum)" : `dr. Siti Nurhaliza ${poliName.replace("Poli", "Sp.")}`,
-          specialty: poliName,
-          poli_id: targetPoliId,
-          license_number: null,
-          email: "dokter2@rsudtangsel.go.id",
-          phone_number: "081234567891",
-          bio: "Dokter Berpengalaman",
-          status: "active",
-        },
-      ];
-    }
-
-    return filtered;
-  }, [booking.selectedPoliId, booking.selectedPoliName, booking.symptomType, doctors, polis]);
-
-  const getDoctorSlots = useCallback(() => {
-    return [
-      { time: "08:00 - 09:00", quotaTotal: 2, quotaRemaining: 2 },
-      { time: "09:00 - 10:00", quotaTotal: 2, quotaRemaining: 1 },
-      { time: "10:00 - 11:00", quotaTotal: 2, quotaRemaining: 2 },
-      { time: "11:00 - 12:00", quotaTotal: 2, quotaRemaining: 1 },
-    ];
-  }, []);
+  // Slot praktik diambil dari jadwal dokter asli (GET /api/schedules) yang
+  // cocok dengan hari dari tanggal kunjungan terpilih.
+  const getDoctorSlots = useCallback(
+    (doctorId: number): { time: string; quota: number }[] => {
+      const dayName = getDayName(booking.selectedDate);
+      return schedules
+        .filter((s) => s.doctor_id === doctorId && s.day_of_week === dayName)
+        .map((s) => ({
+          time: `${s.start_time.slice(0, 5)}${s.end_time ? ` - ${s.end_time.slice(0, 5)}` : " - Selesai"}`,
+          quota: s.quota,
+        }));
+    },
+    [booking.selectedDate, schedules]
+  );
 
   // ─── Step 0 Handlers ───────────────────────────────────────────────────────
   const handlePoliSelect = (value: string) => {
@@ -373,73 +330,48 @@ export default function DaftarOnlinePage() {
   };
 
   // ─── Final Submit Booking ──────────────────────────────────────────────────
+  const [submitError, setSubmitError] = useState("");
+
   const handleFinalSubmit = async () => {
     setShowConfirmModal(false);
     setIsSubmitting(true);
-
-    const floor = getFloorForPoli(booking.selectedPoliName);
-    const prefix = booking.selectedPoliName.includes("Umum") ? "U" : booking.selectedPoliName.charAt(0).toUpperCase();
-    
-    // Generate a fixed format queue number (e.g. U005, J012)
-    const queueNo = `${prefix}${String(Math.floor(10 + Math.random() * 89)).padStart(3, "0")}`;
-    const qrPayload = `RSUD-TANGSEL|${queueNo}|${booking.patient.nik}|${booking.patient.nama}|${booking.selectedPoliName}|${booking.selectedDate}|${booking.selectedTime}`;
-
-    const newResult: BookingResult = {
-      queue_number: queueNo,
-      qr_code_payload: qrPayload,
-      poli: booking.selectedPoliName,
-      doctor_name: booking.selectedDoctorName,
-      date: booking.selectedDate,
-      time: booking.selectedTime,
-      floor_info: floor,
-      patient_name: booking.patient.nama,
-      nik: booking.patient.nik,
-      phone_number: booking.patient.no_hp,
-    };
-
-    // Synchronize to the backend / shared memory antrian dashboard
-    const newQueueItem: QueueItem = {
-      id: Date.now(),
-      number: queueNo,
-      patient_name: booking.patient.nama,
-      nik: booking.patient.nik,
-      phone_number: booking.patient.no_hp,
-      poli: booking.selectedPoliName.replace(" (Skrining Gejala)", ""),
-      doctor_name: booking.selectedDoctorName,
-      schedule_date: booking.selectedDate,
-      schedule_time: booking.selectedTime.split(" - ")[0],
-      status: "Waiting",
-      floor_info: floor,
-      created_at: new Date().toLocaleTimeString("id-ID"),
-    };
+    setSubmitError("");
 
     try {
-      await registrationApi.register({
+      // Nomor antrian & QR diterbitkan oleh backend (POST /api/online-registration)
+      const res = await registrationApi.register({
         nik: booking.patient.nik,
         name: booking.patient.nama,
         birth_date: booking.patient.tanggal_lahir || undefined,
         address: booking.patient.alamat || undefined,
         phone_number: booking.patient.no_hp,
-        doctor_id: booking.selectedDoctorId || 1,
+        doctor_id: booking.selectedDoctorId || 0,
         schedule_date: booking.selectedDate,
         time: booking.selectedTime.split(" - ")[0] || "08:00",
         payment_type: booking.patient.jenis_pembayaran,
       });
-      
-      addMockQueueItem(newQueueItem);
-      setBookingResult(newResult);
-      showToast("Pendaftaran antrian online berhasil dikonfirmasi!", "success");
-      
-      const waText = `*Tiket Antrian RSUD Tangsel*\nNomor: ${newResult.queue_number}\nPasien: ${newResult.patient_name}\nPoli: ${newResult.poli}\nDokter: ${newResult.doctor_name}\nJadwal: ${newResult.date} (${newResult.time})\nLokasi: ${newResult.floor_info}\n\nHarap tiba 15 menit sebelum slot jam untuk scan QR di meja pendaftaran.`;
-      window.open(`https://wa.me/${newResult.phone_number.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`, "_blank");
-    } catch {
-      // Fallback local memory save so it shows up in dashboard offline
-      addMockQueueItem(newQueueItem);
-      setBookingResult(newResult);
+
+      setBookingResult({
+        queue_number: res.queue_number,
+        qr_code_payload: res.queue_number,
+        poli: booking.selectedPoliName,
+        doctor_name: booking.selectedDoctorName,
+        date: booking.selectedDate,
+        time: booking.selectedTime,
+        floor_info: getFloorForPoli(booking.selectedPoliName),
+        patient_name: booking.patient.nama,
+        nik: booking.patient.nik,
+        phone_number: booking.patient.no_hp,
+      });
       showToast("Pendaftaran antrian online berhasil dikonfirmasi!", "success");
 
-      const waText = `*Tiket Antrian RSUD Tangsel*\nNomor: ${newResult.queue_number}\nPasien: ${newResult.patient_name}\nPoli: ${newResult.poli}\nDokter: ${newResult.doctor_name}\nJadwal: ${newResult.date} (${newResult.time})\nLokasi: ${newResult.floor_info}\n\nHarap tiba 15 menit sebelum slot jam untuk scan QR di meja pendaftaran.`;
-      window.open(`https://wa.me/${newResult.phone_number.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`, "_blank");
+      const waText = `*Tiket Antrian RSUD Tangsel*\nNomor: ${res.queue_number}\nPasien: ${booking.patient.nama}\nPoli: ${booking.selectedPoliName}\nDokter: ${booking.selectedDoctorName}\nJadwal: ${booking.selectedDate} (${booking.selectedTime})\nLokasi: ${getFloorForPoli(booking.selectedPoliName)}\n\nHarap tiba 15 menit sebelum slot jam untuk scan QR di meja pendaftaran.`;
+      window.open(`https://wa.me/${booking.patient.no_hp.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`, "_blank");
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Pendaftaran gagal. Silakan coba lagi."
+      );
+      showToast("Pendaftaran antrian gagal. Coba lagi.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -592,6 +524,19 @@ export default function DaftarOnlinePage() {
           <Stepper steps={stepLabels} currentStep={currentStep} />
         </div>
 
+        {/* Error memuat data master */}
+        {masterDataError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-3">
+            <span>{masterDataError}</span>
+            <button
+              onClick={fetchMasterData}
+              className="shrink-0 font-bold underline hover:text-red-800"
+            >
+              Coba Lagi
+            </button>
+          </div>
+        )}
+
         {/* ───────────────────────────────────────────────────────────────────
             STEP 0: IDENTITAS PASIEN & GEJALA/POLI
         ─────────────────────────────────────────────────────────────────── */}
@@ -657,7 +602,6 @@ export default function DaftarOnlinePage() {
                         <span className="text-base">🏥</span>
                         <p className="font-bold text-slate-700">Rute Penanganan: <span className="text-emerald-600">{booking.selectedPoliName}</span></p>
                       </div>
-                      <span className="text-slate-400 font-medium">8 kuota / dokter harian</span>
                     </div>
                   )}
                 </div>
@@ -717,28 +661,37 @@ export default function DaftarOnlinePage() {
             </div>
 
             <div className="space-y-4">
-              {availableDoctors.length === 0 ? (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center space-y-3">
-                  <span className="text-3xl">⚠️</span>
-                  <h3 className="text-sm font-bold text-slate-800">Tidak ada jadwal dokter untuk tanggal ini</h3>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    Dokter spesialis pada poli ini belum membuka jadwal untuk tanggal terpilih. Silakan coba pilih hari berikutnya.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const nextDay = new Date();
-                      nextDay.setDate(nextDay.getDate() + 1);
-                      setBooking((prev) => ({ ...prev, selectedDate: nextDay.toISOString().split("T")[0] }));
-                    }}
-                  >
-                    📅 Cek Jadwal Besok
-                  </Button>
-                </div>
-              ) : (
-                availableDoctors.map((doc) => {
-                  const slots = getDoctorSlots();
+              {(() => {
+                // Hanya tampilkan dokter yang punya jadwal pada tanggal terpilih.
+                const doctorsWithSlots = availableDoctors
+                  .map((doc) => ({ doc, slots: getDoctorSlots(doc.id) }))
+                  .filter((entry) => entry.slots.length > 0);
+
+                if (doctorsWithSlots.length === 0) {
+                  return (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center space-y-3">
+                      <span className="text-3xl">⚠️</span>
+                      <h3 className="text-sm font-bold text-slate-800">Tidak ada jadwal dokter untuk tanggal ini</h3>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        Dokter spesialis pada poli ini belum membuka jadwal untuk tanggal terpilih. Silakan coba pilih hari berikutnya.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const nextDay = new Date();
+                          nextDay.setDate(nextDay.getDate() + 1);
+                          setBooking((prev) => ({ ...prev, selectedDate: nextDay.toISOString().split("T")[0] }));
+                        }}
+                      >
+                        📅 Cek Jadwal Besok
+                      </Button>
+                    </div>
+                  );
+                }
+
+                return doctorsWithSlots.map(({ doc, slots }) => {
+                  const totalQuota = slots.reduce((sum, s) => sum + s.quota, 0);
                   const isDoctorSelected = booking.selectedDoctorId === doc.id;
 
                   return (
@@ -762,7 +715,7 @@ export default function DaftarOnlinePage() {
 
                         <div className="flex items-center gap-2">
                           <span className="text-xs bg-slate-100 border border-slate-200 text-slate-600 font-bold px-3 py-1 rounded-full">
-                            🎯 8 Kuota Harian (6 Tersisa)
+                            🎯 {totalQuota} Kuota Harian
                           </span>
                         </div>
                       </div>
@@ -774,13 +727,11 @@ export default function DaftarOnlinePage() {
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                           {slots.map((slot) => {
                             const isSlotSelected = isDoctorSelected && booking.selectedTime === slot.time;
-                            const isFull = slot.quotaRemaining === 0;
 
                             return (
                               <button
                                 key={slot.time}
                                 type="button"
-                                disabled={isFull}
                                 onClick={() => {
                                   setBooking((prev) => ({
                                     ...prev,
@@ -796,27 +747,25 @@ export default function DaftarOnlinePage() {
                                   py-2.5 px-3 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer
                                   ${isSlotSelected
                                     ? "bg-emerald-655 text-white border-emerald-500 shadow-sm"
-                                    : isFull
-                                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50"
                                     : "bg-white text-slate-700 border-slate-200 hover:border-emerald-500 hover:text-slate-900"
                                   }
                                 `}
                               >
                                 <span>⏰ {slot.time}</span>
                                 <span className={`text-[10px] ${isSlotSelected ? "text-emerald-105" : "text-slate-400"}`}>
-                                  {isFull ? "Penuh" : `Sisa ${slot.quotaRemaining} slot`}
+                                  Kuota {slot.quota}
                                 </span>
                               </button>
                             );
                           })}
                         </div>
                       </div>
-                    </div>
-                  );
-                })
-              )}
+                     </div>
+                   );
+                 });
+               })()}
 
-              {errors.slot && (
+               {errors.slot && (
                 <p className="text-xs font-bold text-red-500 text-center">{errors.slot}</p>
               )}
             </div>
@@ -905,6 +854,12 @@ export default function DaftarOnlinePage() {
                 </span>
               </div>
 
+              {submitError && (
+                <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {submitError}
+                </p>
+              )}
+
               <div className="flex items-center justify-between pt-4 border-t border-slate-200">
                 <Button
                   variant="ghost"
@@ -942,7 +897,7 @@ export default function DaftarOnlinePage() {
               Apakah Anda yakin ingin mendaftar ke <strong>{booking.selectedPoliName}</strong> bersama <strong>{booking.selectedDoctorName}</strong> pada tanggal <strong>{booking.selectedDate}</strong> pukul <strong>{booking.selectedTime}</strong>?
             </p>
             <p className="text-xs text-slate-450">
-              Sistem akan memotong 1 kuota antrian dari total 8 kuota harian dokter.
+              Sistem akan menerbitkan nomor antrian dan memotong 1 kuota harian dokter.
             </p>
           </div>
         </Dialog>

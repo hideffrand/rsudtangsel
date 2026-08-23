@@ -32,53 +32,12 @@ export const updateOCRDocumentType = ocrDocumentTypesApi.update;
 export const deleteOCRDocumentType = ocrDocumentTypesApi.remove;
 
 // ─── Ekstraksi Dokumen ────────────────────────────────────────────────────────
+// Ekstraksi OCR hanya melalui browser-extension (POST /api/admin/ocr/extract);
+// halaman admin web tidak lagi memanggil endpoint ini.
 
 export interface OcrExtractedField {
   key: string;
   value: string;
   confidence: number;
   is_required?: boolean;
-}
-
-export interface OcrExtractResult {
-  success: boolean;
-  doc_type: string;
-  process_time_ms: number;
-  avg_confidence: number;
-  raw_text: string;
-  extracted_fields: OcrExtractedField[];
-  blocks?: unknown[];
-  message?: string;
-}
-
-export async function extractOcrDocument(
-  file: File,
-  docType: string = "generic"
-): Promise<OcrExtractResult> {
-  try {
-    // Axios menangani multipart FormData otomatis (boundary + content-type).
-    return await api.post<OcrExtractResult>('/admin/ocr/extract', formDataOf(file, docType));
-  } catch {
-    // Fallback simulation if backend / OCR service is offline
-    return {
-      success: true,
-      doc_type: docType,
-      process_time_ms: 120,
-      avg_confidence: 88.5,
-      raw_text: `Hasil ekstraksi simulasi untuk file ${file.name}`,
-      extracted_fields: [
-        { key: "Nama File", value: file.name, confidence: 99.0 },
-        { key: "Tipe Dokumen", value: docType.toUpperCase(), confidence: 95.0 },
-        { key: "Ukuran", value: `${(file.size / 1024).toFixed(1)} KB`, confidence: 99.0 },
-        { key: "Status", value: "Berhasil Diekstrak (CnOCR Microservice)", confidence: 90.0 },
-      ],
-    };
-  }
-}
-
-function formDataOf(file: File, docType: string): FormData {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("doc_type", docType);
-  return formData;
 }
