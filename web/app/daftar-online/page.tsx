@@ -13,7 +13,21 @@ import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
-
+import {
+  ClipboardList,
+  User,
+  Hospital,
+  AlertTriangle,
+  CalendarDays,
+  Clock,
+  Download,
+  Info,
+  Stethoscope,
+  Target,
+  Rocket,
+  ArrowLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Stepper } from "@/components/ui/stepper";
 import { Dialog } from "@/components/ui/dialog";
 import { Card, CardBody } from "@/components/ui/card";
@@ -207,18 +221,18 @@ export default function DaftarOnlinePage() {
     const options: { value: string; label: string }[] = [];
     polis.forEach((p) => {
       options.push({
-        value: `poli_${p.id}`,
-        label: `🏥 ${p.name} — ${p.description || "Spesialis"}`,
-      });
+      value: `poli_${p.id}`,
+      label: `${p.name} — ${p.description || "Spesialis"}`,
+    });
     });
 
     options.push({
       value: "symptom_umum",
-      label: "🤒 Umum (demam, batuk, pusing, flu, lemas, nyeri kepala)",
+      label: "Umum (demam, batuk, pusing, flu, lemas, nyeri kepala)",
     });
     options.push({
       value: "symptom_unknown",
-      label: "🤷 Masih belum tahu gejalanya (Skrining Awal Dokter Umum)",
+      label: "Masih belum tahu gejalanya (Skrining Awal Dokter Umum)",
     });
 
     return options;
@@ -485,7 +499,7 @@ export default function DaftarOnlinePage() {
               onClick={handleDownloadQR}
               className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>📥</span> Unduh / Simpan Gambar QR Code
+              <Download className="w-4 h-4" /> Unduh / Simpan Gambar QR Code
             </button>
 
             <Link
@@ -545,7 +559,7 @@ export default function DaftarOnlinePage() {
             <CardBody className="p-6 sm:p-8 space-y-6">
               <div className="border-b border-slate-150 pb-4">
                 <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  <span>👤</span> Gejala Keluhan Pasien
+                  <User className="w-5 h-5 text-emerald-600" /> Gejala Keluhan Pasien
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
                   Pilih jenis gejala atau poli tujuan untuk mencari jadwal dokter.
@@ -599,7 +613,7 @@ export default function DaftarOnlinePage() {
                   {booking.selectedPoliName && (
                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="text-base">🏥</span>
+                        <Hospital className="w-4 h-4 text-emerald-600" />
                         <p className="font-bold text-slate-700">Rute Penanganan: <span className="text-emerald-600">{booking.selectedPoliName}</span></p>
                       </div>
                     </div>
@@ -620,8 +634,8 @@ export default function DaftarOnlinePage() {
                         Mencari Jadwal Dokter...
                       </span>
                     ) : (
-                      "Lanjut Cari Jadwal Dokter ➔"
-                    )}
+                    <span className="flex items-center gap-1.5">Lanjut Cari Jadwal Dokter <ChevronRight className="w-4 h-4" /></span>
+                  )}
                   </Button>
                 </div>
               </form>
@@ -670,7 +684,7 @@ export default function DaftarOnlinePage() {
                 if (doctorsWithSlots.length === 0) {
                   return (
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center space-y-3">
-                      <span className="text-3xl">⚠️</span>
+                      <AlertTriangle className="w-8 h-8 mx-auto text-amber-500" />
                       <h3 className="text-sm font-bold text-slate-800">Tidak ada jadwal dokter untuk tanggal ini</h3>
                       <p className="text-xs text-slate-500 max-w-sm mx-auto">
                         Dokter spesialis pada poli ini belum membuka jadwal untuk tanggal terpilih. Silakan coba pilih hari berikutnya.
@@ -684,7 +698,7 @@ export default function DaftarOnlinePage() {
                           setBooking((prev) => ({ ...prev, selectedDate: nextDay.toISOString().split("T")[0] }));
                         }}
                       >
-                        📅 Cek Jadwal Besok
+                        <CalendarDays className="w-3.5 h-3.5 mr-1" /> Cek Jadwal Besok
                       </Button>
                     </div>
                   );
@@ -704,8 +718,8 @@ export default function DaftarOnlinePage() {
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-full bg-emerald-50 border border-emerald-250 flex items-center justify-center text-lg">
-                            👨‍⚕️
+                          <div className="w-11 h-11 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                            <Stethoscope className="w-5 h-5 text-emerald-600" />
                           </div>
                           <div>
                             <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">{doc.name}</h3>
@@ -714,8 +728,8 @@ export default function DaftarOnlinePage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="text-xs bg-slate-100 border border-slate-200 text-slate-600 font-bold px-3 py-1 rounded-full">
-                            🎯 {totalQuota} Kuota Harian
+                          <span className="text-xs bg-slate-100 border border-slate-200 text-slate-600 font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+                            <Target className="w-3 h-3" /> {totalQuota} Kuota Harian
                           </span>
                         </div>
                       </div>
@@ -746,13 +760,13 @@ export default function DaftarOnlinePage() {
                                 className={`
                                   py-2.5 px-3 rounded-lg border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer
                                   ${isSlotSelected
-                                    ? "bg-emerald-655 text-white border-emerald-500 shadow-sm"
+                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
                                     : "bg-white text-slate-700 border-slate-200 hover:border-emerald-500 hover:text-slate-900"
                                   }
                                 `}
                               >
-                                <span>⏰ {slot.time}</span>
-                                <span className={`text-[10px] ${isSlotSelected ? "text-emerald-105" : "text-slate-400"}`}>
+                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {slot.time}</span>
+                                <span className={`text-[10px] ${isSlotSelected ? "text-emerald-100" : "text-slate-400"}`}>
                                   Kuota {slot.quota}
                                 </span>
                               </button>
@@ -775,9 +789,9 @@ export default function DaftarOnlinePage() {
                 variant="ghost"
                 size="lg"
                 onClick={() => setCurrentStep(0)}
-                className="text-slate-500 hover:text-slate-800"
+                className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
               >
-                ← Kembali ke Identitas
+                <ArrowLeft className="w-4 h-4" /> Kembali ke Identitas
               </Button>
               <Button
                 variant="primary"
@@ -789,9 +803,9 @@ export default function DaftarOnlinePage() {
                   }
                   setCurrentStep(2);
                 }}
-                className="bg-emerald-650 hover:bg-emerald-500 font-bold px-8"
+                className="bg-emerald-650 hover:bg-emerald-500 font-bold px-8 flex items-center gap-1.5"
               >
-                Lanjut ke Konfirmasi ➔
+                Lanjut ke Konfirmasi <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -805,7 +819,7 @@ export default function DaftarOnlinePage() {
             <CardBody className="p-6 sm:p-8 space-y-6">
               <div className="border-b border-slate-150 pb-4">
                 <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <span>📋</span> Ringkasan Konfirmasi Pendaftaran
+                  <ClipboardList className="w-5 h-5 text-emerald-600" /> Ringkasan Konfirmasi Pendaftaran
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
                   Pastikan data jadwal dan identitas Anda sudah benar sebelum menerbitkan tiket antrian online.
@@ -848,7 +862,7 @@ export default function DaftarOnlinePage() {
               </div>
 
               <div className="p-3 bg-amber-50 border border-amber-250 rounded-lg text-xs text-amber-900 flex items-start gap-2">
-                <span className="text-base">ℹ️</span>
+                <Info className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
                 <span>
                   Tiket QR Code akan otomatis terbit setelah tombol konfirmasi ditekan. Anda dapat mengunduh QR Code atau menunjukkannya langsung ke petugas saat check-in.
                 </span>
@@ -865,18 +879,18 @@ export default function DaftarOnlinePage() {
                   variant="ghost"
                   size="lg"
                   onClick={() => setCurrentStep(1)}
-                  className="text-slate-500 hover:text-slate-800"
+                  className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
                 >
-                  ← Kembali
+                  <ArrowLeft className="w-4 h-4" /> Kembali
                 </Button>
                 <Button
                   variant="primary"
                   size="lg"
                   onClick={() => setShowConfirmModal(true)}
                   disabled={isSubmitting}
-                  className="bg-emerald-650 hover:bg-emerald-500 font-extrabold px-8 py-3.5 shadow-md"
+                  className="bg-emerald-650 hover:bg-emerald-500 font-extrabold px-8 py-3.5 shadow-md flex items-center gap-2"
                 >
-                  {isSubmitting ? "Menerbitkan Tiket..." : "Konfirmasi Booking Sekarang 🚀"}
+                  {isSubmitting ? "Menerbitkan Tiket..." : <><Rocket className="w-4 h-4" /> Konfirmasi Booking Sekarang</>}
                 </Button>
               </div>
             </CardBody>
