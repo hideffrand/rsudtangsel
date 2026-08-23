@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
  * /api/proxy diteruskan verbatim ke backend (mis. /api/proxy/api/poli
  * -> BACKEND_API_URL/api/poli).
  */
-const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:8080";
+const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://127.0.0.1:8080";
 
 const HOP_BY_HOP = new Set([
   "connection",

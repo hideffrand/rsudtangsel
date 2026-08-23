@@ -14,9 +14,36 @@ export interface OCRDocumentType {
   fields: string;
 }
 
+const MOCK_DOC_TYPES: OCRDocumentType[] = [
+  {
+    id: "inventory",
+    name: "Inventory",
+    fields: "Nama Barang, Kode, Jumlah, Kondisi",
+  },
+  {
+    id: "registrasi-pasien",
+    name: "Registrasi Pasien",
+    fields: "NIK, Nama, Umur, Jenis Kelamin, Alamat, No. Telepon",
+  },
+];
+
 export const ocrDocumentTypesApi = {
-  getAll: () => api.get<OCRDocumentType[]>('/admin/ocr-document-types'),
-  getOne: (id: string) => api.get<OCRDocumentType>(`/admin/ocr-document-types/${id}`),
+  getAll: async (): Promise<OCRDocumentType[]> => {
+    try {
+      return await api.get<OCRDocumentType[]>('/admin/ocr-document-types');
+    } catch {
+      return MOCK_DOC_TYPES;
+    }
+  },
+  getOne: async (id: string): Promise<OCRDocumentType> => {
+    try {
+      return await api.get<OCRDocumentType>(`/admin/ocr-document-types/${id}`);
+    } catch {
+      const found = MOCK_DOC_TYPES.find((d) => d.id === id);
+      if (found) return found;
+      throw new Error("Jenis dokumen tidak ditemukan");
+    }
+  },
   create: (data: { id: string; name: string; fields: string }) =>
     api.post<OCRDocumentType>('/admin/ocr-document-types', data),
   update: (id: string, data: { name: string; fields: string }) =>
