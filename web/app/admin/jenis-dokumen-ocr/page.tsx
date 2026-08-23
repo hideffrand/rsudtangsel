@@ -16,11 +16,58 @@ type FormState = {
   fields: string;
 };
 
+// Satu rule ekstraksi = key (label) + daftar regex berurutan (pertama yang
+// cocok menang, group(1) = nilai). Diserialisasi ke JSON di kolom `fields`.
+type FieldRule = {
+  key: string;
+  required: boolean;
+  patterns: string[];
+};
+
 const EMPTY_FORM: FormState = {
   id: "",
   name: "",
-  fields: "",
+  fields: "[]",
 };
+
+function parseFieldRules(raw: string): { rules: FieldRule[]; legacy: boolean } {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return { rules: [], legacy: true };
+    return {
+      rules: parsed.map((r) => ({
+        key: String(r?.key ?? ""),
+        required: Boolean(r?.required),
+        patterns: Array.isArray(r?.patterns) ? r.patterns.map(String) : [],
+      })),
+      legacy: false,
+    };
+  } catch {
+    return { rules: [], legacy: Boolean(raw.trim()) };
+  }
+}
+
+// Validasi ringan sisi klien (validasi penuh tetap di microservice OCR):
+// setiap rule butuh key + minimal 1 pattern yang bisa dikompilasi.
+function validateFieldRules(rules: FieldRule[]): string | null {
+  if (rules.length === 0) return null;
+  if (rules.length > 20) return "Maksimal 20 field per jenis dokumen.";
+  for (const [i, rule] of rules.entries()) {
+    if (!rule.key.trim()) return `Field #${i + 1}: nama/key wajib diisi.`;
+    const patterns = rule.patterns.filter((p) => p.trim());
+    if (patterns.length === 0) return `Field "${rule.key}": minimal 1 pattern regex.`;
+    if (patterns.length > 10) return `Field "${rule.key}": maksimal 10 pattern.`;
+    for (const p of patterns) {
+      if (p.length > 500) return `Field "${rule.key}": pattern terlalu panjang (maks 500 karakter).`;
+      try {
+        new RegExp(p);
+      } catch {
+        return `Field "${rule.key}": regex tidak valid — ${p}`;
+      }
+    }
+  }
+  return null;
+}
 
 export default function AdminJenisDokumenOCRPage() {
   const [docTypes, setDocTypes] = useState<OCRDocumentType[]>([]);
@@ -36,6 +83,8 @@ export default function AdminJenisDokumenOCRPage() {
   const [deleteItem, setDeleteItem] = useState<OCRDocumentType | null>(null);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [rules, setRules] = useState<FieldRule[]>([]);
+  const [legacyFields, setLegacyFields] = useState(false);
 
   const loadAll = useCallback(async () => {
     setIsLoading(true);
@@ -67,6 +116,8 @@ export default function AdminJenisDokumenOCRPage() {
   const openAddModal = () => {
     setEditingType(null);
     setForm(EMPTY_FORM);
+    setRules([]);
+    setLegacyFields(false);
     setFormError(null);
     setIsFormOpen(true);
   };
@@ -74,6 +125,9 @@ export default function AdminJenisDokumenOCRPage() {
   const openEditModal = (item: OCRDocumentType) => {
     setEditingType(item);
     setForm({ id: item.id, name: item.name, fields: item.fields });
+    const parsed = parseFieldRules(item.fields);
+    setRules(parsed.rules);
+    setLegacyFields(parsed.legacy);
     setFormError(null);
     setIsFormOpen(true);
   };
@@ -87,7 +141,7 @@ export default function AdminJenisDokumenOCRPage() {
     if (!editingType && docTypes.some((d) => d.id === form.id.trim())) {
       return "ID sudah dipakai oleh jenis dokumen OCR lain.";
     }
-    return null;
+    return validateFieldRules(rules);
   };
 
   const handleSave = async () => {
@@ -101,17 +155,18 @@ export default function AdminJenisDokumenOCRPage() {
     setFormError(null);
 
     try {
+      const fieldsJson = JSON.stringify(rules.filter((r) => r.key.trim() && r.patterns.some((p) => p.trim())));
       if (editingType) {
         const updated = await updateOCRDocumentType(editingType.id, {
           name: form.name.trim(),
-          fields: form.fields.trim(),
+          fields: fieldsJson,
         });
         setDocTypes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
       } else {
         const created = await createOCRDocumentType({
           id: form.id.trim(),
           name: form.name.trim(),
-          fields: form.fields.trim(),
+          fields: fieldsJson,
         });
         setDocTypes((prev) => [...prev, created]);
       }
@@ -205,11 +260,26 @@ export default function AdminJenisDokumenOCRPage() {
                     {item.id}
                   </span>
                 </div>
-                {item.fields ? (
-                  <p className="text-xs text-slate-500 mt-2">{item.fields}</p>
-                ) : (
-                  <p className="text-xs text-slate-300 italic mt-2">Belum ada field terdaftar.</p>
-                )}
+                {(() => {
+                  const { rules: itemRules, legacy } = parseFieldRules(item.fields);
+                  if (legacy) return <p className="text-xs text-slate-500 mt-2">{item.fields}</p>;
+                  if (itemRules.length === 0) {
+                    return <p className="text-xs text-slate-300 italic mt-2">Belum ada field terdaftar.</p>;
+                  }
+                  return (
+                    <div className="text-xs text-slate-500 mt-2 space-y-1">
+                      {itemRules.map((r) => (
+                        <div key={r.key} className="flex items-center gap-2">
+                          <span className="font-medium text-slate-700">{r.key}</span>
+                          {r.required && <span className="text-red-500">*</span>}
+                          <span className="font-mono text-[10px] text-slate-400">
+                            {r.patterns.length} pattern
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                 <button
@@ -233,7 +303,7 @@ export default function AdminJenisDokumenOCRPage() {
       <Modal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        className="sm:max-w-md"
+        className="sm:max-w-3xl xl:max-w-5xl"
       >
         <div className="p-6 space-y-4">
           <h2 className="text-xl font-semibold text-slate-800">
@@ -245,39 +315,129 @@ export default function AdminJenisDokumenOCRPage() {
                 {formError}
               </div>
             )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">ID / Slug</label>
+                <input
+                  type="text"
+                  value={form.id}
+                  disabled={!!editingType}
+                  onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
+                  placeholder="mis. ktp, bpjs, rujukan"
+                  className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1 disabled:bg-slate-100 disabled:text-slate-400"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Nilai ini dikirim sebagai <span className="font-mono">doc_type</span> ke layanan OCR.
+                </p>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Nama</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="mis. Surat Rujukan"
+                  className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
+                />
+              </div>
+            </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase">ID / Slug</label>
-              <input
-                type="text"
-                value={form.id}
-                disabled={!!editingType}
-                onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
-                placeholder="mis. ktp, bpjs, rujukan"
-                className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1 disabled:bg-slate-100 disabled:text-slate-400"
-              />
+              <label className="text-xs font-semibold text-slate-500 uppercase">Field Ekstraksi &amp; Regex</label>
               <p className="text-[11px] text-slate-400 mt-1">
-                Nilai ini dikirim sebagai <span className="font-mono">doc_type</span> ke layanan OCR.
+                Key = label persis di form tujuan (dipakai autofill ekstensi). Pattern regex
+                dicari pada teks hasil OCR — yang pertama cocok menang, group 1 = nilai.
               </p>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase">Nama</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="mis. Surat Rujukan"
-                className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase">Fields (dipisah koma)</label>
-              <textarea
-                value={form.fields}
-                onChange={(e) => setForm((f) => ({ ...f, fields: e.target.value }))}
-                placeholder="mis. No. Rujukan, Poli Tujuan, Diagnosa Awal"
-                rows={3}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-md mt-1 resize-y"
-              />
+              {legacyFields && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] rounded-md px-3 py-2 mt-2">
+                  Data ini masih memakai format lama (bukan JSON). Jika disimpan, nilai lama akan
+                  diganti konfigurasi di bawah.
+                </div>
+              )}
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3 items-start">
+                {rules.map((rule, ruleIdx) => (
+                  <div key={ruleIdx} className="border border-slate-200 rounded-lg p-3 space-y-2 bg-slate-50/60 flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={rule.key}
+                        onChange={(e) =>
+                          setRules((rs) => rs.map((r, i) => (i === ruleIdx ? { ...r, key: e.target.value } : r)))
+                        }
+                        placeholder='Key field, mis. "Nama Lengkap"'
+                        className="flex-1 min-w-0 h-8 px-2.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:border-emerald-500"
+                      />
+                      <label className="flex items-center gap-1.5 text-[11px] text-slate-600 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={rule.required}
+                          onChange={(e) =>
+                            setRules((rs) => rs.map((r, i) => (i === ruleIdx ? { ...r, required: e.target.checked } : r)))
+                          }
+                          className="accent-emerald-600"
+                        />
+                        Wajib
+                      </label>
+                      <button
+                        onClick={() => setRules((rs) => rs.filter((_, i) => i !== ruleIdx))}
+                        title="Hapus field"
+                        className="text-red-500 hover:text-red-700 text-xs font-semibold px-1.5"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {rule.patterns.map((pattern, patIdx) => (
+                      <div key={patIdx} className="flex items-start gap-2">
+                        <textarea
+                          value={pattern}
+                          onChange={(e) =>
+                            setRules((rs) =>
+                              rs.map((r, i) =>
+                                i === ruleIdx
+                                  ? { ...r, patterns: r.patterns.map((p, j) => (j === patIdx ? e.target.value : p)) }
+                                  : r,
+                              ),
+                            )
+                          }
+                          rows={2}
+                          placeholder={`Regex #${patIdx + 1}, mis. NIK[ \\\\t]*[:\\\\-]*(\\\\d{16})`}
+                          className="flex-1 px-2.5 py-1.5 text-xs font-mono bg-white border border-slate-200 rounded-md resize-y focus:outline-none focus:border-emerald-500"
+                        />
+                        {rule.patterns.length > 1 && (
+                          <button
+                            onClick={() =>
+                              setRules((rs) =>
+                                rs.map((r, i) =>
+                                  i === ruleIdx ? { ...r, patterns: r.patterns.filter((_, j) => j !== patIdx) } : r,
+                                ),
+                              )
+                            }
+                            title="Hapus pattern"
+                            className="text-slate-400 hover:text-red-600 text-xs font-semibold px-1 mt-1"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() =>
+                        setRules((rs) =>
+                          rs.map((r, i) => (i === ruleIdx ? { ...r, patterns: [...r.patterns, ""] } : r)),
+                        )
+                      }
+                      className="self-start text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 mt-auto pt-0.5"
+                    >
+                      + Tambah pattern fallback
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setRules((rs) => [...rs, { key: "", required: false, patterns: [""] }])}
+                className="w-full mt-3 py-2 text-xs font-semibold text-emerald-700 border border-dashed border-emerald-300 hover:bg-emerald-50 rounded-lg transition-colors"
+              >
+                + Tambah Field
+              </button>
             </div>
           </div>
           <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">

@@ -4,8 +4,71 @@ Memproses teks mentah hasil OCR menjadi field terstruktur (NIK, Nama, dll).
 Dilengkapi penanda TODO agar mudah disesuaikan ketika format dokumen sudah ditentukan.
 """
 
+import json
 import re
 from typing import List, Dict, Any
+
+# Batas konfigurasi field (dipakai parse_configured) — mencegah konfigurasi
+# liar dari admin dan memperkecil permukaan ReDoS.
+MAX_RULES = 20
+MAX_PATTERNS_PER_RULE = 10
+MAX_PATTERN_LEN = 500
+
+
+def parse_field_config(raw_text: str, field_config: str) -> List[Dict[str, Any]]:
+    """
+    Parser berbasis konfigurasi JSON yang dikelola via web admin
+    (ocr_document_types.fields). Format:
+      [{"key": "Nama Lengkap", "required": true,
+        "patterns": ["<regex dengan group(1)>", "<fallback>"],
+        "transform": "digits" (opsional)}]
+    Pattern pertama yang cocok menang; regex dikompilasi case-insensitive.
+    Melempar ValueError jika konfigurasi tidak valid (pemanggil wajib fallback
+    ke parser bawaan).
+    """
+    rules = json.loads(field_config)
+    if not isinstance(rules, list):
+        raise ValueError("field_config harus berupa array JSON")
+    if len(rules) > MAX_RULES:
+        raise ValueError(f"terlalu banyak field (maks {MAX_RULES})")
+
+    fields: List[Dict[str, Any]] = []
+    for rule in rules:
+        if not isinstance(rule, dict) or not str(rule.get("key", "")).strip():
+            raise ValueError("setiap rule butuh 'key'")
+        patterns = rule.get("patterns") or []
+        if not isinstance(patterns, list) or len(patterns) > MAX_PATTERNS_PER_RULE:
+            raise ValueError(f"rule {rule['key']!r}: patterns tidak valid")
+        compiled = []
+        for p in patterns:
+            if not isinstance(p, str) or not p.strip():
+                raise ValueError(f"rule {rule['key']!r}: pattern kosong")
+            if len(p) > MAX_PATTERN_LEN:
+                raise ValueError(f"rule {rule['key']!r}: pattern terlalu panjang")
+            try:
+                compiled.append(re.compile(p, re.IGNORECASE))
+            except re.error as exc:
+                raise ValueError(f"rule {rule['key']!r}: regex tidak valid ({exc})")
+
+        value = ""
+        for pattern in compiled:
+            match = pattern.search(raw_text)
+            if match:
+                value = (match.group(1) if match.groups() else match.group(0)).strip()
+                break
+        if value:
+            value = value.rstrip(",.-")
+            if rule.get("transform") == "digits":
+                value = re.sub(r"[^\d+]", "", value)
+
+        fields.append({
+            "key": str(rule["key"]).strip(),
+            "value": value,
+            "confidence": 88.0 if value else 40.0,
+            "is_required": bool(rule.get("required", False)),
+        })
+    return fields
+
 
 def parse_document(raw_text: str, doc_type: str = "generic", blocks: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """
@@ -51,11 +114,15 @@ def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) 
         "is_required": True,
     })
 
-    # 2. Nama — label "Nama", dibatasi satu baris agar tidak menelan baris berikutnya
-    nama_match = re.search(r'Nama\s*(?:Pasien)?\s*[:\-]\s*([A-Za-z][^\n\r:]+)', raw_text, re.IGNORECASE)
+    # 2. Nama — label "Nama"/"Nama Pasien"/"Nama Lengkap", pemisah titik dua,
+    #    strip, atau spasi; dibatasi satu baris agar tidak menelan baris berikutnya
+    nama_match = re.search(
+        r'Nama(?:\s+(?:Pasien|Lengkap))?(?:[ \t]*[:\-][ \t]*|[ \t]+)([A-Za-z][^\n\r:]+)',
+        raw_text, re.IGNORECASE)
     nama_val = nama_match.group(1).strip().rstrip(",.-") if nama_match else ""
     fields.append({
-        "key": "Nama",
+        # Key = label persis di form admin /admin/pasien (dipakai autofill ekstensi).
+        "key": "Nama Lengkap",
         "value": nama_val,
         "confidence": 92.0 if nama_val else 50.0,
         "is_required": True,
@@ -81,8 +148,8 @@ def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) 
         "is_required": False,
     })
 
-    # 5. Alamat — label "Alamat", satu baris
-    alamat_match = re.search(r'Alamat\s*[:\-]\s*([^\n\r]+)', raw_text, re.IGNORECASE)
+    # 5. Alamat — label "Alamat", satu baris (pemisah titik dua/strip/spasi)
+    alamat_match = re.search(r'Alamat(?:[ \t]*[:\-][ \t]*|[ \t]+)([^\n\r]+)', raw_text, re.IGNORECASE)
     alamat_val = alamat_match.group(1).strip() if alamat_match else ""
     fields.append({
         "key": "Alamat",
@@ -93,7 +160,7 @@ def parse_registrasi_pasien(raw_text: str, blocks: List[Dict[str, Any]] = None) 
 
     # 6. No. Telepon — label dulu, lalu pola nomor HP Indonesia
     telp_match = re.search(
-        r'(?:No\.?\s*)?(?:Telepon|Telp(?:on)?|HP|WA)\s*[:\-]?\s*(\+62[\d\s\-]{8,14}|08[\d\s\-]{8,12})',
+        r'(?:No\.?\s*)?(?:Telepon|Telp(?:on)?|HP|WA)(?:[ \t]*[:\-][ \t]*|[ \t]+)(\+62[\d\s\-]{8,14}|08[\d\s\-]{8,12})',
         raw_text, re.IGNORECASE) \
         or re.search(r'\b(08\d{8,12}|\+628\d{7,13})\b', raw_text)
     telp_val = telp_match.group(1).replace(" ", "").replace("-", "") if telp_match else ""

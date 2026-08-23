@@ -3,19 +3,22 @@ package handler
 import (
 	"net/http"
 
+	"github.com/hideffrand/rsudtangsel/server/internal/repository"
 	"github.com/hideffrand/rsudtangsel/server/internal/service"
 	"github.com/hideffrand/rsudtangsel/server/internal/utils"
 )
 
 // OCRHandler handles HTTP requests for OCR document extraction.
 type OCRHandler struct {
-	ocrSvc *service.OCRService
+	ocrSvc    *service.OCRService
+	docTypeRepo *repository.OCRDocumentTypeRepository
 }
 
 // NewOCRHandler creates a new OCRHandler instance.
-func NewOCRHandler(ocrSvc *service.OCRService) *OCRHandler {
+func NewOCRHandler(ocrSvc *service.OCRService, docTypeRepo *repository.OCRDocumentTypeRepository) *OCRHandler {
 	return &OCRHandler{
-		ocrSvc: ocrSvc,
+		ocrSvc:    ocrSvc,
+		docTypeRepo: docTypeRepo,
 	}
 }
 
@@ -45,7 +48,15 @@ func (h *OCRHandler) Extract(w http.ResponseWriter, r *http.Request) {
 		docType = "generic"
 	}
 
-	result, err := h.ocrSvc.Extract(header, docType)
+	// Ambil konfigurasi field (aturan regex JSON) dari master data jenis
+	// dokumen; dikirim apa adanya ke microservice OCR. Tanpa baris/kolom kosong,
+	// Python memakai parser bawaannya.
+	fieldConfig := ""
+	if docTypeRow, err := h.docTypeRepo.FindByID(docType); err == nil && docTypeRow != nil {
+		fieldConfig = docTypeRow.Fields
+	}
+
+	result, err := h.ocrSvc.Extract(header, docType, fieldConfig)
 	if err != nil {
 		utils.ErrorResponse(w, http.StatusBadGateway, err.Error())
 		return

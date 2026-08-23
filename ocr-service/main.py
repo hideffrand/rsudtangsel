@@ -4,6 +4,7 @@ Endpoint untuk menerima upload file gambar/dokumen dan mengekstrak teks mengguna
 """
 
 import os
+import json
 import time
 import logging
 from typing import Optional, List, Dict, Any
@@ -12,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ocr_engine import extract_text_from_image_bytes, get_ocr_instance
-from doc_parser import parse_document
+from doc_parser import parse_document, parse_field_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -76,6 +77,7 @@ async def health_check():
 async def extract_ocr(
     file: UploadFile = File(..., description="File gambar dokumen (JPG, PNG, WebP, PDF)"),
     doc_type: Optional[str] = Form("generic", description="Tipe dokumen: ktp, bpjs, rujukan, resep, atau generic"),
+    field_config: Optional[str] = Form(None, description="Konfigurasi field JSON dari ocr_document_types.fields (dikelola web admin)"),
 ):
     """
     Menerima file gambar via multipart/form-data, menjalankan OCR CnOCR,
@@ -104,8 +106,16 @@ async def extract_ocr(
         avg_confidence = ocr_result.get("avg_confidence", 0.0)
         blocks = ocr_result.get("blocks", [])
 
-        # 2. Parsing field spesifik dokumen
-        extracted_fields = parse_document(raw_text=raw_text, doc_type=doc_type, blocks=blocks)
+        # 2. Parsing field: konfigurasi dari web admin (field_config) menang;
+        #    jika tidak ada / tidak valid, fallback ke parser bawaan per doc_type.
+        extracted_fields = None
+        if field_config:
+            try:
+                extracted_fields = parse_field_config(raw_text=raw_text, field_config=field_config)
+            except (ValueError, json.JSONDecodeError) as exc:
+                logger.warning(f"field_config tidak valid, memakai parser bawaan: {exc}")
+        if extracted_fields is None:
+            extracted_fields = parse_document(raw_text=raw_text, doc_type=doc_type or "generic", blocks=blocks)
 
         process_time_ms = round((time.time() - start_time) * 1000, 2)
         logger.info(f"Selesai memproses OCR '{file.filename}' dalam {process_time_ms} ms (avg confidence: {avg_confidence}%)")

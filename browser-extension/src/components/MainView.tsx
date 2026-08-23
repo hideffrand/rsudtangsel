@@ -371,7 +371,7 @@ export function MainView() {
                   <tr style={{ textAlign: "left", color: "var(--muted-foreground)" }}>
                     <th style={{ padding: "4px 6px" }}>key</th>
                     <th style={{ padding: "4px 6px" }}>value</th>
-                    <th style={{ padding: "4px 6px" }}>data-copilot</th>
+                    <th style={{ padding: "4px 6px" }}>data-copilot / label</th>
                     <th style={{ padding: "4px 6px" }}>status</th>
                   </tr>
                 </thead>
@@ -384,10 +384,14 @@ export function MainView() {
                       <td
                         style={{
                           padding: "4px 6px",
-                          color: o.filled ? "#15803d" : o.found ? "#b45309" : "#b91c1c",
+                          color: o.filled ? "#15803d" : o.match ? "#b45309" : "#b91c1c",
                         }}
                       >
-                        {o.filled ? "terisi" : o.found ? "ditemukan, tidak terisi" : "tidak ada di halaman"}
+                        {o.filled
+                          ? `terisi (${o.match})`
+                          : o.match
+                            ? "ditemukan, tidak terisi"
+                            : "tidak ada di halaman"}
                       </td>
                     </tr>
                   ))}

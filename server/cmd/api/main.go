@@ -85,7 +85,7 @@ func main() {
 
 	// --- OCR proxy (forwards uploads to the Python OCR microservice) ---
 	ocrSvc := service.NewOCRService()
-	ocrHandler := handler.NewOCRHandler(ocrSvc)
+	ocrHandler := handler.NewOCRHandler(ocrSvc, ocrDocumentTypeRepo)
 
 	// =========================================================
 	// Route registration

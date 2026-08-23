@@ -74,16 +74,58 @@ var medicalPackages = []catalogService{
 }
 
 // ocrDocumentTypes adalah master data jenis dokumen OCR (slug id = doc_type yang
-// dikirim ke microservice OCR). fields berisi daftar field ekstraksi.
+// dikirim ke microservice OCR). fields berisi konfigurasi ekstraksi JSON:
+// [{"key":"<label form>","required":bool,"patterns":["<regex group(1)>", ...],"transform"?}]
+// Pattern pertama yang cocok menang; regex case-insensitive; "transform":"digits"
+// menghapus karakter non-digit dari hasil. Diteruskan Go ke microservice OCR
+// sebagai form field "field_config".
 type catalogOCRDocumentType struct {
 	id     string
 	name   string
 	fields string
 }
 
+const registrasiPasienFields = `[
+  {"key": "NIK", "required": true, "patterns": [
+    "NIK[ \\t]*[:\\- \\t]*(\\d{16})",
+    "\\b(3[0-9]{15}|[0-9]{16})\\b"
+  ]},
+  {"key": "Nama Lengkap", "required": true, "patterns": [
+    "Nama(?:\\s+(?:Pasien|Lengkap))?(?:[ \\t]*[:\\-][ \\t]*|[ \\t]+)([A-Za-z][^\\n\\r:]+)"
+  ]},
+  {"key": "Umur", "required": false, "patterns": [
+    "(?:Umur|Usia)[ \\t]*[:\\-]?[ \\t]*(\\d{1,3})(?:[ \\t]*(?:tahun|th|thn))?"
+  ]},
+  {"key": "Jenis Kelamin", "required": false, "patterns": [
+    "(Laki-?\\s?laki|Perempuan)"
+  ]},
+  {"key": "Alamat", "required": false, "patterns": [
+    "Alamat(?:[ \\t]*[:\\-][ \\t]*|[ \\t]+)([^\\n\\r]+)"
+  ]},
+  {"key": "No. Telepon", "required": false, "transform": "digits", "patterns": [
+    "(?:No\\.?\\s*)?(?:Telepon|Telp(?:on)?|HP|WA)(?:[ \\t]*[:\\-][ \\t]*|[ \\t]+)(\\+62[\\d\\s\\-]{8,14}|08[\\d\\s\\-]{8,12})",
+    "\\b(08\\d{8,12}|\\+628\\d{7,13})\\b"
+  ]}
+]`
+
+const inventoryFields = `[
+  {"key": "Nama Barang", "required": true, "patterns": [
+    "Nama\\s*Barang(?:[ \\t]*[:\\-][ \\t]*|[ \\t]+)([^\\n\\r]+)"
+  ]},
+  {"key": "Kode Barang", "required": false, "patterns": [
+    "Kode\\s*Barang(?:[ \\t]*[:\\-][ \\t]*|[ \\t]+)([^\\n\\r]+)"
+  ]},
+  {"key": "Jumlah", "required": false, "patterns": [
+    "Jumlah(?:[ \\t]*[:\\-][ \\t]*|[ \\t]+)(\\d+)"
+  ]},
+  {"key": "Lokasi", "required": false, "patterns": [
+    "Lokasi(?:[ \\t]*[:\\-][ \\t]*|[ \\t]+)([^\\n\\r]+)"
+  ]}
+]`
+
 var ocrDocumentTypes = []catalogOCRDocumentType{
-	{"registrasi-pasien", "Registrasi Pasien", "NIK, Nama, Umur, Jenis Kelamin, Alamat, No. Telepon"},
-	{"inventory", "Inventory", "Nama Barang, Kode Barang, Jumlah, Lokasi"},
+	{"registrasi-pasien", "Registrasi Pasien", registrasiPasienFields},
+	{"inventory", "Inventory", inventoryFields},
 }
 
 func main() {

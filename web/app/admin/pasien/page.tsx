@@ -68,7 +68,7 @@ export default function AdminPasienPage() {
               id="pasien-nama"
               label="Nama Lengkap"
               required
-              data-copilot="nama"
+              data-copilot="namalengkap"
               value={form.nama}
               onChange={(e) => setField("nama", e.target.value)}
               placeholder="Sesuai identitas"

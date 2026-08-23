@@ -51,8 +51,10 @@ func NewOCRService() *OCRService {
 	}
 }
 
-// Extract forwards the uploaded image file and docType to the Python OCR microservice.
-func (s *OCRService) Extract(fileHeader *multipart.FileHeader, docType string) (*OcrExtractResponse, error) {
+// Extract forwards the uploaded image file, docType, and the doc type's field
+// configuration (JSON rules from ocr_document_types.fields) to the Python OCR
+// microservice.
+func (s *OCRService) Extract(fileHeader *multipart.FileHeader, docType string, fieldConfig string) (*OcrExtractResponse, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
@@ -75,6 +77,12 @@ func (s *OCRService) Extract(fileHeader *multipart.FileHeader, docType string) (
 	if docType != "" {
 		if err := writer.WriteField("doc_type", docType); err != nil {
 			return nil, fmt.Errorf("failed to write doc_type field: %w", err)
+		}
+	}
+
+	if fieldConfig != "" {
+		if err := writer.WriteField("field_config", fieldConfig); err != nil {
+			return nil, fmt.Errorf("failed to write field_config field: %w", err)
 		}
 	}
 
