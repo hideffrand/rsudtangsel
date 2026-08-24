@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 	"os"
 	"strings"
 
@@ -138,7 +139,25 @@ func main() {
 	}
 	serverAddr := ":" + port
 
-	fmt.Printf("Server running on http://localhost%s\n", serverAddr)
+	c := "\033[36m"
+	g := "\033[32m"
+	w := "\033[37m"
+	bold := "\033[1m"
+	dim := "\033[2m"
+	rst := "\033[0m"
+	fmt.Printf(`
+%s╭─────────────────────────────────────────────╮%s
+%s│  🏥 RSU Tangsel API                          │%s
+%s│  ➜  %shttp://localhost%s%s%s              │%s
+%s│  ⏱  %s%s%s                       │%s
+%s╰─────────────────────────────────────────────╯%s
+`,
+		c, rst,
+		c, rst,
+		c, bold+g, w+bold, serverAddr, rst, rst,
+		c, dim, time.Now().Format("Mon, 02 Jan 2006 15:04:05"), rst, rst,
+		c, rst,
+	)
 	log.Fatal(http.ListenAndServe(serverAddr, rootHandler))
 }
 
