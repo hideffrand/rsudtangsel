@@ -24,6 +24,7 @@ import {
 } from "@/services/queue";
 import { getDashboardStats, type DashboardStats } from "@/services/dashboard";
 import { StatCard } from "@/components/admin/stat-card";
+import { toast } from "@/components/ui/toast";
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   Waiting: { label: "Menunggu", cls: "bg-amber-100 text-amber-700" },
@@ -59,7 +60,10 @@ export default function AdminDashboardPage() {
       setQueue(a.slice(0, 8));
       setLastUpdated(new Date());
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Gagal memuat data.");
+      const msg = err instanceof Error ? err.message : "Gagal memuat data.";
+      setError(msg);
+      // Polling tiap 30 detik — error hanya untuk refresh manual, bukan silent poll.
+      if (!silent) toast.error(`Gagal memuat data dashboard: ${msg}`);
     } finally {
       setLoadingStats(false);
       setLoadingAntrian(false);
@@ -81,8 +85,9 @@ export default function AdminDashboardPage() {
       setQueue((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: updated.status } : a))
       );
-    } catch {
-      // silent
+      toast.success("Pasien dipanggil.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Gagal memanggil pasien.");
     } finally {
       setActionLoading(null);
     }
@@ -95,8 +100,9 @@ export default function AdminDashboardPage() {
       setQueue((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: updated.status } : a))
       );
-    } catch {
-      // silent
+      toast.info("Pasien dilewati.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Gagal melewati pasien.");
     } finally {
       setActionLoading(null);
     }

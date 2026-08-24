@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/ui/modal";
+import { toast } from "@/components/ui/toast";
 import {
   type OCRDocumentType,
   getOCRDocumentTypes,
@@ -95,6 +96,7 @@ export default function AdminJenisDokumenOCRPage() {
     } catch (err) {
       console.error(err);
       setLoadError("Gagal memuat data jenis dokumen OCR dari server. Silakan coba lagi.");
+      toast.error("Gagal memuat data jenis dokumen OCR dari server.");
     } finally {
       setIsLoading(false);
     }
@@ -171,9 +173,16 @@ export default function AdminJenisDokumenOCRPage() {
         setDocTypes((prev) => [...prev, created]);
       }
       setIsFormOpen(false);
+      toast.success(
+        editingType
+          ? `Jenis dokumen "${form.name.trim()}" berhasil diperbarui.`
+          : `Jenis dokumen "${form.name.trim()}" berhasil ditambahkan.`,
+      );
     } catch (err) {
       console.error(err);
-      setFormError("Gagal menyimpan jenis dokumen OCR. Silakan coba lagi.");
+      const msg = "Gagal menyimpan jenis dokumen OCR. Silakan coba lagi.";
+      setFormError(msg);
+      toast.error(err instanceof Error && err.message ? err.message : msg);
     } finally {
       setIsSaving(false);
     }
@@ -186,9 +195,12 @@ export default function AdminJenisDokumenOCRPage() {
       await deleteOCRDocumentType(deleteItem.id);
       setDocTypes((prev) => prev.filter((d) => d.id !== deleteItem.id));
       setDeleteItem(null);
+      toast.success(`Jenis dokumen "${deleteItem.name}" berhasil dihapus.`);
     } catch (err) {
       console.error(err);
-      setFormError("Gagal menghapus jenis dokumen OCR. Silakan coba lagi.");
+      const msg = "Gagal menghapus jenis dokumen OCR. Silakan coba lagi.";
+      setFormError(msg);
+      toast.error(err instanceof Error && err.message ? err.message : msg);
     } finally {
       setIsSaving(false);
     }

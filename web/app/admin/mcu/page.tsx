@@ -13,6 +13,7 @@ import {
   type PackageBookingItem,
 } from "@/services/packageBookings";
 import { Dialog } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/toast";
 import { ClipboardList } from "lucide-react";
 
 const BOOKING_STATUS: Record<string, { label: string; cls: string }> = {
@@ -53,7 +54,10 @@ export default function McuAdminPage() {
       });
       setBookings(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Gagal memuat data booking paket.");
+      const msg =
+        err instanceof Error ? err.message : "Gagal memuat data booking paket.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -77,8 +81,17 @@ export default function McuAdminPage() {
       setBookings((prev) =>
         prev.map((b) => (b.id === confirm.id ? updated : b))
       );
-    } catch {
-      // silent
+      toast.success(
+        confirm.action === "confirm"
+          ? `Booking ${confirm.name} berhasil dikonfirmasi.`
+          : `Booking ${confirm.name} berhasil dibatalkan.`,
+      );
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Aksi gagal. Silakan coba lagi.",
+      );
     } finally {
       setActionLoading(false);
       setConfirm(null);

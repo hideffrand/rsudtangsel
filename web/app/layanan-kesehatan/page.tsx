@@ -7,6 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Search, X, Check, ChevronRight } from "lucide-react";
 import { medicalPackagesApi } from "@/services/medicalPackages";
+import { toast } from "@/components/ui/toast";
 import { HealthAccessSection } from "@/components/sections/health-access-section";
 
 type CatalogCategory = "mcu" | "lab" | "radiologi";
@@ -95,7 +96,9 @@ function LayananKesehatanContent() {
         );
       setItems(list);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Gagal memuat katalog layanan.");
+      const msg = err instanceof Error ? err.message : "Gagal memuat katalog layanan.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

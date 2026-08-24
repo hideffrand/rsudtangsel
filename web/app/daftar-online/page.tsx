@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { useToast } from "@/components/ui/toast";
+import { useToast, toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import {
   ClipboardList,
@@ -206,7 +206,9 @@ export default function DaftarOnlinePage() {
       setMasterDataError(
         "Gagal memuat data poli & dokter dari server. Pastikan koneksi tersedia lalu coba lagi."
       );
-    } finally {
+      toast.error(
+        "Gagal memuat data poli & dokter dari server. Periksa koneksi Anda."
+      );    } finally {
       setLoadingData(false);
     }
   }, []);

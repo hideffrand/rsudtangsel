@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Dialog } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/toast";
 import {
   getUsers,
   createUser,
@@ -89,7 +90,9 @@ export default function AdminUsersPage() {
     try {
       setUsers(await getUsers());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memuat data pengguna.");
+      const msg = err instanceof Error ? err.message : "Gagal memuat data pengguna.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -126,8 +129,11 @@ export default function AdminUsersPage() {
       setUsers((prev) => [created, ...prev]);
       setIsAddOpen(false);
       setForm({ username: "", email: "", password: "", role: "backoffice" });
+      toast.success(`Akun ${created.username} berhasil dibuat.`);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal membuat akun.");
+      const msg = err instanceof Error ? err.message : "Gagal membuat akun.";
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -159,8 +165,11 @@ export default function AdminUsersPage() {
       });
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
       setEditItem(null);
+      toast.success(`Akun ${updated.username} berhasil diperbarui.`);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Gagal memperbarui akun.");
+      const msg = err instanceof Error ? err.message : "Gagal memperbarui akun.";
+      setEditError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -174,15 +183,21 @@ export default function AdminUsersPage() {
       if (confirm.action === "delete") {
         await deleteUser(confirm.id);
         setUsers((prev) => prev.filter((u) => u.id !== confirm.id));
+        toast.success(`Akun ${confirm.username} berhasil dihapus.`);
       } else {
         const target = users.find((u) => u.id === confirm.id);
         if (target) {
           updated = await updateUser(confirm.id, { is_active: !target.is_active });
           setUsers((prev) => prev.map((u) => (u.id === updated!.id ? updated! : u)));
+          toast.success(
+            `Akun ${updated!.username} berhasil ${updated!.is_active ? "diaktifkan" : "dinonaktifkan"}.`,
+          );
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Aksi gagal. Coba lagi.");
+      const msg = err instanceof Error ? err.message : "Aksi gagal. Coba lagi.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setConfirm(null);
     }

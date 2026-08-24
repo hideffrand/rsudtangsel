@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/lib/admin-auth-context";
+import { toast } from "@/components/ui/toast";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
 export default function AdminLoginPage() {
@@ -32,9 +33,12 @@ export default function AdminLoginPage() {
     setLoading(true);
     try {
       await login(username, password);
+      toast.success("Login berhasil. Selamat datang kembali!");
       router.push("/admin");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login gagal. Coba lagi.");
+      const msg = err instanceof Error ? err.message : "Login gagal. Coba lagi.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

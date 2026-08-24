@@ -8,6 +8,7 @@ import { Input, Select } from "@/components/ui/input";
 import { doctorsApi } from "@/services/doctors";
 import { poliApi, type Poli } from "@/services/poli";
 import { schedulesApi, type DoctorSchedule } from "@/services/schedules";
+import { toast } from "@/components/ui/toast";
 
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DISPLAY_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -52,7 +53,9 @@ export default function JadwalDokterPage() {
       setSchedules(scheduleList);
       setPolis(poliList);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Gagal memuat jadwal dokter.");
+      const msg = err instanceof Error ? err.message : "Gagal memuat jadwal dokter.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

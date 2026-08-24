@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/modal";
 import { poliApi, type Poli } from "@/services/poli";
 import { doctorsApi, type Doctor } from "@/services/doctors";
 import { schedulesApi, type DoctorSchedule, type SchedulePayload } from "@/services/schedules";
+import { toast } from "@/components/ui/toast";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_LABEL: Record<string, string> = {
@@ -66,6 +67,7 @@ export default function AdminJadwalDokterPage() {
     } catch (err) {
       console.error(err);
       setLoadError("Gagal memuat data jadwal dari server. Silakan coba lagi.");
+      toast.error("Gagal memuat data jadwal dari server.");
     } finally {
       setIsLoading(false);
     }
@@ -176,9 +178,16 @@ export default function AdminJadwalDokterPage() {
         setSchedules((prev) => [created, ...prev]);
       }
       setIsFormOpen(false);
+      toast.success(
+        editingSchedule
+          ? "Slot praktik berhasil diperbarui."
+          : "Slot praktik berhasil ditambahkan.",
+      );
     } catch (err) {
       console.error(err);
-      setFormError("Gagal menyimpan slot praktik. Silakan coba lagi.");
+      const msg = "Gagal menyimpan slot praktik. Silakan coba lagi.";
+      setFormError(msg);
+      toast.error(err instanceof Error && err.message ? err.message : msg);
     } finally {
       setIsSaving(false);
     }
@@ -191,9 +200,12 @@ export default function AdminJadwalDokterPage() {
       await schedulesApi.remove(deleteItem.id);
       setSchedules((prev) => prev.filter((s) => s.id !== deleteItem.id));
       setDeleteItem(null);
+      toast.success("Slot praktik berhasil dihapus.");
     } catch (err) {
       console.error(err);
-      setFormError("Gagal menghapus slot praktik. Silakan coba lagi.");
+      const msg = "Gagal menghapus slot praktik. Silakan coba lagi.";
+      setFormError(msg);
+      toast.error(err instanceof Error && err.message ? err.message : msg);
     } finally {
       setIsSaving(false);
     }

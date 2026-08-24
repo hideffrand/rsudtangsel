@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
+import { toast } from "@/components/ui/toast";
 import {
   medicalPackagesApi,
   type MedicalPackage,
@@ -74,6 +75,7 @@ export default function AdminLayananKesehatanPage() {
     } catch (err) {
       console.error(err);
       setLoadError("Gagal memuat katalog layanan dari server. Silakan coba lagi.");
+      toast.error("Gagal memuat katalog layanan dari server.");
     } finally {
       setIsLoading(false);
     }
@@ -145,11 +147,16 @@ export default function AdminLayananKesehatanPage() {
     setFormError(null);
     try {
       const payload = { type: kind, name, description: form.description, price, is_active: form.isActive, items };
-      if (editing) {
-        await medicalPackagesApi.update(editing.id, payload);
-      } else {
-        await medicalPackagesApi.create(payload);
-      }
+      await toast.promise(
+        editing
+          ? medicalPackagesApi.update(editing.id, payload)
+          : medicalPackagesApi.create(payload),
+        {
+          loading: "Menyimpan data...",
+          success: editing ? `Paket "${name}" berhasil diperbarui.` : `Paket "${name}" berhasil ditambahkan.`,
+          error: (e) => e.message || "Gagal menyimpan data. Silakan coba lagi.",
+        },
+      );
       await reloadKind();
       setIsFormOpen(false);
     } catch (err) {
@@ -164,7 +171,11 @@ export default function AdminLayananKesehatanPage() {
     if (!deleteItem) return;
     setIsSaving(true);
     try {
-      await medicalPackagesApi.remove(deleteItem.id);
+      await toast.promise(medicalPackagesApi.remove(deleteItem.id), {
+        loading: "Menghapus data...",
+        success: `Paket "${deleteItem.name}" berhasil dihapus.`,
+        error: (e) => e.message || "Gagal menghapus data. Silakan coba lagi.",
+      });
       await reloadKind();
       setDeleteItem(null);
     } catch (err) {
