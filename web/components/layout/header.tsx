@@ -396,20 +396,32 @@ export function Header() {
                 "Kepwal Penetapan Pola Pengelolaan Keuangan",
                 "Perwal Tupoksi",
                 "Laporan Kinerja Instansi Pemerintah (LKIP)"
-              ].map((item, idx) => (
-                <Link
-                  key={idx}
-                  href={`/profil-rsu/${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                  onClick={() => setActiveDropdown(null)}
-                  className="
-                    flex items-center gap-2 p-2.5 rounded-sm border border-border/70 bg-muted/40
-                    hover:bg-primary/10 hover:border-primary/40 text-sm font-medium text-foreground hover:text-primary
-                    transition-all
-                  "
-                >
-                  <span className="truncate">{item}</span>
-                </Link>
-              ))}
+              ].map((item, idx) => {
+                const PROFIL_ROUTES: Record<string, string> = {
+                  "Sejarah RSU Kota Tangerang Selatan": "/informasi/SejarahRSU",
+                  "Perkembangan Rumah Sakit": "/informasi/PerkembanganRumahSakit",
+                  "Penghargaan Yang Diraih": "/informasi/PenghargaanYangDiraih",
+                  "Visi & Misi": "/informasi/VisiMisi",
+                  "Maklumat Pelayanan": "/informasi/MaklumatPelayanan",
+                  "Struktur Organisasi": "/informasi/StrukturOrganisasi",
+                  "Jumlah Penanganan Pengaduan Tahun 2025": "/informasi/JumlahPenangananPengaduan",
+                  "Survey Kepuasan Masyarakat Tahun 2025": "/informasi/SurveyKepuasanMasyarakat",
+                };
+                return (
+                  <Link
+                    key={idx}
+                    href={PROFIL_ROUTES[item] ?? `/profil-rsu/${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                    onClick={() => setActiveDropdown(null)}
+                    className="
+                      flex items-center gap-2 p-2.5 rounded-sm border border-border/70 bg-muted/40
+                      hover:bg-primary/10 hover:border-primary/40 text-sm font-medium text-foreground hover:text-primary
+                      transition-all
+                    "
+                  >
+                    <span className="truncate">{item}</span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -478,11 +490,27 @@ export function Header() {
                 "Capaian Indikator Nasional Mutu 2024",
                 "Survey Kepuasan Masyarakat Tahun 2025",
                 "Jumlah Penanganan Pengaduan Tahun 2025"
-              ].map((item, idx) => (
-                <Link key={idx} href={`/profil-rsu/${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} className="py-1.5 hover:text-primary border-b border-border/40 last:border-0">
-                  • {item}
-                </Link>
-              ))}
+              ].map((item, idx) => {
+                const PROFIL_ROUTES: Record<string, string> = {
+                  "Sejarah RSU Kota Tangerang Selatan": "/informasi/SejarahRSU",
+                  "Perkembangan Rumah Sakit": "/informasi/PerkembanganRumahSakit",
+                  "Penghargaan Yang Diraih": "/informasi/PenghargaanYangDiraih",
+                  "Visi & Misi": "/informasi/VisiMisi",
+                  "Maklumat Pelayanan": "/informasi/MaklumatPelayanan",
+                  "Struktur Organisasi": "/informasi/StrukturOrganisasi",
+                  "Jumlah Penanganan Pengaduan Tahun 2025": "/informasi/JumlahPenangananPengaduan",
+                  "Survey Kepuasan Masyarakat Tahun 2025": "/informasi/SurveyKepuasanMasyarakat",
+                };
+                return (
+                  <Link
+                    key={idx}
+                    href={PROFIL_ROUTES[item] ?? `/profil-rsu/${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                    className="py-1.5 hover:text-primary border-b border-border/40 last:border-0"
+                  >
+                    • {item}
+                  </Link>
+                );
+              })}
             </div>
           </div>
 

@@ -55,6 +55,35 @@ export default function InformasiPage() {
           </Link>
         ))}
       </div>
+
+      {/* ─── Kartu Sejarah RSU ──────────────────────────────────── */}
+      <div className="pt-4">
+        <h2 className="text-lg font-bold text-foreground mb-4">Tentang RSU Tangsel</h2>
+        <Link
+          href="/informasi/SejarahRSU"
+          className="
+            group flex flex-col justify-between p-6 border border-border rounded-lg
+            bg-background hover:bg-muted/40 hover:border-primary/50 hover:shadow-md
+            transition-all duration-200 cursor-pointer space-y-4 max-w-sm
+          "
+        >
+          <div className="space-y-3">
+            <div className="w-12 h-12 rounded-md bg-primary/10 text-primary flex items-center justify-center text-2xl border border-primary/20">
+              🏥
+            </div>
+            <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors leading-snug">
+              Sejarah RSU Kota Tangerang Selatan
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Latar belakang pendirian, perjalanan operasional sejak 2010, dan daftar direktur yang pernah menjabat di RSU Kota Tangerang Selatan.
+            </p>
+          </div>
+          <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs font-semibold text-primary">
+            <span>Buka Selengkapnya</span>
+            <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+          </div>
+        </Link>
+      </div>
     </div>
   );
 }
