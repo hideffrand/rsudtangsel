@@ -11,9 +11,9 @@
 
 | Module               | Stack                                                    | Security Artifacts                           | Notes                                      |
 | -------------------- | -------------------------------------------------------- | -------------------------------------------- | ------------------------------------------ |
-| `server/`            | Go 1.25 (sqlx, JWT, bcrypt)                              | `Dockerfile`, `go.mod/go.sum`, `migrations/` | Multi-stage + non-root ✅                   |
-| `web/`               | Next.js 16.3.1, React 19, Tailwind v4                    | `Dockerfile`, `package-lock.json`            | Non-root ✅; auth proxy via httpOnly cookie |
-| `ocr-service/`       | FastAPI + PaddleOCR/CnOCR (PyTorch)                      | `Dockerfile`, `requirements.txt`             | ⚠️ Runs as root, dependencies not pinned   |
+| `server/`            | Go 1.25 (sqlx, JWT, bcrypt)                              | `Dockerfile`, `go.mod/go.sum`, `migrations/` | Multi-stage + non-root                    |
+| `web/`               | Next.js 16.3.1, React 19, Tailwind v4                    | `Dockerfile`, `package-lock.json`            | Non-root ; auth proxy via httpOnly cookie |
+| `ocr-service/`       | FastAPI + PaddleOCR/CnOCR (PyTorch)                      | `Dockerfile`, `requirements.txt`             | Runs as root, dependencies not pinned   |
 | `mobile/`            | Expo SDK 57 (RN 0.86)                                    | `package.json` (lockfile not tracked?)       | Public client                              |
 | `browser-extension/` | MV3, Next.js 14 static export                            | `manifest.json`, `src/background.js`         | Next 14.2.35 (outdated version)            |
 | Infrastructure       | `docker-compose.yaml` (db/server/web/ocr), PostgreSQL 16 | `.env.example`                               | Weak default credentials                   |
