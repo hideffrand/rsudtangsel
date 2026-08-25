@@ -1,69 +1,84 @@
-# Rencana DevSecOps — RSUD Tangsel Monorepo
+# DevSecOps Plan — RSUD Tangsel Monorepo
 
-> Disusun: Agustus 2026 · Basis: analisa repo per commit `75376f0`
-> Prioritas utama: **Trivy v0.74.0** (sudah terpasang di `/usr/local/bin/trivy`)
-
----
-
-## 1. Ringkasan Kondisi Saat Ini
-
-### 1.1 Inventaris permukaan serangan
-
-| Modul | Stack | Artefak keamanan | Catatan |
-|---|---|---|---|
-| `server/` | Go 1.25 (sqlx, JWT, bcrypt) | `Dockerfile`, `go.mod/go.sum`, `migrations/` | Multi-stage + non-root ✅ |
-| `web/` | Next.js 16.3.1, React 19, Tailwind v4 | `Dockerfile`, `package-lock.json` | Non-root ✅; proxy auth via httpOnly cookie |
-| `ocr-service/` | FastAPI + PaddleOCR/CnOCR (PyTorch) | `Dockerfile`, `requirements.txt` | ⚠️ root user, dep tak di-pin |
-| `mobile/` | Expo SDK 57 (RN 0.86) | `package.json` (tanpa lockfile tracked?) | Client publik |
-| `browser-extension/` | MV3, Next.js 14 static export | `manifest.json`, `src/background.js` | Next 14.2.35 (versi lama) |
-| Infra | `docker-compose.yaml` (db/server/web/ocr), Postgres 16 | `.env.example` | Default kredensial lemah |
-
-Data yang diproses = **PII pasien** (NIK, nama, dokumen KTP/BPJS via OCR) → selain praktik DevSecOps umum, wajib memperhatikan **UU PDP No. 27/2022** dan standar RS (Permenkes).
-
-### 1.2 Temuan cepat (dari analisa repo)
-
-1. **Tidak ada CI/CD sama sekali** (`/github` kosong) → semua verifikasi masih manual.
-2. **Binary basi ter-commit**: `server/api` (8,8 MB) masuk ke git history — hapus dari tracking.
-3. **Default kredensial lemah** di `docker-compose.yaml` / `.env.example`: `ADMIN_PASSWORD=admin123`, `POSTGRES_PASSWORD=rsudtangsel`, `JWT_SECRET=please-change-me-in-production`.
-4. **`ocr-service/Dockerfile`**: berjalan sebagai **root**, base image tak di-pin digest, `requirements.txt` pakai range `>=` tanpa batas atas (risiko supply chain: `paddlepaddle`, `opencv-python`, `ollama`, dll).
-5. `web/Dockerfile` menyalin **seluruh `node_modules`** ke runtime (permukaan CVE lebih besar daripada standalone output).
-6. Tidak ada secret scanning, SCA gating, atau image scanning otomatis apa pun.
-7. Tidak ada lockfile ter-commit di `mobile/` dan `browser-extension/`? (perlu diverifikasi — lockfile wajib agar build reproducible).
-8. Hal positif yang sudah ada: envelope response konsisten, middleware `auth`/`cors`/`rate_limit`/`audit` di `server/internal/middleware/`, admin session httpOnly cookie (tidak ada token di localStorage web).
+> Prepared: August 2026 · Based on repository analysis at commit `75376f0`
+> Main priority: **Trivy v0.74.0** (already installed at `/usr/local/bin/trivy`)
 
 ---
 
-## 2. Prioritas #1 — Trivy (Fase 0, minggu ini)
+## 1. Current State Overview
 
-Trivy v0.74.0 sudah terinstall. Trivy mencakup 4 scanner yang kita butuhkan sekaligus:
-`vuln` (CVE dependensi), `misconfig` (Dockerfile/Terraform/K8s), `secret` (kredensial bocor), `license`.
+### 1.1 Attack Surface Inventory
 
-### 2.1 Baseline scan — jalankan sekarang (lokal)
+| Module               | Stack                                                    | Security Artifacts                           | Notes                                      |
+| -------------------- | -------------------------------------------------------- | -------------------------------------------- | ------------------------------------------ |
+| `server/`            | Go 1.25 (sqlx, JWT, bcrypt)                              | `Dockerfile`, `go.mod/go.sum`, `migrations/` | Multi-stage + non-root                    |
+| `web/`               | Next.js 16.3.1, React 19, Tailwind v4                    | `Dockerfile`, `package-lock.json`            | Non-root ; auth proxy via httpOnly cookie |
+| `ocr-service/`       | FastAPI + PaddleOCR/CnOCR (PyTorch)                      | `Dockerfile`, `requirements.txt`             | Runs as root, dependencies not pinned   |
+| `mobile/`            | Expo SDK 57 (RN 0.86)                                    | `package.json` (lockfile not tracked?)       | Public client                              |
+| `browser-extension/` | MV3, Next.js 14 static export                            | `manifest.json`, `src/background.js`         | Next 14.2.35 (outdated version)            |
+| Infrastructure       | `docker-compose.yaml` (db/server/web/ocr), PostgreSQL 16 | `.env.example`                               | Weak default credentials                   |
+
+The processed data includes **patient PII** (national ID numbers, names, ID/BPJS documents via OCR). Therefore, in addition to standard DevSecOps practices, the project must comply with **Indonesia's Personal Data Protection Law (UU PDP No. 27/2022)** and applicable healthcare standards/regulations.
+
+### 1.2 Quick Findings from Repository Analysis
+
+1. **No CI/CD is currently implemented** (`/github` is empty) → all verification is still performed manually.
+2. **Stale binary committed to the repository:** `server/api` (8.8 MB) exists in Git history — remove it from tracking.
+3. **Weak default credentials** in `docker-compose.yaml` / `.env.example`:
+
+   * `ADMIN_PASSWORD=xxxxxx`
+   * `POSTGRES_PASSWORD=xxxxxx`
+   * `JWT_SECRET=please-change-me-in-production`
+4. **`ocr-service/Dockerfile`** runs as **root**, the base image is not pinned by digest, and `requirements.txt` uses unbounded `>=` version ranges (supply-chain risk involving packages such as `paddlepaddle`, `opencv-python`, `ollama`, etc.).
+5. `web/Dockerfile` copies the **entire `node_modules` directory** into the runtime image, increasing the CVE attack surface compared to using a standalone output.
+6. There is currently no automated secret scanning, SCA gating, or container image scanning.
+7. There is no tracked lockfile in `mobile/` and `browser-extension/`? **This must be verified** — lockfiles are required for reproducible builds.
+8. Existing positive security controls:
+
+   * Consistent response envelope
+   * `auth` / `cors` / `rate_limit` / `audit` middleware under `server/internal/middleware/`
+   * Admin sessions use httpOnly cookies
+   * Web tokens are not stored in `localStorage`
+
+---
+
+## 2. Priority #1 — Trivy (Phase 0, This Week)
+
+Trivy v0.74.0 is already installed. Trivy provides the four scanners required for the initial security baseline:
+
+* `vuln` — dependency vulnerabilities / CVEs
+* `misconfig` — Dockerfile, Terraform, Kubernetes, and configuration issues
+* `secret` — leaked credentials and secrets
+* `license` — dependency license scanning
+
+### 2.1 Baseline Scan — Run Now (Local)
 
 ```bash
-# 0) Update database vulnerability DB
+# 0) Update the vulnerability database
 trivy image --download-db-only
 
-# 1) Scan SELURUH monorepo (vuln + secret + misconfig + license)
+# 1) Scan the entire monorepo
+#    vuln + secret + misconfiguration
 trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL . > trivy-report-fs.txt
 
-# 2) Scan konfigurasi Dockerfile + docker-compose saja
+# 2) Scan Dockerfiles and docker-compose configuration
 trivy config --severity HIGH,CRITICAL .
 
-# 3) Scan image yang dipakai/dibangun compose
-docker compose -f docker-compose.yaml build   # jika belum ada image
+# 3) Scan images used/built by Compose
+docker compose -f docker-compose.yaml build   # if images do not exist yet
+
 trivy image --severity HIGH,CRITICAL \
   rsudtangsel-server rsudtangsel-web rsudtangsel-ocr postgres:16-alpine
 ```
 
-Catatan WSL: pertama kali scan image PyTorch (`rsudtangsel-ocr`) akan lambat (image multi-GB). Jalankan sekali sebagai baseline, simpan hasilnya.
+> **WSL note:** The first scan of the PyTorch-based `rsudtangsel-ocr` image may take a long time because the image is multi-GB. Run it once as a baseline and save the results.
 
-### 2.2 Kebijakan fail/gate
+### 2.2 Failure / Gating Policy
 
-Tetapkan ambang yang realistis agar gate tidak langsung merah total:
+Set a realistic threshold so that the security gate does not immediately fail the entire pipeline:
 
 ```bash
-# Gate CI: gagal bila ada CRITICAL/HIGH yang belum di-ignore
+# CI gate: fail if there are unresolved CRITICAL/HIGH findings
 trivy fs --scanners vuln,secret,misconfig \
   --severity CRITICAL,HIGH \
   --ignore-unfixed \
@@ -72,47 +87,81 @@ trivy fs --scanners vuln,secret,misconfig \
   .
 ```
 
-Buat `.trivyignore` di root untuk temuan yang sudah ditriase (isi ID CVE/GAV + alasan + tanggal review):
+Create `.trivyignore` at the repository root for findings that have already been triaged.
+
+Each ignored finding should contain:
+
+* CVE/GAV identifier
+* Reason for ignoring
+* Review date
+
+Example:
 
 ```gitignore
-# Contoh format — isi setelah baseline scan
-# CVE-2026-XXXXX, false positive pada dev-dep, review 2026-09-30
+# Example format — populate after the baseline scan
+# CVE-2026-XXXXX, false positive in dev dependency, review 2026-09-30
 ```
 
-Aturan triase: CRITICAL ≤ 7 hari diperbaiki/dimitigasi · HIGH ≤ 30 hari · MEDIUM dicatat. Setiap entri `.trivyignore` wajib punya tanggal kadaluarsa review.
+**Triage policy:**
 
-### 2.3 Otomatisasi Trivy
+* CRITICAL → remediate or mitigate within ≤ 7 days
+* HIGH → remediate or mitigate within ≤ 30 days
+* MEDIUM → document and track
 
-**(a) Pre-commit lokal (hook ringan, hanya secret + misconfig pada file yang berubah):**
+Every `.trivyignore` entry must have a review/expiration date.
 
-Simpan sebagai `scripts/pre-commit-trivy.sh` lalu `git config core.hooksPath scripts/githooks`:
+### 2.3 Trivy Automation
+
+#### (a) Local Pre-Commit Hook
+
+A lightweight hook that scans only changed files for secrets and misconfigurations:
+
+Save as `scripts/pre-commit-trivy.sh`, then configure:
+
+```bash
+git config core.hooksPath scripts/githooks
+```
 
 ```bash
 #!/usr/bin/env bash
-# Hook pre-commit: blokir secret & misconfig baru
+
+# Pre-commit hook: block new secrets and misconfigurations
 FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
 [ -z "$FILES" ] && exit 0
-trivy fs --scanners secret,misconfig --exit-code 1 --quiet $FILES
+
+trivy fs \
+  --scanners secret,misconfig \
+  --exit-code 1 \
+  --quiet \
+  $FILES
 ```
 
-**(b) GitHub Actions (Fase 3 — file `.github/workflows/security.yml`):**
+#### (b) GitHub Actions
+
+Phase 3 — create `.github/workflows/security.yml`:
 
 ```yaml
 name: security
+
 on:
   push:
     branches: [main]
   pull_request:
   schedule:
-    - cron: "0 3 * * 1"   # scan mingguan Senin
+    - cron: "0 3 * * 1" # Weekly scan every Monday
+
 permissions:
   contents: read
   security-events: write
+
 jobs:
   trivy-fs:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: fs
@@ -122,18 +171,24 @@ jobs:
           exit-code: "1"
           format: sarif
           output: trivy.sarif
+
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy.sarif
+
   trivy-images:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        ctx: [server, web]   # ocr ikut setelah build-nya dirampingkan
+        ctx: [server, web] # Add OCR after reducing its image size
+
     steps:
       - uses: actions/checkout@v4
+
       - run: docker build -t local/${{ matrix.ctx }}:${{ github.sha }} ${{ matrix.ctx }}
+
       - uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: local/${{ matrix.ctx }}:${{ github.sha }}
@@ -141,75 +196,106 @@ jobs:
           exit-code: "1"
 ```
 
-> Pin action by SHA setelah Fase 4 (supply chain hardening). Trivy versi CLI lokal (0.74.0) dan `trivy-action` bisa sedikit berbeda — samakan bila gate mulai strict.
+> Pin GitHub Actions by commit SHA after Phase 4 for supply-chain hardening. The local Trivy CLI version (`0.74.0`) and `trivy-action` may differ slightly — standardize them if the security gate becomes strict.
 
 ---
 
-## 3. Roadmap Bertahap
+## 3. Phased Roadmap
 
-### Fase 0 — Bersih-bersih + Trivy baseline *(minggu 1)*
+### Phase 0 — Cleanup + Trivy Baseline *(Week 1)*
 
-- [ ] Jalankan baseline Trivy (§2.1), simpan laporan, triase → buat `.trivyignore`.
-- [ ] Hapus `server/api` dari tracking & tambahkan ke `server/.gitignore`: `git rm --cached server/api`.
-- [ ] Ganti semua default kredensial di compose menjadi **wajib dari env tanpa fallback** (`${JWT_SECRET:?wajib diset}`), atau minimal dokumentasikan rotasi.
-- [ ] Pastikan `.env`, `*.pem`, lockfile konsisten di semua `.gitignore` modul.
-- [ ] Commit lockfile (`package-lock.json`) untuk `mobile/` dan `browser-extension/` bila belum.
+* [ ] Run the Trivy baseline scan (§2.1), save the report, perform triage, and create `.trivyignore`.
+* [ ] Remove `server/api` from Git tracking and add it to `server/.gitignore`:
+  `git rm --cached server/api`
+* [ ] Replace all default credentials in Compose with **mandatory environment variables without fallbacks**, e.g. `${JWT_SECRET:?must be set}`, or at minimum document the credential rotation process.
+* [ ] Ensure `.env`, `*.pem`, and lockfile patterns are consistently configured in all module `.gitignore` files.
+* [ ] Commit `package-lock.json` for `mobile/` and `browser-extension/` if they are currently missing.
 
-### Fase 1 — Secret & data hygiene *(minggu 2)*
+### Phase 1 — Secret & Data Hygiene *(Week 2)*
 
-- [ ] Rotasi: JWT_SECRET, password Postgres, kredensial admin (asumsikan nilai default **sudah bocor** karena pernah ada di file).
-- [ ] Aktifkan hook pre-commit §2.3(a); pertimbangkan gitleaks di CI sebagai scanner kedua.
-- [ ] Audit log: pastikan middleware `audit.go` tidak pernah mencatat NIK/token utuh (masking).
-- [ ] OCR: dokumen pasien yang di-upload jangan tertinggal di disk — verifikasi pemrosesan in-memory di `main.py`; kalau ada temp-file, tambahkan pembersihan + enkripsi at-rest.
-- [ ] Retensi: tentukan masa simpan data booking/registrasi + prosedur purge (kolom `deleted_at` / job pembersihan).
+* [ ] Rotate `JWT_SECRET`, PostgreSQL password, and admin credentials. Assume the default values are **already compromised** because they previously existed in repository files.
+* [ ] Enable the pre-commit hook from §2.3(a); consider adding Gitleaks as a second CI scanner.
+* [ ] Audit logging: ensure `audit.go` never logs complete national ID numbers or tokens. Apply masking/redaction.
+* [ ] OCR: uploaded patient documents must not remain on disk after processing. Verify in-memory processing in `main.py`; if temporary files are used, add cleanup and encryption at rest.
+* [ ] Data retention: define retention periods for booking/registration data and establish a purge procedure, such as `deleted_at` plus a cleanup job.
 
-### Fase 2 — Hardening container *(minggu 3–4)*
+### Phase 2 — Container Hardening *(Weeks 3–4)*
 
-- [ ] `ocr-service/Dockerfile`: tambah non-root user, pin base image (mis. `python:3.11-slim@sha256:...`), buang `build-essential` dari stage runtime (multi-stage), ganti `libgl1-mesa-glx` (deprecated) dengan `libgl1`.
-- [ ] `requirements.txt`: pin versi eksak (`==`) + generate `requirements.lock` via `pip-compile` (pip-tools) atau migrasi ke `uv`; hash-pinning (`--require-hashes`) bila memungkinkan.
-- [ ] `web/Dockerfile`: pakai output `standalone` Next.js supaya runtime tidak menyalin `node_modules` penuh.
-- [ ] Compose produksi: `sslmode=require` untuk Postgres (jangan `disable`), batasi port db agar tidak expose ke host, tambah `read_only: true` + `cap_drop: [ALL]` per service yang memungkinkan.
-- [ ] Re-scan semua image dengan Trivy (§2.1 langkah 3) hingga HIGH/CRITICAL bersih atau di-ignore dengan alasan.
-- [ ] Rate limit & ukuran upload OCR (15 MB) direview; tambah validasi tipe MIME file.
+* [ ] `ocr-service/Dockerfile`: add a non-root user, pin the base image by digest, e.g. `python:3.11-slim@sha256:...`, remove `build-essential` from the runtime stage using multi-stage builds, and replace deprecated `libgl1-mesa-glx` with `libgl1`.
+* [ ] `requirements.txt`: pin exact versions using `==` and generate `requirements.lock` with `pip-compile` (`pip-tools`) or migrate to `uv`; use hash pinning (`--require-hashes`) where possible.
+* [ ] `web/Dockerfile`: use Next.js `standalone` output so the runtime image does not include the entire `node_modules` directory.
+* [ ] Production Compose: use `sslmode=require` for PostgreSQL instead of `disable`, restrict database ports so they are not exposed to the host, and add `read_only: true` + `cap_drop: [ALL]` to services where applicable.
+* [ ] Re-scan all images with Trivy (§2.1, step 3) until HIGH/CRITICAL findings are resolved or explicitly ignored with documented justification.
+* [ ] Review OCR rate limiting and the 15 MB upload limit; add file MIME-type validation.
 
-### Fase 3 — Pipeline CI/CD *(bulan 2)*
+### Phase 3 — CI/CD Pipeline *(Month 2)*
 
-- [ ] Workflow PR dasar per modul: `server`: `go build ./... && go vet ./...`; `web`: `npm run lint && npx tsc --noEmit`; `browser-extension`: `npx tsc --noEmit`; `mobile`: `npx tsc --noEmit && npx expo lint`.
-- [ ] Pasang `security.yml` (§2.3b) + upload SARIF ke GitHub Security tab.
-- [ ] Mulai tulis test Go minimal untuk service kritis: `auth_service`, `user_service` (hash/bcrypt path), `ocr_document_type_service` (validasi regex — cegah ReDoS dari input admin).
-- [ ] Build image hanya dari CI (tag = git SHA), bukan dari laptop dev; push ke registry privat.
-- [ ] Environment staging: compose profile terpisah + seed anonim (JANGAN seed data pasien asli ke staging).
+* [ ] Basic PR workflow per module:
 
-### Fase 4 — Supply chain & compliance *(bulan 2–3)*
+  * `server`: `go build ./... && go vet ./...`
+  * `web`: `npm run lint && npx tsc --noEmit`
+  * `browser-extension`: `npx tsc --noEmit`
+  * `mobile`: `npx tsc --noEmit && npx expo lint`
+* [ ] Add `security.yml` (§2.3b) and upload SARIF results to the GitHub Security tab.
+* [ ] Start writing minimal Go tests for critical services:
 
-- [ ] Dependabot (`\.github/dependabot.yml`) untuk npm ×3, gomod, docker, github-actions.
-- [ ] Pin semua GitHub Actions by commit SHA.
-- [ ] `govulncheck ./...` (Go official) melengkapi Trivy; `npm audit --omit=dev` sebagai sinyal kedua.
-- [ ] Pertimbangkan signing image (cosign) + SBOM: `trivy image --format cyclonedx --output sbom.json <image>` per release.
-- [ ] UU PDP checklist: dasar pemrosesan data, perjanjian pemrosesan, hak subjek data (akses/hapus), notifikasi kebocoran ≤ 3×24 jam, DPO/kontroler record.
-- [ ] Backup & DR: dump Postgres terenkripsi terjadwal; uji restore bulanan.
-- [ ] Review akses: siapa yang punya akses prod, aktifkan 2FA GitHub, proteksi branch `main`.
+  * `auth_service`
+  * `user_service` (hash/bcrypt path)
+  * `ocr_document_type_service` (regex validation — prevent ReDoS from admin input)
+* [ ] Build container images exclusively in CI, tagged with the Git SHA, rather than building them on developer machines. Push images to a private registry.
+* [ ] Staging environment: use a separate Compose profile and anonymized seed data. **Never use real patient data in staging.**
+
+### Phase 4 — Supply Chain & Compliance *(Months 2–3)*
+
+* [ ] Configure Dependabot (`.github/dependabot.yml`) for npm ×3, Go modules, Docker, and GitHub Actions.
+* [ ] Pin all GitHub Actions to commit SHAs.
+* [ ] Run `govulncheck ./...` as the official Go vulnerability scanner alongside Trivy.
+* [ ] Use `npm audit --omit=dev` as a secondary security signal.
+* [ ] Consider image signing with Cosign and SBOM generation:
+  `trivy image --format cyclonedx --output sbom.json <image>`
+* [ ] UU PDP compliance checklist:
+
+  * Legal basis for data processing
+  * Data processing agreements
+  * Data subject access/deletion rights
+  * Breach notification within ≤ 3 × 24 hours
+  * DPO / data controller records
+* [ ] Backup & Disaster Recovery: schedule encrypted PostgreSQL dumps and perform monthly restore tests.
+* [ ] Access review: identify production-access users, enable GitHub 2FA, and protect the `main` branch.
 
 ---
 
-## 4. Metrik Keberhasilan
+## 4. Success Metrics
 
-| Metrik | Target |
-|---|---|
-| Waktu rata-rata perbaikan CRITICAL (dari laporan Trivy) | ≤ 7 hari |
-| CRITICAL/HIGH tanpa mitigasi di image produksi | 0 |
-| Secret baru masuk ke main | 0 (diblokir hook/CI) |
-| Coverage test service auth | ≥ 80% |
-| Scan rutin Trivy | tiap PR + mingguan scheduled |
-| SBOM per rilis | ya (CycloneDX) |
+| Metric                                                      | Target                           |
+| ----------------------------------------------------------- | -------------------------------- |
+| Mean time to remediate CRITICAL findings from Trivy reports | ≤ 7 days                         |
+| Unmitigated CRITICAL/HIGH findings in production images     | 0                                |
+| New secrets committed to `main`                             | 0 (blocked by hook/CI)           |
+| Auth service test coverage                                  | ≥ 80%                            |
+| Trivy scan frequency                                        | Every PR + weekly scheduled scan |
+| SBOM per release                                            | Yes (CycloneDX)                  |
 
-## 5. Perintah Cepat Sehari-hari
+---
+
+## 5. Quick Daily Commands
 
 ```bash
-trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL .   # scan repo
-trivy config .                                                          # scan IaC/Dockerfile
-trivy image <nama-image>                                                # scan image
-trivy image --download-db-only                                          # update DB CVE
-trivy fs --format table --scanners vuln .                               # lihat cepat
-trivy image --format cyclonedx --output sbom.json <image>               # buat SBOM
+# Scan the repository
+trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL .
+
+# Scan IaC and Dockerfiles
+trivy config .
+
+# Scan a container image
+trivy image <image-name>
+
+# Update the CVE database
+trivy image --download-db-only
+
+# Quick vulnerability scan
+trivy fs --format table --scanners vuln .
+
+# Generate an SBOM
+trivy image --format cyclonedx --output sbom.json <image>
 ```
