@@ -45,6 +45,13 @@ export function Dialog({
   const generatedId = useId();
   const titleId = `dialog-title-${generatedId.replace(/:/g, "")}`;
 
+  // Autofocus only once on open
+  useEffect(() => {
+    if (isOpen) {
+      dialogRef.current?.focus();
+    }
+  }, [isOpen]);
+
   // Trap focus & Escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -75,8 +82,6 @@ export function Dialog({
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    // Auto-focus dialog saat buka
-    dialogRef.current?.focus();
     // Lock scroll
     document.body.style.overflow = "hidden";
 
@@ -112,26 +117,30 @@ export function Dialog({
       >
         <div
           className="
-            w-full sm:max-w-md
+            w-full sm:max-w-lg
             bg-background border border-border
             rounded-t-md sm:rounded-md
-            shadow-lg p-6
+            shadow-lg
+            flex flex-col
+            max-h-[90vh] sm:max-h-[85vh]
             animate-[slideUp_0.2s_ease-out] sm:animate-none
           "
         >
           {/* Title */}
-          <h2 id={titleId} className="text-xl font-semibold text-foreground mb-3">
-            {title}
-          </h2>
+          <div className="px-6 pt-6 pb-3 shrink-0">
+            <h2 id={titleId} className="text-xl font-semibold text-foreground">
+              {title}
+            </h2>
+          </div>
 
-          {/* Content */}
-          <div className="text-base text-muted-foreground leading-relaxed">
+          {/* Content — scrollable */}
+          <div className="px-6 pb-2 text-base text-muted-foreground leading-relaxed overflow-y-auto flex-1">
             {children}
           </div>
 
           {/* Footer actions */}
           {(confirmLabel || cancelLabel) && (
-            <div className="flex flex-col-reverse sm:flex-row gap-2 mt-6">
+            <div className="px-6 pb-6 pt-4 shrink-0 flex flex-col-reverse sm:flex-row gap-2 border-t border-border/50 mt-2">
               {cancelLabel && (
                 <Button
                   variant="outline"

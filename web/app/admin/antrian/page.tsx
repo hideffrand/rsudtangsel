@@ -92,6 +92,9 @@ export default function AntrianAdminPage() {
   const [referralDoctor, setReferralDoctor] = useState("dr. Ahmad Sp.JP");
   const [referralDate, setReferralDate] = useState(new Date().toISOString().split("T")[0]);
   const [referralNotes, setReferralNotes] = useState("");
+  const [familyPhone, setFamilyPhone] = useState("");
+  const [familyName, setFamilyName] = useState("");
+  const [waResult, setWaResult] = useState<{ familyUrl?: string; doctorUrl?: string } | null>(null);
   const [isSubmittingOutcome, setIsSubmittingOutcome] = useState(false);
 
   // Direct Specialist Booking Modal (Without QR)
@@ -239,7 +242,15 @@ export default function AntrianAdminPage() {
   // ─── 5. Handle "Selesai" Outcome Submission ────────────────────────────────
   const handleSaveOutcome = async () => {
     if (!finishModalPatient) return;
+
+    // Validasi WA keluarga wajib untuk RawatInap / RawatJalan
+    if ((outcomeType === "RawatInap" || outcomeType === "RawatJalan") && !familyPhone.trim()) {
+      showToast("Nomor WhatsApp keluarga pasien wajib diisi untuk Rawat Inap / Rawat Jalan", "error");
+      return;
+    }
+
     setIsSubmittingOutcome(true);
+    setWaResult(null);
 
     try {
       const rmNo = `RM-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -252,25 +263,44 @@ export default function AntrianAdminPage() {
         referred_date: isReferral ? referralDate : undefined,
         outcome_notes: referralNotes || undefined,
         floor_info: isReferral ? getFloorForPoli(referralPoli) : finishModalPatient.floor_info,
+        family_phone_number: familyPhone.trim() || undefined,
+        family_name: familyName.trim() || undefined,
       });
 
       setQueue((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
       setSelectedPatient(updated);
 
+      // Simpan URL WA untuk ditampilkan ke admin
+      if (updated.whatsapp_url || updated.doctor_whatsapp_url) {
+        setWaResult({ familyUrl: updated.whatsapp_url, doctorUrl: updated.doctor_whatsapp_url });
+      }
+
       if (isReferral) {
-        showToast(
-          `Rujukan ke ${referralPoli} (${referralDoctor}) berhasil dibuat! Nomor Rekam Medis: ${rmNo}`,
-          "success"
-        );
+        showToast(`Rujukan ke ${referralPoli} (${referralDoctor}) berhasil! No. RM: ${rmNo}`, "success");
       } else {
-        showToast(`Status konsultasi ${finishModalPatient.patient_name} ditandai: ${STATUS_BADGE[outcomeType]?.label}`, "success");
+        showToast(`Status ${finishModalPatient.patient_name}: ${STATUS_BADGE[outcomeType]?.label}`, "success");
       }
     } catch {
       showToast("Gagal memperbarui status konsultasi", "error");
     } finally {
       setIsSubmittingOutcome(false);
-      setFinishModalPatient(null);
+      if (outcomeType !== "RawatInap" && outcomeType !== "RawatJalan") {
+        setFinishModalPatient(null);
+        setFamilyPhone("");
+        setFamilyName("");
+      } else {
+        setIsSubmittingOutcome(false);
+      }
     }
+  };
+
+  const handleCloseFinishModal = () => {
+    setFinishModalPatient(null);
+    setFamilyPhone("");
+    setFamilyName("");
+    setWaResult(null);
+    setReferralNotes("");
+    setOutcomeType("Done");
   };
 
   // ─── 6. Direct Specialist Walk-in / Referral without QR ────────────────────
@@ -337,7 +367,7 @@ export default function AntrianAdminPage() {
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex flex-wrap items-center gap-3 justify-between">
         <div className="flex flex-wrap items-center gap-2.5 text-xs">
           <span className="font-bold text-slate-500 uppercase tracking-wider">Filter:</span>
-          
+
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -505,7 +535,7 @@ export default function AntrianAdminPage() {
               {/* Action Toolbar */}
               <div className="border-t border-slate-100 pt-5 space-y-4">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aksi Pemeriksaan Antrian:</h3>
-                
+
                 <div className="flex flex-wrap gap-2.5">
                   {/* Check-in Trigger */}
                   {selectedPatient.status === "Waiting" && (
@@ -587,7 +617,7 @@ export default function AntrianAdminPage() {
           {/* Camera Viewport */}
           <div className="relative bg-slate-950 rounded-xl overflow-hidden min-h-[260px] flex flex-col items-center justify-center border-2 border-slate-800">
             <div id="reader" className="w-full max-w-[320px] rounded-lg overflow-hidden" />
-            
+
             {scannerError && (
               <div className="p-4 text-center space-y-2 text-amber-400 text-xs flex items-center gap-2 justify-center">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -670,7 +700,7 @@ export default function AntrianAdminPage() {
       ─────────────────────────────────────────────────────────────────── */}
       <Dialog
         isOpen={!!finishModalPatient}
-        onClose={() => setFinishModalPatient(null)}
+        onClose={handleCloseFinishModal}
         title={`Tindak Lanjut Pemeriksaan: ${finishModalPatient?.patient_name}`}
         confirmLabel={isSubmittingOutcome ? "Menyimpan..." : "Simpan & Selesaikan"}
         cancelLabel="Batal"
@@ -686,11 +716,10 @@ export default function AntrianAdminPage() {
                 <button
                   type="button"
                   onClick={() => setOutcomeType("Done")}
-                  className={`p-3 rounded-xl border text-left font-bold transition-all cursor-pointer ${
-                    outcomeType === "Done"
-                      ? "bg-emerald-50 border-emerald-500 text-emerald-900 ring-2 ring-emerald-400"
-                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                  }`}
+                  className={`p-3 rounded-xl border text-left font-bold transition-all cursor-pointer ${outcomeType === "Done"
+                    ? "bg-emerald-50 border-emerald-500 text-emerald-900 ring-2 ring-emerald-400"
+                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
                 >
                   <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Selesai Normal</span>
                   <p className="text-[11px] font-normal text-slate-500 mt-0.5">Pulang / tebus obat farmasi</p>
@@ -699,11 +728,10 @@ export default function AntrianAdminPage() {
                 <button
                   type="button"
                   onClick={() => setOutcomeType("RujukanSpesialis")}
-                  className={`p-3 rounded-xl border text-left font-bold transition-all cursor-pointer ${
-                    outcomeType === "RujukanSpesialis"
-                      ? "bg-teal-50 border-teal-500 text-teal-900 ring-2 ring-teal-400"
-                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                  }`}
+                  className={`p-3 rounded-xl border text-left font-bold transition-all cursor-pointer ${outcomeType === "RujukanSpesialis"
+                    ? "bg-teal-50 border-teal-500 text-teal-900 ring-2 ring-teal-400"
+                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
                 >
                   <span className="flex items-center gap-1.5"><ArrowRightLeft className="w-4 h-4 text-teal-600" /> Rujuk ke Spesialis</span>
                   <p className="text-[11px] font-normal text-slate-500 mt-0.5">Dari Dokter Umum ke Dokter Spesialis</p>
@@ -712,11 +740,10 @@ export default function AntrianAdminPage() {
                 <button
                   type="button"
                   onClick={() => setOutcomeType("RawatInap")}
-                  className={`p-3 rounded-xl border text-left font-bold transition-all cursor-pointer ${
-                    outcomeType === "RawatInap"
-                      ? "bg-rose-50 border-rose-500 text-rose-900 ring-2 ring-rose-400"
-                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                  }`}
+                  className={`p-3 rounded-xl border text-left font-bold transition-all cursor-pointer ${outcomeType === "RawatInap"
+                    ? "bg-rose-50 border-rose-500 text-rose-900 ring-2 ring-rose-400"
+                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
                 >
                   <span className="flex items-center gap-1.5"><Hospital className="w-4 h-4 text-rose-600" /> Rawat Inap</span>
                   <p className="text-[11px] font-normal text-slate-500 mt-0.5">Kamar rawat / observasi ICU</p>
@@ -725,17 +752,87 @@ export default function AntrianAdminPage() {
                 <button
                   type="button"
                   onClick={() => setOutcomeType("RawatJalan")}
-                  className={`p-3 rounded-xl border text-left font-bold transition-all cursor-pointer ${
-                    outcomeType === "RawatJalan"
-                      ? "bg-indigo-50 border-indigo-500 text-indigo-900 ring-2 ring-indigo-400"
-                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                  }`}
+                  className={`p-3 rounded-xl border text-left font-bold transition-all cursor-pointer ${outcomeType === "RawatJalan"
+                    ? "bg-indigo-50 border-indigo-500 text-indigo-900 ring-2 ring-indigo-400"
+                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
                 >
                   <span className="flex items-center gap-1.5"><PersonStanding className="w-4 h-4 text-indigo-600" /> Rawat Jalan</span>
                   <p className="text-[11px] font-normal text-slate-500 mt-0.5">Jadwalkan kontrol berkala</p>
                 </button>
               </div>
             </div>
+
+            {/* Input WA Keluarga — tampil saat RawatInap atau RawatJalan dipilih */}
+            {(outcomeType === "RawatInap" || outcomeType === "RawatJalan") && (
+              <div className="p-4 bg-blue-50/70 border border-blue-300 rounded-xl space-y-3">
+                <span className="font-extrabold text-blue-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  📱 KONTAK KELUARGA PASIEN (WHATSAPP)
+                </span>
+                <p className="text-[11px] text-blue-700 font-medium">
+                  Nomor ini akan dihubungkan dengan WhatsApp dokter yang bertugas. Admin dapat langsung membuka chat WA setelah menyimpan.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="family-wa-name" className="text-[11px] font-bold text-slate-700">Nama Keluarga:</label>
+                    <input
+                      id="family-wa-name"
+                      type="text"
+                      placeholder="mis. Budi (ayah)"
+                      value={familyName}
+                      onChange={(e) => setFamilyName(e.target.value)}
+                      className="w-full mt-1 p-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="family-wa-phone" className="text-[11px] font-bold text-slate-700">No. WA yang dapat dihubungi: </label>
+                    <input
+                      id="family-wa-phone"
+                      type="tel"
+                      placeholder="0812xxxxxxxx"
+                      value={familyPhone}
+                      onChange={(e) => setFamilyPhone(e.target.value.replace(/[^0-9+]/g, ""))}
+                      className="w-full mt-1 p-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 font-semibold"
+                    />
+                  </div>
+                </div>
+
+                {/* Tombol WA setelah submit berhasil */}
+                {waResult && (
+                  <div className="pt-2 space-y-2">
+                    <p className="text-[11px] font-bold text-emerald-800">✅ Data disimpan! Buka WhatsApp:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {waResult.familyUrl && (
+                        <a
+                          href={waResult.familyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                          💬 Chat Keluarga Pasien
+                        </a>
+                      )}
+                      {waResult.doctorUrl && (
+                        <a
+                          href={waResult.doctorUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                          🩺 Notifikasi ke Dokter
+                        </a>
+                      )}
+                      <button
+                        onClick={handleCloseFinishModal}
+                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* If Referral to Specialist Chosen */}
             {outcomeType === "RujukanSpesialis" && (
@@ -831,7 +928,7 @@ export default function AntrianAdminPage() {
         confirmLabel="Setujui &amp; Buat Antrian"
         cancelLabel="Batal"
         onConfirm={() => {
-          const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+          const fakeEvent = { preventDefault: () => { } } as React.FormEvent;
           handleCreateDirectSpecialist(fakeEvent);
         }}
       >

@@ -69,3 +69,16 @@ func (r *UpdateQueueStatusRequest) Validate() string {
 	}
 	return ""
 }
+
+// FinishQueueRequest is the request body for POST /api/admin/queue/:id/finish.
+type FinishQueueRequest struct {
+	Outcome           string `json:"outcome"` // "Done", "RawatInap", "RawatJalan", "RujukanSpesialis"
+	FamilyPhoneNumber string `json:"family_phone_number"`
+	FamilyName        string `json:"family_name"`
+	OutcomeNotes      string `json:"outcome_notes"`
+	MedicalRecordNo   string `json:"medical_record_no"`
+	ReferredToPoli    string `json:"referred_to_poli"`
+	ReferredToDoctor  string `json:"referred_to_doctor"`
+	ReferredDate      string `json:"referred_date"`
+	FloorInfo         string `json:"floor_info"`
+}

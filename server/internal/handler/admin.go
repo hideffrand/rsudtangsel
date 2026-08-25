@@ -235,6 +235,65 @@ func (h *AdminHandler) UpdateQueueStatus(w http.ResponseWriter, r *http.Request)
 	utils.SuccessResponse(w, http.StatusOK, result)
 }
 
+// FinishQueue handles POST /api/admin/queue/{id}/finish
+// Memperbarui status konsultasi pasien (Done/RawatInap/RawatJalan/RujukanSpesialis)
+// dan mengembalikan URL WhatsApp untuk menghubungi keluarga pasien & dokter yang bertugas.
+func (h *AdminHandler) FinishQueue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		utils.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	id, _, err := parseQueuePath(r.URL.Path)
+	if err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, "Gagal membaca request body")
+		return
+	}
+	defer r.Body.Close()
+
+	var req request.FinishQueueRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, "Format JSON tidak valid: "+err.Error())
+		return
+	}
+
+	// Validasi outcome
+	validOutcomes := map[string]bool{
+		"Done": true, "RawatInap": true, "RawatJalan": true, "RujukanSpesialis": true,
+	}
+	if !validOutcomes[req.Outcome] {
+		utils.ErrorResponse(w, http.StatusBadRequest, "outcome tidak valid. Gunakan: Done, RawatInap, RawatJalan, atau RujukanSpesialis")
+		return
+	}
+
+	// Validasi: nomor WA keluarga wajib diisi untuk RawatInap dan RawatJalan
+	if (req.Outcome == "RawatInap" || req.Outcome == "RawatJalan") && req.FamilyPhoneNumber == "" {
+		utils.ErrorResponse(w, http.StatusBadRequest, "Nomor WhatsApp keluarga pasien wajib diisi untuk tindak lanjut Rawat Inap atau Rawat Jalan")
+		return
+	}
+
+	result, err := h.appointmentRepo.FinishAppointmentConsultation(
+		id,
+		req.Outcome,
+		req.FamilyPhoneNumber,
+		req.FamilyName,
+		req.OutcomeNotes,
+		req.MedicalRecordNo,
+	)
+	if err != nil {
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Gagal memperbarui status konsultasi: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(w, http.StatusOK, result)
+}
+
 // --- Private helpers ---
 
 // setAuthCookies sets the httpOnly session cookies (access + refresh) on the

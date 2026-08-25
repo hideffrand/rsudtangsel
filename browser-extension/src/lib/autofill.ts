@@ -28,20 +28,40 @@ function fillFieldsInPage(pairs: AutofillPair[]): AutofillOutcome[] {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
   const outcomes: AutofillOutcome[] = [];
 
+  const SYNONYMS: Record<string, string[]> = {
+    notelp: ["notelepon", "notelp", "nohp", "telepon", "handphone", "phone", "wa"],
+    notelepon: ["notelepon", "notelp", "nohp", "telepon", "handphone", "phone", "wa"],
+    nama: ["namalengkap", "nama", "namapasien", "namalengkapidentitas"],
+    namalengkap: ["namalengkap", "nama", "namapasien", "namalengkapidentitas"],
+    nik: ["nik", "noktp", "nomoridentitas", "noidentitas", "ktp"],
+    umur: ["umur", "usia", "age"],
+    jeniskelamin: ["jeniskelamin", "jk", "gender", "kelamin", "sex"],
+    alamat: ["alamat", "address"],
+  };
+
   type Fillable = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
   function findByCopilot(keyNorm: string): Fillable | null {
-    return document.querySelector<Fillable>(`[data-copilot="${keyNorm}"]`);
+    const candidates = [keyNorm, ...(SYNONYMS[keyNorm] || [])];
+    for (const cand of candidates) {
+      const el = document.querySelector<Fillable>(`[data-copilot="${cand}"]`);
+      if (el) return el;
+    }
+    return null;
   }
 
   function findByLabel(keyNorm: string): Fillable | null {
+    const candidates = [keyNorm, ...(SYNONYMS[keyNorm] || [])];
     for (const label of Array.from(document.getElementsByTagName("label"))) {
-      if (norm(label.textContent || "") !== keyNorm) continue;
-      const byId = label.htmlFor ? document.getElementById(label.htmlFor) : null;
-      if (byId instanceof HTMLInputElement || byId instanceof HTMLTextAreaElement || byId instanceof HTMLSelectElement) {
-        return byId;
+      const labelNorm = norm(label.textContent || "");
+      if (candidates.includes(labelNorm)) {
+        const byId = label.htmlFor ? document.getElementById(label.htmlFor) : null;
+        if (byId instanceof HTMLInputElement || byId instanceof HTMLTextAreaElement || byId instanceof HTMLSelectElement) {
+          return byId;
+        }
+        const inner = label.querySelector<Fillable>("input, textarea, select");
+        if (inner) return inner;
       }
-      return label.querySelector<Fillable>("input, textarea, select");
     }
     return null;
   }

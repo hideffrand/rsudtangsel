@@ -1,104 +1,61 @@
-# 🔍 OCR Microservice - RSU Tangsel Care
+# Hybrid OCR Microservice (PaddleOCR + Llama3.2-Vision) — RSU Tangsel Care
 
-Microservice OCR berbasis **FastAPI** dan library **[CnOCR (Breezedeus)](https://github.com/breezedeus/cnocr)** untuk ekstraksi dokumen identitas dan medis (KTP, BPJS, Surat Rujukan, Resep Dokter).
-
----
-
-## 🚀 Cara Menjalankan
-
-### 1. Menjalankan Langsung (Lokal Python)
-
-Pastikan Python 3.8+ sudah terpasang di komputer:
-
-```bash
-cd ocr-service
-
-# (Opsional) Buat virtual environment
-python -m venv venv
-# Aktifkan virtual environment:
-# Windows:
-venv\Scripts\activate
-# Linux/macOS:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Jalankan server FastAPI
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Akses dokumentasi interaktif Swagger UI di: [http://localhost:8000/docs](http://localhost:8000/docs)
+Microservice Optical Character Recognition (OCR) hibrida yang dirancang khusus untuk membaca formulir registrasi pasien rumah sakit (tulisan tangan / cetak) secara cepat, akurat, dan hemat komputasi (CPU-only).
 
 ---
 
-### 2. Menjalankan via Docker Compose
+## 🏗️ Arsitektur Hibrida
 
-Dari folder utama `rsudtangsel`:
-```bash
-docker compose up -d ocr
-```
+1. **Langkah 1 (PaddleOCR Full Image Pass):**
+   - Membaca seluruh dokumen menggunakan Baidu PaddleOCR (PP-OCRv3, CPU-optimized).
+   - Menghasilkan teks per baris beserta *confidence score* dan koordinat *bounding box* (polygon).
+2. **Langkah 2 (Field Parsing & Format Validation):**
+   - Mengelompokkan teks ke dalam 5 field pasien utama: `nama_lengkap`, `nik`, `umur`, `jenis_kelamin`, `no_telp`.
+   - Menjalankan aturan validasi format:
+     - `nik`: Tepat 16 digit numerik.
+     - `no_telp`: Format nomor telepon Indonesia (awalan `08` / `628`, 10-14 digit).
+     - `umur`: Angka usia 1-120.
+     - `jenis_kelamin`: Normalisasi ke `Laki-laki` / `Perempuan`.
+     - `nama_lengkap`: Minimal 2 karakter.
+   - Field dengan *confidence* $< 0.85$, bernilai kosong, atau format tidak valid ditandai `needs_review = true`.
+3. **Langkah 3 (Selective Crop + Llama3.2-Vision Fallback):**
+   - Hanya memotong (*crop*) area gambar dari field yang membutuhkan review dengan padding 10px.
+   - Mengirim potongan gambar ke **Llama3.2-Vision** via Ollama lokal dengan *prompt* terfokus.
+4. **Langkah 4 (JSON Response):**
+   - Mengembalikan hasil gabungan terstruktur lengkap dengan sumber ekstrasi (`paddleocr` atau `llama_vision`).
 
 ---
 
-## 📡 API Endpoints
+## 🚀 Endpoint API
 
-### 1. Health Check
-- **URL**: `GET /health`
-- **Response**:
+### 1. `POST /ocr/patient-form` (Utama)
+- **Body:** `multipart/form-data` dengan field `image` (file gambar JPG/PNG/WebP/JFIF).
+- **Response Format:**
 ```json
 {
-  "status": "ok",
-  "service": "rsudtangsel-ocr",
-  "engine": "CnOCR (PyTorch)",
-  "version": "1.0.0"
+  "nama_lengkap": {"value": "Ahmad Fauzi", "confidence": 0.97, "source": "paddleocr"},
+  "nik": {"value": "3674012304950001", "confidence": null, "source": "llama_vision"},
+  "umur": {"value": "30", "confidence": 0.94, "source": "paddleocr"},
+  "jenis_kelamin": {"value": "Laki-laki", "confidence": 0.98, "source": "paddleocr"},
+  "no_telp": {"value": "081234567890", "confidence": 0.91, "source": "paddleocr"},
+  "processing_time_ms": 1234
 }
 ```
 
-### 2. Ekstraksi OCR
-- **URL**: `POST /ocr/extract`
-- **Content-Type**: `multipart/form-data`
-- **Body Parameter**:
-  - `file`: File gambar (JPG / PNG / WebP)
-  - `doc_type`: Tipe dokumen (`ktp`, `bpjs`, `rujukan`, `resep`, atau `generic`)
-- **Response**:
-```json
-{
-  "success": true,
-  "doc_type": "ktp",
-  "process_time_ms": 142.5,
-  "avg_confidence": 91.5,
-  "raw_text": "PROVINSI BANTEN KOTA TANGERANG SELATAN\nNIK : 3674011204890001\nNama : Budi Santoso...",
-  "extracted_fields": [
-    {
-      "key": "NIK",
-      "value": "3674011204890001",
-      "confidence": 98.0,
-      "is_required": true
-    },
-    {
-      "key": "Nama",
-      "value": "Budi Santoso",
-      "confidence": 92.0,
-      "is_required": true
-    }
-  ],
-  "blocks": [...]
-}
-```
+### 2. `POST /ocr/extract` (Legacy Adapter)
+- Kompatibel dengan proxy Go server & web admin.
+
+### 3. `GET /health`
+- Health check service status.
 
 ---
 
-## 🛠️ Cara Menambah / Mengubah Aturan Dokumen
-
-Buka file [`doc_parser.py`](file:///d:/Project%20Pribadi/rsudtangsel/ocr-service/doc_parser.py). Semua fungsi ekstraksi telah ditandai dengan komentar:
-
-```python
-# ==============================================================================
-# [TODO: EKSTRAKSI KTP] - SESUAIKAN REGEX / FIELD KTP DI SINI
-# ==============================================================================
-def parse_ktp(raw_text: str, blocks: List[Dict[str, Any]] = None):
-    ...
+## 🧪 Pengujian Batch
+Jalankan skrip tes mandiri:
+```bash
+python tests/run_batch_test.py
 ```
-
-Anda cukup menambahkan atau mengubah regex dan daftar field sesuai format dokumen yang nanti disepakati tim medis/SIMRS.
+Atau uji folder berisi gambar foto formulir:
+```bash
+python tests/run_batch_test.py --dir path/ke/folder_gambar
+```

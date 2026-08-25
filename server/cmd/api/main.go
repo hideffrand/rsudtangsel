@@ -179,11 +179,16 @@ func buildAdminProtectedRouter(
 	protectedMux.HandleFunc("/api/admin/queue", adminHandler.AdminQueue)
 	protectedMux.HandleFunc("/api/admin/me", adminHandler.Me)
 
-	// Dynamic sub-path handler: /api/admin/queue/{id}/call or /skip
+	// Dynamic sub-path handler: /api/admin/queue/{id}/call or /skip or /finish
 	protectedMux.HandleFunc("/api/admin/queue/", func(w http.ResponseWriter, r *http.Request) {
 		trimmed := strings.TrimPrefix(r.URL.Path, "/api/admin/queue/")
 		if trimmed == "" {
 			adminHandler.AdminQueue(w, r)
+			return
+		}
+		// Route to FinishQueue if action is "finish"
+		if strings.HasSuffix(r.URL.Path, "/finish") {
+			adminHandler.FinishQueue(w, r)
 			return
 		}
 		adminHandler.UpdateQueueStatus(w, r)

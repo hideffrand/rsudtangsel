@@ -30,13 +30,18 @@ type DashboardStatsResponse struct {
 
 // AdminQueueItem represents a single queue entry for the admin dashboard.
 type AdminQueueItem struct {
-	ID          int    `json:"id"`
-	Number      string `json:"number"`
-	PatientName string `json:"patient_name"`
-	Poli        string `json:"poli"`
-	DoctorName  string `json:"doctor_name"`
-	Status      string `json:"status"`
-	CreatedAt   string `json:"created_at"`
+	ID                int    `json:"id"`
+	Number            string `json:"number"`
+	PatientName       string `json:"patient_name"`
+	NIK               string `json:"nik,omitempty"`
+	PhoneNumber       string `json:"phone_number,omitempty"`
+	Poli              string `json:"poli"`
+	DoctorName        string `json:"doctor_name"`
+	DoctorPhone       string `json:"doctor_phone,omitempty"`
+	Status            string `json:"status"`
+	CreatedAt         string `json:"created_at"`
+	FamilyPhoneNumber string `json:"family_phone_number,omitempty"`
+	FamilyName        string `json:"family_name,omitempty"`
 }
 
 // CallQueueResponse is the response for PATCH /api/admin/queue/:id/call.
@@ -47,4 +52,24 @@ type CallQueueResponse struct {
 	Poli        string `json:"poli"`
 	Status      string `json:"status"`
 	CalledAt    string `json:"called_at"`
+}
+
+// FinishQueueResponse is the response for POST /api/admin/queue/:id/finish.
+type FinishQueueResponse struct {
+	ID                int    `json:"id"`
+	Number            string `json:"number"`
+	PatientName       string `json:"patient_name"`
+	NIK               string `json:"nik,omitempty"`
+	PhoneNumber       string `json:"phone_number,omitempty"`
+	Poli              string `json:"poli"`
+	DoctorName        string `json:"doctor_name"`
+	DoctorPhone       string `json:"doctor_phone,omitempty"`
+	Status            string `json:"status"`
+	OutcomeNotes      string `json:"outcome_notes,omitempty"`
+	MedicalRecordNo   string `json:"medical_record_no,omitempty"`
+	FamilyPhoneNumber string `json:"family_phone_number,omitempty"`
+	FamilyName        string `json:"family_name,omitempty"`
+	WhatsAppURL       string `json:"whatsapp_url,omitempty"`
+	DoctorWhatsAppURL string `json:"doctor_whatsapp_url,omitempty"`
+	UpdatedAt         string `json:"updated_at"`
 }

@@ -49,8 +49,8 @@ the extraction rules are managed without rebuilding anything.
 | Master data | `server/migrations` → `ocr_document_types` | TEXT columns only: `id` (= `doc_type`), `name`, `fields` = JSON rule config |
 | Seed | `server/cmd/seed/main.go` | Upserts `registrasi-pasien` + `inventory` with full JSON configs |
 | Proxy + config push | `server/internal/handler/ocr.go`, `internal/service/ocr_service.go` | On every extract: look up the doc-type row, forward `file + doc_type + field_config` to Python |
-| OCR engine | `ocr-service/main.py`, `ocr_engine.py` | CnOCR image → raw text |
-| Parser | `ocr-service/doc_parser.py` | `parse_field_config()` applies the pushed rules; built-in parsers (`ktp`, `bpjs`, …) are fallback |
+| OCR engine | `ocr-service/main.py`, `ocr_engine/paddle_reader.py`, `ocr_engine/vision_fallback.py` | PaddleOCR baseline (PP-OCRv3) + selective Llama3.2-Vision (Ollama) fallback |
+| Parser | `ocr-service/extraction/field_parser.py`, `extraction/validators.py` | Extracts fields & validates format (NIK 16 digit, No Telp 08xx, etc.) |
 | Autofiller | `browser-extension/src/lib/autofill.ts` | Injected via `chrome.scripting.executeScript`; matches keys against the live DOM |
 | Target form | `web/app/admin/pasien/page.tsx` | Demo patient form; every input tagged `data-copilot="<key>"` |
 

@@ -32,6 +32,7 @@ export interface QueueItem {
   phone_number?: string;
   poli: string;
   doctor_name: string;
+  doctor_phone?: string;
   schedule_date?: string;
   schedule_time?: string;
   status:
@@ -49,6 +50,10 @@ export interface QueueItem {
   referred_to_doctor?: string;
   referred_date?: string;
   outcome_notes?: string;
+  family_phone_number?: string;
+  family_name?: string;
+  whatsapp_url?: string;
+  doctor_whatsapp_url?: string;
   created_at: string;
 }
 
@@ -270,10 +275,23 @@ export async function finishPatientConsultation(
     referred_to_doctor?: string;
     referred_date?: string;
     outcome_notes?: string;
+    family_phone_number?: string;
+    family_name?: string;
   }
 ): Promise<QueueItem> {
   try {
-    return await api.post<QueueItem>(`/admin/queue/${id}/finish`, { outcome, ...details });
+    const result = await api.post<QueueItem>(`/admin/queue/${id}/finish`, {
+      outcome,
+      family_phone_number: details?.family_phone_number || '',
+      family_name: details?.family_name || '',
+      outcome_notes: details?.outcome_notes || '',
+      medical_record_no: details?.medical_record_no || '',
+      referred_to_poli: details?.referred_to_poli || '',
+      referred_to_doctor: details?.referred_to_doctor || '',
+      referred_date: details?.referred_date || '',
+      floor_info: details?.floor_info || '',
+    });
+    return result;
   } catch {
     syncFromStorage();
     const idx = MOCK_QUEUE.findIndex((a) => a.id === id);
