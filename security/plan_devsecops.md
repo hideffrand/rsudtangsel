@@ -51,27 +51,32 @@ Trivy v0.74.0 is already installed. Trivy provides the four scanners required fo
 * `secret` — leaked credentials and secrets
 * `license` — dependency license scanning
 
-### 2.1 Baseline Scan — Run Now (Local)
+### 2.1 Baseline Scan — DONE (2026-08-26)
+
+Reports live in `security/reports/`. Proven commands on this WSL box (`/mnt/c` IO is slow — always use skip-dirs + a large timeout):
 
 ```bash
-# 0) Update the vulnerability database
-trivy image --download-db-only
+SKIP=".git,node_modules,.next,dist,out,__pycache__,security/reports"
 
-# 1) Scan the entire monorepo
-#    vuln + secret + misconfiguration
-trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL . > trivy-report-fs.txt
+# Repo scan -> HTML gate (HIGH+CRITICAL) using html.tpl at repo root
+trivy fs --scanners vuln,secret,misconfig --skip-dirs "$SKIP" \
+  --timeout 40m --severity HIGH,CRITICAL \
+  --format template --template "@html.tpl" \
+  --output security/reports/report-baseline.html .
 
-# 2) Scan Dockerfiles and docker-compose configuration
-trivy config --severity HIGH,CRITICAL .
+# Repo scan -> JSON full triage (all severities incl. secrets)
+trivy fs --scanners vuln,secret,misconfig --skip-dirs "$SKIP" \
+  --timeout 40m --format json \
+  --output security/reports/report-baseline.json .
 
-# 3) Scan images used/built by Compose
-docker compose -f docker-compose.yaml build   # if images do not exist yet
-
-trivy image --severity HIGH,CRITICAL \
-  rsudtangsel-server rsudtangsel-web rsudtangsel-ocr postgres:16-alpine
+# Image scans (html.tpl receives types.Results for every mode)
+trivy image --format template --template "@html.tpl" \
+  --output security/reports/report-image-<name>.html --severity HIGH,CRITICAL <image>
 ```
 
-> **WSL note:** The first scan of the PyTorch-based `rsudtangsel-ocr` image may take a long time because the image is multi-GB. Run it once as a baseline and save the results.
+Notes: the template context is `types.Results` directly (`range .` at root) — works for `fs`/`config`/`image` alike. Skipping `node_modules` is safe for vuln detection because Trivy reads `package-lock.json`/`go.mod`. Template renders Vulnerabilities + Misconfigurations; **secrets appear only in JSON**.
+
+Existing reports: `report-baseline.html/.json` (repo), `report-image-postgres.html`, plus operator-run image scans `ocr-scan.html`, `web-scan.html`, `server-scan.html`.
 
 ### 2.2 Failure / Gating Policy
 
@@ -110,7 +115,73 @@ Example:
 
 Every `.trivyignore` entry must have a review/expiration date.
 
-### 2.3 Trivy Automation
+### 2.3 Remediation Priority Analysis — Production Readiness (2026-08-26)
+
+Raw severity counts are not a work list. A finding only matters if the vulnerable code is **reachable** given how each asset is actually deployed. Assessment below combines the repo baseline (`report-baseline.json`) with the operator-run image scans.
+
+#### Consolidated findings & real-world exposure
+
+| # | Asset | Finding | Raw sev | Reachable in production? | Verdict |
+|---|---|---|---|---|---|
+| 1 | `rsudtangsel-ocr` image (debian 13.6) | CRIT=15, HIGH=110 (~1300 total: `libglib2.0`, `perl`, `libxml2`, `linux-libc-dev`, …) | CRIT/HIGH | **YES** — this service parses untrusted patient uploads with OpenCV/Pillow/Paddle. Memory-corruption CVEs in native image-parsing libs (`libglib2.0`, `libxml2`) sit exactly on the attack path. Root container (DS-0002) amplifies impact. | **P0 — top risk** |
+| 2 | `rsudtangsel-web` image (alpine) | CRIT=1 (`tar` npm@6.2.1), HIGH=20 (`brace-expansion`, `minimatch`, `glob`, `cross-spawn`, `sigstore`, `ip-address`, `libcrypto3`) | CRIT/HIGH | **Structurally inflated** — every npm finding is a build/toolchain package that exists in runtime *only because* `web/Dockerfile` copies full `node_modules`. Next.js server never loads them. Fix is one Dockerfile change, not 21 patches. | **P0 — structural fix** |
+| 3 | `docker-compose.yaml` prod posture | Default creds (`admin123`, placeholder JWT, db password), db port published to host, `sslmode=disable` | — | **YES** if compose is used for deployment as-is. Secrets appeared in git history → treat as burned. | **P0 — config** |
+| 4 | `postgres:16-alpine` image | CRIT=1, HIGH=21 — **all 22 inside Go stdlib v1.24.6** baked into an upstream binary | CRIT/HIGH | **LOW** — Postgres protocol ≠ HTTP; DB must not be publicly reachable anyway. Only upstream rebuild fixes it. | P1 — pin fresh digest + network isolation |
+| 5 | browser-extension lockfile | `next@14.2.35`: 8 HIGH (middleware bypass, SSRF, Server-Action DoS, cache poisoning…) | HIGH | **NO at runtime** — confirmed `output: "export"` static bundle served from `chrome-extension://` origin. No Next server process exists, so SSRF/middleware/Server-Action classes are unreachable. Client XSS items are server-response-controlled → also N/A here. | P2 — batch major upgrade as hygiene |
+| 6 | browser-extension lockfile | `postcss@8.4.31`: 2 HIGH + 2 MED | HIGH | Build-time CSS processing on dev machine only. | P2 — rides along with Next upgrade |
+| 7 | mobile lockfile | `image-size@1.2.1`: 2 HIGH **NO-FIX** | HIGH | Build-time only — transitive via `metro`; parses local project assets, not attacker input. No fixed version exists. | Triase → `.trivyignore` w/ review date |
+| 8 | mobile lockfile | `uuid@7.0.3` MEDIUM OOB-write | MED | Parent = `xcode` package (Expo iOS toolchain) → dev-machine build tooling. | Triase → `.trivyignore` w/ review date |
+| 9 | `server/go.mod` | `edwards25519@v1.1.0` LOW crypto integrity bypass (fix exists) | LOW | Indirect via x/crypto; cheap to clear. | **P1 — 5-minute fix** |
+| 10 | `server/go.mod` + server image | GO-2026-5932 UNKNOWN: x/crypto/openpgp unmaintained | UNK | **N/A** — grep confirms `openpgp` is never imported by this codebase; advisory is baked into binary metadata only. Notably `server-scan.html` = cleanest image (UNKNOWN=1, zero vulns). | Document as accepted |
+
+#### Priority matrix
+
+**P0 — Production blockers (before any prod deploy, ≤ 7 days)**
+
+1. **OCR image overhaul** (`ocr-service/Dockerfile`):
+   - Multi-stage: keep `build-essential` + compilers in builder; runtime stage installs only `libgl1 libglib2.0-0 libgomp1`.
+   - Non-root user (kills DS-0002), pin base by digest, `apt-get upgrade -y` during build.
+   - Establish **weekly scheduled rebuild** — debian base fixes flow without version bumps; most of the 15 CRITICALs clear on rebuild alone.
+   - Acceptance: **0 CRITICAL**, HIGH ≤ ~20 each with a dated waiver, container runs as UID ≠ 0, upload size/MIME validation intact.
+   - Sketch:
+     ```dockerfile
+     FROM python:3.11-slim AS builder
+     RUN apt-get update && apt-get install -y --no-install-recommends build-essential libgl1-mesa-glx libglib2.0-0
+     COPY requirements.txt .
+     RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+     FROM python:3.11-slim@sha256:<pin>
+     RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libgomp1 \
+         && rm -rf /var/lib/apt/lists/* \
+         && useradd -r -u 10001 ocr
+     COPY --from=builder /install /usr/local
+     COPY . /app
+     USER ocr
+     ```
+2. **Web image standalone output**: set `output: "standalone"` in `web/next.config.*` + copy `.next/standalone` in Dockerfile runtime stage. Removes the `tar` CRITICAL and most HIGHs structurally; shrinks image by hundreds of MB.
+3. **Production compose profile**: `${JWT_SECRET:?required}` style fail-closed envs, remove db host port publish (or bind `127.0.0.1:`), `sslmode=require`, rotate all defaults from git history.
+4. **Postgres**: pull latest `postgres:16-alpine` digest, record it; enforce network-level isolation (db reachable only from server container).
+
+**P1 — Quick wins (this week)**
+
+5. `cd server && go get golang.org/x/crypto@latest && go mod tidy && go build ./... && go vet ./...` — clears edwards25519.
+6. Create root `.trivyignore` with dated waivers: GO-2026-5932 (openpgp unused), CVE-2025-71329/30 (image-size NO-FIX build-time), uuid@7 toolchain entry.
+7. Rebuild all three images, re-scan, record before/after deltas in this section.
+
+**P2 — Scheduled hygiene (next sprint, non-blocking)**
+
+8. browser-extension Next 14→16 major upgrade behind a test checklist (sidepanel login → capture → OCR → autofill flows). postcss follows transitively.
+9. Dependabot (npm ×3 + docker + actions), CI gate on **new** CRITICALs with `--ignore-unfixed`, SBOM per release (`trivy image --format cyclonedx`).
+
+#### Production sign-off criteria
+
+- [ ] All three runtime images: 0 CRITICAL; HIGH findings either patched or waived in `.trivyignore` with reason+date
+- [ ] No container runs as root
+- [ ] No default credentials anywhere; secrets injected at deploy time only
+- [ ] DB unreachable outside the compose/app network
+- [ ] Weekly automated rescan green for 2 consecutive weeks
+
+### 2.4 Trivy Automation
 
 #### (a) Local Pre-Commit Hook
 
