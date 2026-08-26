@@ -1,0 +1,45 @@
+# ============================================================
+# Trivy waivers — RSUD Tangsel
+# ATURAN: komentar WAJIB diawali '#' di baris terpisah; ID CVE
+# satu per baris (inline comment TIDAK didukung Trivy).
+# Setiap entri: justifikasi + bukti uji + tanggal review.
+# Sumber metodologi: security/plan_devsecops.md §2.3.1
+# ============================================================
+
+# ------------------------------------------------------------
+# CVE-2026-13221 — Perl trie regex 16-bit overflow (CVSS 9.1)
+# Verdict: NOT EXPLOITABLE (uji empiris 2026-08-26, rsudtangsel-ocr v4.0.0)
+# - Biner patched via backport Debian ke 5.40.1-6: alternasi ~66k cabang
+#   cocok benar di semua indeks batas 16-bit (65534/65535/65536/...) —
+#   tabel keputusan trie utuh, tanpa truncation, tanpa false positive.
+# - Reachability nol: 0 file *.pl, 0 pemanggilan perl dari kode Python,
+#   0 proses perl saat runtime.
+# Re-check saat Debian menerbitkan fix berversi eksplisit.
+# Review date: 2026-11-30
+CVE-2026-13221
+
+# ------------------------------------------------------------
+# CVE-2026-42496 — Archive::Tar symlink escape (CVSS 9.1)
+# Verdict: WAIVER — module ada (3.02_001 < 3.08) tapi tidak pernah dipakai:
+# 0 file .pl/.pm di /app, 0 pemanggilan perl dari Python, 0 proses perl.
+# Tidak ada execution path dari HTTP ke Archive::Tar.
+# Review date: 2026-11-30
+CVE-2026-42496
+
+# ------------------------------------------------------------
+# CVE-2026-8376 — Perl heap buffer overflow (CVSS 9.8)
+# Verdict: NOT RELEVANT — hanya memengaruhi build 32-bit;
+# image terverifikasi x86_64 (uname -m).
+# Review date: 2026-11-30
+CVE-2026-8376
+
+# ------------------------------------------------------------
+# CVE-2026-15534 — Superlinear cache overflow (CVSS 7.5)
+# Status: PENDING MITIGATION — waiver ini BARU SAH setelah mitigasi
+# berikut diimplementasikan dan di-retest (lihat plan §2.3.1):
+#   [ ] limit upload <= 10 MB di FastAPI (reject sebelum baca body)
+#   [ ] timeout request <= 30 s di uvicorn
+#   [ ] retest payload besar -> harus 413, service tetap healthy
+# Bukti crash: upload ~286 MB -> HTTP 000 + SIGTERM PID 1 + restart container.
+# Review date: 2026-09-15 (paling telat; jangan diperpanjang tanpa fix)
+CVE-2026-15534

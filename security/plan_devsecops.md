@@ -107,6 +107,8 @@ Example:
 # CVE-2026-XXXXX, false positive in dev dependency, review 2026-09-30
 ```
 
+> The live waiver list is maintained in root `.trivyignore` — four entries triaged 2026-08-26 (three waivers + one PENDING-mitigation), full evidence in §2.3.1. Reminder of syntax rules: comments must start with `#` on their own lines; inline comments after a CVE id are not parsed by Trivy.
+
 **Triage policy:**
 
 * CRITICAL → remediate or mitigate within ≤ 7 days
@@ -173,12 +175,67 @@ Raw severity counts are not a work list. A finding only matters if the vulnerabl
 8. browser-extension Next 14→16 major upgrade behind a test checklist (sidepanel login → capture → OCR → autofill flows). postcss follows transitively.
 9. Dependabot (npm ×3 + docker + actions), CI gate on **new** CRITICALs with `--ignore-unfixed`, SBOM per release (`trivy image --format cyclonedx`).
 
+#### §2.3.1 — Empirical CVE Triage Results (2026-08-26)
+
+**Standard methodology for every scanner finding** (proven on the OCR image, reusable everywhere):
+
+> **presence → behavioral proof → reachability → waiver or patch**
+
+Raw severity is only a queue priority. A finding becomes work only if the vulnerable code is present AND reachable from attacker-controlled input. Four CVEs triaged against `rsudtangsel-ocr:latest`:
+
+| CVE | Deskripsi | Raw sev | Bukti empiris | Verdict |
+|---|---|---|---|---|
+| CVE-2026-13221 | Perl trie regex 16-bit overflow (CWE-190) | CRITICAL 9.1 | Biner berperilaku patched (backport Debian); reachability nol | **WAIVER** (review 2026-11-30) |
+| CVE-2026-42496 | Archive::Tar symlink escape | CRITICAL 9.1 | Module ada (`3.02_001` < 3.08) tapi tidak pernah dieksekusi dari jalur HTTP | **WAIVER** (review 2026-11-30) |
+| CVE-2026-8376 | Perl heap buffer overflow | CRITICAL 9.8 | Hanya mengenai build 32-bit; image adalah x86_64 | **NOT RELEVANT** (review 2026-11-30) |
+| CVE-2026-15534 | Superlinear cache overflow | HIGH 7.5 | **Crash tereproduksi via upload besar → DoS remote** | ⚠️ **PATCH REQUIRED — mitigasi aplikasi belum diimplementasikan** |
+
+---
+
+##### Worked example A — waiver: CVE-2026-13221
+
+Trivy flagged CRITICAL on three perl packages. Validation instead of blind patching:
+
+1. **Presence**: container runs `perl 5.40.1-6` (≤ 5.43.9 = affected range). ✔ present
+2. **Behavioral PoC** (exec'd inside container, non-destructive):
+   * Control: small alternation matches its marker → harness valid.
+   * Probe: ~66k-branch alternation, marker beyond the 16-bit boundary → **matches at every boundary index (65534 / 65535 / 65536 / …)** → decision table intact → binary behaves **patched** (Debian backport into 5.40.1-6 — which is exactly why Trivy shows an empty `fix=`).
+   * Negative probe ("XYZ123!@#"-style unknown token): no false positive.
+3. **Reachability audit**: 0 `.pl` files in image, 0 perl invocations from app code (`uvicorn/FastAPI/Pillow/OpenCV/Paddle` never exec perl), 0 perl processes at runtime.
+
+**Verdict: not exploitable** → waived with review date. Re-check on next rebuild once Debian publishes an explicitly versioned fix.
+
+##### Worked example B — confirmed DoS: CVE-2026-15534 (PATCH REQUIRED)
+
+The only finding where empirical testing changed the decision from "waiver candidate" to "must fix":
+
+1. **Reproduction**: large payload (~286 MB) POSTed to the OCR upload endpoint.
+2. **Observed**: client gets `HTTP 000` (connection died mid-request); container logs show
+   `FatalError: Termination signal ... SIGTERM received by PID 1`; container auto-restarted.
+   → remote unauthenticated DoS of the OCR service.
+3. **Root cause enabler**: no upload size guard anywhere in `ocr-service/main.py` (verified: no `max_size`, no content-length check — just bare `UploadFile` declarations on `/ocr/patient-form` and `/ocr/extract`).
+
+**Required mitigations (still TODO in code):**
+- [ ] Hard max upload size ≤ 10 MB enforced in FastAPI (reject early, before reading body)
+- [ ] Request timeout ≤ 30 s on uvicorn
+- [ ] Re-test after fix: same payload must get a clean `413 Request Entity Too Large`, service stays healthy
+- [ ] Only then may the `.trivyignore` entry for this CVE be honored; until mitigation lands it stays flagged as PENDING
+
+*(Catatan prosedur: uji dilaporkan dengan endpoint `/process`; route aktif saat ini adalah `/ocr/extract` dan `/ocr/patient-form`. Efek crash sama — catat path final saat re-test pasca-mitigasi.)*
+
+##### Triage record singkat — dua waiver lainnya
+
+* **CVE-2026-42496**: `Archive::Tar` versi `3.02_001` (< 3.08) hadir di image, tetapi `find` menemukan 0 file `.pl/.pm` di `/app`, 0 pemanggilan perl dari Python, 0 proses perl → tidak ada execution path dari HTTP ke Archive::Tar. Waiver.
+* **CVE-2026-8376**: vuln hanya memengaruhi build Perl 32-bit; `uname -m` = `x86_64` → not relevant. Waiver.
+
 #### Production sign-off criteria
 
 - [ ] All three runtime images: 0 CRITICAL; HIGH findings either patched or waived in `.trivyignore` with reason+date
 - [ ] No container runs as root
 - [ ] No default credentials anywhere; secrets injected at deploy time only
 - [ ] DB unreachable outside the compose/app network
+- [ ] **OCR max upload size ≤ 10 MB enforced in application code**
+- [ ] **OCR request timeout ≤ 30 s (uvicorn)**
 - [ ] Weekly automated rescan green for 2 consecutive weeks
 
 ### 2.4 Trivy Automation
