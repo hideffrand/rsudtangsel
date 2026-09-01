@@ -87,7 +87,7 @@
 
 ## Notes
 
-> - OCR dianggap sudah beres dan diuji melalui kode booking — sesuai kriteria UAT
+> - OCR sudah beres dan diuji melalui kode booking — sesuai kriteria UAT
 > - Booking flow: Pasien register → dapat `booking_code` → tracking via `my-bookings?booking_code=xxx`
 > - Admin dapat: `confirm`, `cancel`, `update` status booking via `/api/admin/package-bookings/{id}/confirm|cancel|update`
 > - Admin actions: `PUT /api/admin/package-bookings/{id}/update`, `POST /api/admin/package-bookings/{id}/confirm`, `POST /api/admin/package-bookings/{id}/cancel`

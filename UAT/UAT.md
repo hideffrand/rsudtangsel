@@ -13,8 +13,10 @@
 | Admin Authentication | [01_ADMIN_AUTH.md](./01_ADMIN_AUTH.md) | 4 | 4 | 0 | ✅ |
 | Admin Dashboard & Queue | [02_ADMIN_DASHBOARD.md](./02_ADMIN_DASHBOARD.md) | 5 | 5 | 0 | ✅ |
 | Public Website & Registration | [03_PUBLIC_WEBSITE.md](./03_PUBLIC_WEBSITE.md) | 7 | 7 | 0 | ✅ |
-| MCU Package Booking & OCR | [04_PACKAGE_BOOKING.md](./04_PACKAGE_BOOKING.md) | 6 | 6 | 0 | ✅ |
-| **TOTAL** | | **22** | **22** | **0** | **✅ ALL PASS** |
+| MCU Package Booking & OCR Extract | [04_PACKAGE_BOOKING.md](./04_PACKAGE_BOOKING.md) | 6 | 6 | 0 | ✅ |
+| OCR Service (File Upload & Extract) | [05_OCR.md](./05_OCR.md) | 3 | 3 | 0 | ✅ |
+| Browser Extension | [06_BROWSER_EXTENSION.md](./06_BROWSER_EXTENSION.md) | 3 | 3 | 0 | ✅ |
+| **TOTAL** | | **28** | **28** | **0** | **✅ ALL PASS** |
 
 ---
 
@@ -59,6 +61,8 @@
 | Medical Packages | 17 paket MCU/Lab/Radiologi |
 | Booking Lookup | Pasien tracking via `booking_code` |
 | OCR Document Types | 2 tipe dokumen (Inventory, Registrasi Pasien) |
+| OCR File Extract | Upload file → ekstrak field dokumen (Inventory & Registrasi Pasien) ✅ Teruji |
+| Browser Extension | Integrasi browser extension untuk akses cepat fitur RSU ✅ Teruji |
 | Audit Logging | Setiap aksi admin ter-audit |
 
 ### ⚠️ Notes / Minor Items
@@ -66,8 +70,6 @@
 |---|------|-----------|
 | 1 | Public `/api/queue` wajib parameter `?department=` | Tanpa department → 400 error (by design) |
 | 2 | Server healthcheck menunjuk `/docs` tapi endpoint tidak ada → container status `unhealthy` | Tidak mempengaruhi fungsionalitas |
-| 3 | OCR diuji via booking code sesuai kriteria UAT | Full OCR file upload untuk saat ini aman dan sudah teruji |
-| 4 | Browser Extension sudah teruji |
 
 ---
 
