@@ -66,13 +66,8 @@
 |---|------|-----------|
 | 1 | Public `/api/queue` wajib parameter `?department=` | Tanpa department → 400 error (by design) |
 | 2 | Server healthcheck menunjuk `/docs` tapi endpoint tidak ada → container status `unhealthy` | Tidak mempengaruhi fungsionalitas |
-| 3 | OCR diuji via booking code sesuai kriteria UAT | Full OCR file upload tidak diuji |
-
-### 🚫 Out of Scope
-- Browser extension
-- Mobile app
-- OCR extract file upload (dianggap beres sesuai kriteria)
-- WFH / overtime (tidak ada di sistem ini)
+| 3 | OCR diuji via booking code sesuai kriteria UAT | Full OCR file upload untuk saat ini aman dan sudah teruji |
+| 4 | Browser Extension sudah teruji |
 
 ---
 
